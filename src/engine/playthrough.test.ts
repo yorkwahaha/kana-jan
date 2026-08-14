@@ -43,5 +43,11 @@ describe('完整自動對局', () => {
     expect(state.rankings?.[0]?.place).toBe(1)
     expect(state.players.every((p) => p.gold >= 0)).toBe(true)
     expect(state.gameOverReason === 'deck' || state.gameOverReason === 'gold').toBe(true)
+    if (state.gameOverReason === 'deck') {
+      expect(state.deck).toHaveLength(0)
+    }
+    if (state.gameOverReason === 'gold') {
+      expect(state.players.some((p) => p.gold === 0)).toBe(true)
+    }
   })
 })
