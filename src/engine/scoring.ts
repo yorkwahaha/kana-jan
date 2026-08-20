@@ -28,6 +28,7 @@ export function settleGold(
   const next = players.map((p) => ({
     ...p,
     hand: [...p.hand],
+    discards: [...(p.discards ?? [])],
     completed: [...p.completed],
   }))
   const winner = next.find((p) => p.id === winnerId)

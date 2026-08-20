@@ -45,7 +45,7 @@ export function SettingsPanel({ settings, onChange, onClose, onRestart }: Props)
                   checked={settings.animation === v}
                   onChange={() => onChange({ ...settings, animation: v })}
                 />
-                {v === 'normal' ? '標準' : v === 'fast' ? '快速' : '關閉／跳過'}
+                {v === 'normal' ? '慢速（容易看懂）' : v === 'fast' ? '快速' : '關閉／跳過'}
               </label>
             ))}
           </fieldset>
@@ -60,6 +60,10 @@ export function SettingsPanel({ settings, onChange, onClose, onRestart }: Props)
               顯示羅馬字
             </label>
             <label className="toggle">
+              <input type="checkbox" checked={settings.showMeaning} onChange={() => toggle('showMeaning')} />
+              單字卡顯示中文
+            </label>
+            <label className="toggle">
               <input type="checkbox" checked={settings.showRow} onChange={() => toggle('showRow')} />
               顯示所屬行
             </label>
@@ -70,6 +74,10 @@ export function SettingsPanel({ settings, onChange, onClose, onRestart }: Props)
             <label className="toggle">
               <input type="checkbox" checked={settings.highlightNear} onChange={() => toggle('highlightNear')} />
               高亮接近完成的牌型
+            </label>
+            <label className="toggle">
+              <input type="checkbox" checked={settings.recallQuiz} onChange={() => toggle('recallQuiz')} />
+              結算後必考一題讀音
             </label>
           </fieldset>
         </div>

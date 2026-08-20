@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BONUS_MISSIONS } from '../data/bonuses'
+import { DEFAULT_BONUS } from '../data/bonuses'
 import { CARD_CATALOG, getCardById, type KanaCard } from '../data/cards'
 import { createRng } from './rng'
 import { drainAuto, reduce, startGame } from './game'
@@ -7,7 +7,7 @@ import { reactionOrder } from './game'
 import { HAND_SIZE } from './types'
 import { findYaku } from './yaku'
 
-const bonus = BONUS_MISSIONS.find((b) => b.kind === 'rowYaku')!
+const bonus = DEFAULT_BONUS
 
 function play(state: ReturnType<typeof startGame>, type: Parameters<typeof reduce>[1]) {
   return drainAuto(reduce(state, type))
@@ -28,7 +28,7 @@ describe('seed 可重現', () => {
     const a = startGame({ seed: 42 })
     const b = startGame({ seed: 42 })
     expect(a.startPlayerIndex).toBe(b.startPlayerIndex)
-    expect(a.bonus.kind).toBe(b.bonus.kind)
+    expect(a.bonus.sound).toBe(b.bonus.sound)
     expect(a.deck.map((c) => c.id)).toEqual(b.deck.map((c) => c.id))
     expect(a.players.map((p) => p.hand.map((c) => c.id))).toEqual(
       b.players.map((p) => p.hand.map((c) => c.id)),
@@ -61,6 +61,34 @@ describe('回合：抽牌、棄牌、補牌', () => {
     state = play(state, { type: 'DISCARD', cardId: discardId })
     expect(state.players[0]?.hand).toHaveLength(HAND_SIZE)
   })
+
+  it('抽牌後手牌依五十音重排，新牌插入對應位置', () => {
+    let state = startGame({
+      seed: 1,
+      startPlayerIndex: 0,
+      bonus,
+      hands: [
+        fillHand([], ['ka-hiragana', 'sa-hiragana', 'ta-hiragana', 'na-hiragana', 'ha-hiragana', 'ma-hiragana', 'ra-hiragana']),
+        fillHand([], ['sa-katakana', 'shi-katakana', 'su-katakana', 'se-katakana', 'so-katakana', 'ta-katakana', 'chi-katakana']),
+        fillHand([], ['na-katakana', 'ni-katakana', 'nu-katakana', 'ne-katakana', 'no-katakana', 'ha-katakana', 'hi-katakana']),
+        fillHand([], ['ma-katakana', 'mi-katakana', 'mu-katakana', 'me-katakana', 'mo-katakana', 'ra-katakana', 'ri-katakana']),
+      ],
+      deck: [getCardById('a-hiragana'), getCardById('i-hiragana')],
+    })
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    expect(state.players[0]?.hand.map((c) => c.id)).toEqual([
+      'a-hiragana',
+      'ka-hiragana',
+      'sa-hiragana',
+      'ta-hiragana',
+      'na-hiragana',
+      'ha-hiragana',
+      'ma-hiragana',
+      'ra-hiragana',
+    ])
+    expect(state.lastDrawnCardId).toBe('a-hiragana')
+  })
 })
 
 describe('完成牌型流程', () => {
@@ -81,12 +109,15 @@ describe('完成牌型流程', () => {
     })
     state = play(state, { type: 'DEAL_DONE' })
     state = play(state, { type: 'DRAW' })
-    const yakus = findYaku(state.players[0]!.hand, state.bonus)
+    const yakus = findYaku(state.players[0]!.hand, state.bonus, { activeRows: state.activeRows })
     const sameSound = yakus.find((y) => y.kind === 'sameSound')
     expect(sameSound).toBeTruthy()
     state = play(state, { type: 'CHOOSE_YAKU', yakuId: sameSound!.id })
-    expect(state.phase).toBe('pronunciation')
-    state = play(state, { type: 'FINISH_PRONUNCIATION' })
+    expect(state.phase).toBe('review')
+    const p0mid = state.players[0]!
+    expect(p0mid.score).toBe(3)
+    expect(p0mid.gold).toBe(20 + 3 * 3)
+    state = play(state, { type: 'FINISH_REVIEW' })
     expect(state.phase).toBe('playerDraw')
     const p0 = state.players[0]!
     expect(p0.hand).toHaveLength(7)
@@ -101,7 +132,7 @@ describe('完成牌型流程', () => {
 describe('棄牌優先順序', () => {
   it('多名玩家都能使用同一張棄牌時，回合順序最近者優先', () => {
     // 棄牌：か hiragana
-    // p1（下家）可用來完成同音
+    // p1（下一家）可用來完成同音
     // p2 可用來完成か行
     const discardId = 'ka-hiragana'
     let state = startGame({
@@ -121,12 +152,14 @@ describe('棄牌優先順序', () => {
     state = play(state, { type: 'SKIP_YAKU' })
     state = play(state, { type: 'DISCARD', cardId: discardId })
     expect(state.phase).toBe('reaction')
+    expect(state.lastDiscardPlayerId).toBe('p0')
+    expect(state.players[0]?.discards.map((c) => c.id)).toContain(discardId)
     expect(state.reactionOptions.map((o) => o.playerId)).toEqual(['p1', 'p2'])
     expect(reactionOrder(0, 4)).toEqual([1, 2, 3])
 
     const p1Yaku = state.reactionOptions[0]!
     state = play(state, { type: 'CLAIM_YAKU', yakuId: p1Yaku.yaku.id })
-    // p1 is AI so skips pronunciation, auto scores
+    // p1 is AI; scoring then review, drainAuto stops at review unless FINISH_REVIEW
     expect(state.players[1]?.completed).toHaveLength(1)
     expect(state.players[1]?.completed[0]?.source).toBe('ron')
     expect(state.players[2]?.completed).toHaveLength(0)
@@ -135,6 +168,34 @@ describe('棄牌優先順序', () => {
     expect(state.players[1]?.gold).toBe(23)
     expect(state.players[2]?.gold).toBe(20)
     expect(state.players[3]?.gold).toBe(20)
+    expect(state.lastTransfers).toEqual([{ fromId: 'p0', toId: 'p1', amount: 3 }])
+    expect(state.events.some((e) => e.text.includes('抄了'))).toBe(true)
+    expect(state.players[0]?.discards.some((c) => c.id === discardId)).toBe(false)
+  })
+})
+
+describe('棄牌河', () => {
+  it('無人抄走的棄牌會留在該玩家面前', () => {
+    const discardId = 'ra-hiragana'
+    let state = startGame({
+      seed: 8,
+      startPlayerIndex: 0,
+      bonus,
+      hands: [
+        fillHand([], [discardId, 'a-hiragana', 'i-hiragana', 'u-hiragana', 'e-hiragana', 'o-hiragana', 'ka-hiragana']),
+        fillHand([], ['sa-hiragana', 'shi-hiragana', 'su-hiragana', 'se-hiragana', 'so-hiragana', 'ta-hiragana', 'chi-hiragana']),
+        fillHand([], ['na-hiragana', 'ni-hiragana', 'nu-hiragana', 'ne-hiragana', 'no-hiragana', 'ha-hiragana', 'hi-hiragana']),
+        fillHand([], ['ma-hiragana', 'mi-hiragana', 'mu-hiragana', 'me-hiragana', 'mo-hiragana', 'ri-hiragana', 'ru-hiragana']),
+      ],
+      deck: cards('o-katakana', 'a-katakana'),
+    })
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    state = play(state, { type: 'SKIP_YAKU' })
+    state = play(state, { type: 'DISCARD', cardId: discardId })
+    expect(state.players[0]?.discards.map((c) => c.id)).toEqual([discardId])
+    expect(state.discardPile.map((c) => c.id)).toEqual([discardId])
+    expect(state.players.slice(1).every((p) => p.discards.length === 0)).toBe(true)
   })
 })
 
@@ -156,9 +217,10 @@ describe('牌庫不足與耗盡', () => {
     })
     state = play(state, { type: 'DEAL_DONE' })
     state = play(state, { type: 'DRAW' })
-    const yaku = findYaku(state.players[0]!.hand, state.bonus).find((y) => y.kind === 'sameSound')!
+    const yaku = findYaku(state.players[0]!.hand, state.bonus, { activeRows: state.activeRows }).find((y) => y.kind === 'sameSound')!
     state = play(state, { type: 'CHOOSE_YAKU', yakuId: yaku.id })
-    state = play(state, { type: 'FINISH_PRONUNCIATION' })
+    expect(state.phase).toBe('review')
+    state = play(state, { type: 'FINISH_REVIEW' })
     expect(state.phase).toBe('gameOver')
     expect(state.gameOverReason).toBe('deck')
     expect(state.players[0]!.hand.length).toBeLessThan(7)
@@ -206,9 +268,8 @@ describe('金幣歸零結束', () => {
     })
     state = play(state, { type: 'DEAL_DONE' })
     state = play(state, { type: 'DRAW' })
-    const yaku = findYaku(state.players[0]!.hand, state.bonus).find((y) => y.kind === 'sameSound')!
+    const yaku = findYaku(state.players[0]!.hand, state.bonus, { activeRows: state.activeRows }).find((y) => y.kind === 'sameSound')!
     state = play(state, { type: 'CHOOSE_YAKU', yakuId: yaku.id })
-    state = play(state, { type: 'FINISH_PRONUNCIATION' })
     expect(state.phase).toBe('gameOver')
     expect(state.gameOverReason).toBe('gold')
     expect(state.players.some((p) => p.gold === 0)).toBe(true)
@@ -249,14 +310,24 @@ describe('亂數封裝', () => {
 
 describe('再玩一次', () => {
   it('RESTART 會完整重置', () => {
-    let state = startGame({ seed: 10, bonus })
+    let state = startGame({ seed: 10, bonus, skipPreview: true })
     state = play(state, { type: 'DEAL_DONE' })
     state = play(state, { type: 'DRAW' })
-    const restarted = play(state, { type: 'RESTART', config: { seed: 11, bonus } })
+    const restarted = play(state, { type: 'RESTART', config: { seed: 11, bonus, skipPreview: true } })
     expect(restarted.phase).toBe('dealing')
     const ready = play(restarted, { type: 'DEAL_DONE' })
     expect(ready.phase).toBe('playerDraw')
     expect(ready.players.every((p) => p.gold === 20 && p.score === 0 && p.completed.length === 0)).toBe(true)
     expect(ready.events.some((e) => e.text.includes('遊戲開始'))).toBe(true)
+  })
+})
+
+describe('課程預覽', () => {
+  it('未略過時先進入本次登場畫面，且あ行不判定同一段', () => {
+    const state = startGame({ seed: 12, lessonId: 'a' })
+    expect(state.phase).toBe('preview')
+    expect(state.activeRows).toEqual(['a'])
+    const after = play(state, { type: 'SKIP_PREVIEW' })
+    expect(after.phase).toBe('dealing')
   })
 })

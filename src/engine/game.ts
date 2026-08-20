@@ -1,6 +1,8 @@
-import { BONUS_MISSIONS } from '../data/bonuses'
-import { CARD_CATALOG, displayGlyph, type KanaCard } from '../data/cards'
-import { dealHands, drawOne, refillHand } from './deck'
+import { DEFAULT_BONUS, makeTargetBonus } from '../data/bonuses'
+import { displayGlyph, type KanaCard } from '../data/cards'
+import { soundsForRows } from '../data/kana'
+import { DEFAULT_LESSON_ID, getLesson } from '../data/lessons'
+import { buildLessonDeck, dealHands, drawOne, refillHand, sortHandByGojuon } from './deck'
 import { createRng } from './rng'
 import { computeRankings, removeCardsFromHand, settleGold } from './scoring'
 import {
@@ -16,6 +18,7 @@ import { findYaku } from './yaku'
 
 export type GameAction =
   | { type: 'START'; config?: StartConfig }
+  | { type: 'SKIP_PREVIEW' }
   | { type: 'DEAL_DONE' }
   | { type: 'DRAW' }
   | { type: 'CHOOSE_YAKU'; yakuId: string }
@@ -23,7 +26,7 @@ export type GameAction =
   | { type: 'DISCARD'; cardId: string }
   | { type: 'CLAIM_YAKU'; yakuId: string }
   | { type: 'PASS_CLAIM' }
-  | { type: 'FINISH_PRONUNCIATION' }
+  | { type: 'FINISH_REVIEW' }
   | { type: 'APPLY_SCORING' }
   | { type: 'REFILL' }
   | { type: 'NEXT_TURN' }
@@ -41,7 +44,9 @@ export function createLobbyState(): GameState {
     currentDiscard: null,
     currentPlayerIndex: 0,
     startPlayerIndex: 0,
-    bonus: BONUS_MISSIONS[0]!,
+    bonus: DEFAULT_BONUS,
+    lessonId: DEFAULT_LESSON_ID,
+    activeRows: getLesson(DEFAULT_LESSON_ID).rows,
     pendingScore: null,
     reactionOptions: [],
     reactionIndex: 0,
@@ -55,6 +60,7 @@ export function createLobbyState(): GameState {
     rankings: null,
     lastFx: null,
     lastTransfers: [],
+    lastDiscardPlayerId: null,
   }
 }
 
@@ -74,6 +80,10 @@ function replacePlayer(state: GameState, player: PlayerState): GameState {
   }
 }
 
+function syncDiscardPile(state: GameState): GameState {
+  return { ...state, discardPile: state.players.flatMap((p) => p.discards ?? []) }
+}
+
 export function currentPlayer(state: GameState): PlayerState {
   const p = state.players[state.currentPlayerIndex]
   if (!p) throw new Error('No current player')
@@ -89,7 +99,7 @@ export function reactionActor(state: GameState): PlayerState | null {
 export function availableYakuFor(state: GameState, playerId: string) {
   const player = state.players.find((p) => p.id === playerId)
   if (!player) return []
-  return findYaku(player.hand, state.bonus)
+  return findYaku(player.hand, state.bonus, { activeRows: state.activeRows })
 }
 
 export function reactionOrder(fromIndex: number, count: number): number[] {
@@ -106,6 +116,7 @@ export function currentReactionYakus(state: GameState) {
   if (!discarded || !actor) return []
   return findYaku([...actor.hand, discarded], state.bonus, {
     mustIncludeCardId: discarded.id,
+    activeRows: state.activeRows,
   })
 }
 
@@ -119,6 +130,7 @@ function buildReactionOptions(state: GameState): GameState {
     if (!player) continue
     const yakus = findYaku([...player.hand, discarded], state.bonus, {
       mustIncludeCardId: discarded.id,
+      activeRows: state.activeRows,
     })
     if (yakus.length > 0) {
       options.push({ playerId: player.id, yaku: yakus[0]! })
@@ -145,22 +157,23 @@ function goGameOver(state: GameState, reason: 'gold' | 'deck'): GameState {
   return next
 }
 
-function maybePronunciation(state: GameState, playerId: string): GameState {
-  const player = state.players.find((p) => p.id === playerId)
-  if (player?.kind === 'human') return { ...state, phase: 'pronunciation' }
+function afterDeclare(state: GameState): GameState {
   return { ...state, phase: 'scoring' }
 }
 
 export function startGame(config: StartConfig = {}): GameState {
   const seed = config.seed ?? (Date.now() ^ 0x9e3779b9) >>> 0
   const rng = createRng(seed)
-  const bonus = config.bonus ?? rng.pick(BONUS_MISSIONS)
+  const lesson = getLesson(config.lessonId)
+  const activeRows = config.activeRows ?? lesson.rows
+  const lessonSounds = soundsForRows(activeRows)
+  const bonus = config.bonus ?? makeTargetBonus(rng.pick(lessonSounds), 3)
   const aiNames = config.aiNames ?? DEFAULT_AI_NAMES
   const difficulty = config.aiDifficulty ?? 'normal'
   const gold = config.initialGold ?? INITIAL_GOLD
   const playerName = (config.playerName ?? '小春').trim() || '小春'
 
-  let deck: KanaCard[] = config.deck ? [...config.deck] : rng.shuffle(CARD_CATALOG)
+  let deck: KanaCard[] = config.deck ? [...config.deck] : buildLessonDeck(activeRows, rng)
 
   let hands: KanaCard[][]
   if (config.hands) {
@@ -183,7 +196,8 @@ export function startGame(config: StartConfig = {}): GameState {
       aiDifficulty: difficulty,
       gold,
       score: 0,
-      hand: hands[0] ?? [],
+      hand: sortHandByGojuon(hands[0] ?? []),
+      discards: [],
       completed: [],
     },
     ...[0, 1, 2].map((i) => ({
@@ -194,24 +208,28 @@ export function startGame(config: StartConfig = {}): GameState {
       aiDifficulty: difficulty,
       gold,
       score: 0,
-      hand: hands[i + 1] ?? [],
+      hand: sortHandByGojuon(hands[i + 1] ?? []),
+      discards: [],
       completed: [],
     })),
   ]
 
+  const skipPreview = config.skipPreview || Boolean(config.hands)
   let state: GameState = {
     ...createLobbyState(),
-    phase: 'dealing',
+    phase: skipPreview ? 'dealing' : 'preview',
     seed,
     rngState: rng.getState(),
     players,
     deck,
     bonus,
+    lessonId: lesson.id,
+    activeRows: [...activeRows],
     currentPlayerIndex: startPlayerIndex,
     startPlayerIndex,
     turnNumber: 1,
   }
-  state = pushEvent(state, `遊戲開始！本局 Bonus：${bonus.label}`)
+  state = pushEvent(state, `遊戲開始！課程：${lesson.label}／Bonus：${bonus.label}`)
   state = pushEvent(state, `起始玩家：${players[startPlayerIndex]?.name ?? ''}`)
   return state
 }
@@ -230,7 +248,7 @@ function applyScoring(state: GameState): GameState {
     }
   }
 
-  hand = removeCardsFromHand(hand, pending.yaku.cards)
+  hand = sortHandByGojuon(removeCardsFromHand(hand, pending.yaku.cards))
 
   const scoredPlayer: PlayerState = {
     ...player,
@@ -255,8 +273,18 @@ function applyScoring(state: GameState): GameState {
   )
   next = { ...next, players: settled.players }
 
-  const verb = pending.source === 'tsumo' ? 'できた！' : 'もらった！'
-  next = pushEvent(next, `${player.name} ${verb}完成了「${pending.yaku.label}」（${pending.yaku.totalScore} 分）`)
+  if (pending.source === 'ron') {
+    const from = next.players.find((p) => p.id === pending.fromPlayerId)
+    next = pushEvent(
+      next,
+      `${player.name} 抄了 ${from?.name ?? '對手'} 的棄牌，完成「${pending.yaku.label}」（${pending.yaku.totalScore} 分）`,
+    )
+  } else {
+    next = pushEvent(
+      next,
+      `${player.name} できた！自己湊成了「${pending.yaku.label}」（${pending.yaku.totalScore} 分）`,
+    )
+  }
   next = {
     ...next,
     lastFx: pending.source === 'tsumo' ? 'dekita' : 'moratta',
@@ -267,18 +295,29 @@ function applyScoring(state: GameState): GameState {
     const from = next.players.find((p) => p.id === t.fromId)
     const to = next.players.find((p) => p.id === t.toId)
     if (from && to) {
-      next = pushEvent(next, `${to.name} 從${from.name}獲得 ${t.amount} 枚金幣`)
+      next = pushEvent(next, `${from.name} −${t.amount} → ${to.name} ＋${t.amount}`)
     }
   }
 
   if (pending.source === 'ron') {
+    const claimedId = state.currentDiscard?.id
+    if (claimedId && pending.fromPlayerId) {
+      const discarder = next.players.find((p) => p.id === pending.fromPlayerId)
+      if (discarder) {
+        next = replacePlayer(next, {
+          ...discarder,
+          discards: (discarder.discards ?? []).filter((c) => c.id !== claimedId),
+        })
+      }
+    }
     next = { ...next, currentDiscard: null }
+    next = syncDiscardPile(next)
   }
 
   if (settled.bankrupt) {
     return goGameOver(next, 'gold')
   }
-  return { ...next, phase: 'refill' }
+  return { ...next, phase: 'review' }
 }
 
 function applyRefill(state: GameState): GameState {
@@ -296,19 +335,7 @@ function applyRefill(state: GameState): GameState {
     reactionIndex: 0,
     declaredThisTurn: false,
   }
-
-  if (state.currentDiscard && !next.discardPile.some((c) => c.id === state.currentDiscard!.id)) {
-    // 無人宣告的棄牌進入棄牌堆
-    if (!player.completed.some((c) => c.yaku.cards.some((card) => card.id === state.currentDiscard!.id))) {
-      const stillHeld = next.players.some((p) => p.hand.some((c) => c.id === state.currentDiscard!.id))
-      const inCompleted = next.players.some((p) =>
-        p.completed.some((cy) => cy.yaku.cards.some((c) => c.id === state.currentDiscard!.id)),
-      )
-      if (!stillHeld && !inCompleted) {
-        next = { ...next, discardPile: [...next.discardPile, state.currentDiscard] }
-      }
-    }
-  }
+  next = syncDiscardPile(next)
 
   if (next.deck.length === 0) {
     return goGameOver(next, 'deck')
@@ -333,6 +360,11 @@ export function reduce(state: GameState, action: GameAction): GameState {
     case 'SYNC_RNG':
       return { ...state, rngState: action.rngState }
 
+    case 'SKIP_PREVIEW': {
+      if (state.phase !== 'preview') return state
+      return { ...state, phase: 'dealing' }
+    }
+
     case 'DEAL_DONE': {
       if (state.phase !== 'dealing') return state
       return { ...state, phase: 'playerDraw' }
@@ -350,7 +382,7 @@ export function reduce(state: GameState, action: GameAction): GameState {
       if (!card) {
         return { ...state, phase: 'playerAction', drewThisTurn: false }
       }
-      const updated: PlayerState = { ...player, hand: [...player.hand, card] }
+      const updated: PlayerState = { ...player, hand: sortHandByGojuon([...player.hand, card]) }
       let next = replacePlayer(state, updated)
       next = {
         ...next,
@@ -367,7 +399,7 @@ export function reduce(state: GameState, action: GameAction): GameState {
     case 'CHOOSE_YAKU': {
       if (state.phase !== 'playerAction') return state
       const player = currentPlayer(state)
-      const yakus = findYaku(player.hand, state.bonus)
+      const yakus = findYaku(player.hand, state.bonus, { activeRows: state.activeRows })
       const yaku = yakus.find((y) => y.id === action.yakuId)
       if (!yaku) return state
       const next: GameState = {
@@ -379,7 +411,7 @@ export function reduce(state: GameState, action: GameAction): GameState {
           source: 'tsumo',
         },
       }
-      return maybePronunciation(next, player.id)
+      return afterDeclare(next)
     }
 
     case 'SKIP_YAKU': {
@@ -399,13 +431,16 @@ export function reduce(state: GameState, action: GameAction): GameState {
       const updated: PlayerState = {
         ...player,
         hand: player.hand.filter((c) => c.id !== action.cardId),
+        discards: [...(player.discards ?? []), card],
       }
       let next = replacePlayer(state, updated)
       next = {
         ...next,
         currentDiscard: card,
         lastFx: 'discard',
+        lastDiscardPlayerId: player.id,
       }
+      next = syncDiscardPile(next)
       next = pushEvent(next, `${player.name} 丟出了「${displayGlyph(card)}」`)
       next = buildReactionOptions(next)
       if (next.reactionOptions.length > 0) {
@@ -421,10 +456,12 @@ export function reduce(state: GameState, action: GameAction): GameState {
       if (!actor || !discarded) return state
       const yakus = findYaku([...actor.hand, discarded], state.bonus, {
         mustIncludeCardId: discarded.id,
+        activeRows: state.activeRows,
       })
       const yaku = yakus.find((y) => y.id === action.yakuId) ?? yakus[0]
       if (!yaku) return state
-      const discarder = currentPlayer(state)
+      const discarder =
+        state.players.find((p) => p.id === state.lastDiscardPlayerId) ?? currentPlayer(state)
       let next: GameState = {
         ...state,
         pendingScore: {
@@ -434,8 +471,11 @@ export function reduce(state: GameState, action: GameAction): GameState {
           fromPlayerId: discarder.id,
         },
       }
-      next = pushEvent(next, `${actor.name} 使用「${displayGlyph(discarded)}」宣告もらった！`)
-      return maybePronunciation(next, actor.id)
+      next = pushEvent(
+        next,
+        `${actor.name} 抄了 ${discarder.name} 丟出的「${displayGlyph(discarded)}」！`,
+      )
+      return afterDeclare(next)
     }
 
     case 'PASS_CLAIM': {
@@ -449,9 +489,9 @@ export function reduce(state: GameState, action: GameAction): GameState {
       return { ...next, phase: 'refill', reactionIndex: nextIndex }
     }
 
-    case 'FINISH_PRONUNCIATION': {
-      if (state.phase !== 'pronunciation') return state
-      return { ...state, phase: 'scoring' }
+    case 'FINISH_REVIEW': {
+      if (state.phase !== 'review') return state
+      return { ...state, phase: 'refill' }
     }
 
     case 'APPLY_SCORING': {

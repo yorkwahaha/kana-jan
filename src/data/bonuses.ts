@@ -1,61 +1,37 @@
-import type { ColumnId } from './kana'
+import { getCardById, type KanaCard } from './cards'
+import { getSound, spellingInRows, type KanaSound, type RowId } from './kana'
 
-export type BonusKind =
-  | 'hiraganaYaku'
-  | 'katakanaYaku'
-  | 'aColumn'
-  | 'iColumn'
-  | 'rowYaku'
-  | 'columnYaku'
+export type BonusKind = 'targetSound'
 
 export interface BonusMission {
   kind: BonusKind
+  sound: string
+  cardId: string
   label: string
   detail: string
   points: number
 }
 
-export const BONUS_MISSIONS: BonusMission[] = [
-  {
-    kind: 'hiraganaYaku',
-    label: '平假名牌型',
-    detail: '完成的牌型若全部為平假名，額外 +2 分',
-    points: 2,
-  },
-  {
-    kind: 'katakanaYaku',
-    label: '片假名牌型',
-    detail: '完成的牌型若全部為片假名，額外 +3 分',
-    points: 3,
-  },
-  {
-    kind: 'aColumn',
-    label: 'あ段達人',
-    detail: '完成「あ段」牌型時額外 +3 分',
-    points: 3,
-  },
-  {
-    kind: 'iColumn',
-    label: 'い段達人',
-    detail: '完成「い段」牌型時額外 +3 分',
-    points: 3,
-  },
-  {
-    kind: 'rowYaku',
-    label: '行の達人',
-    detail: '完成同一行牌型時額外 +2 分',
-    points: 2,
-  },
-  {
-    kind: 'columnYaku',
-    label: '段の達人',
-    detail: '完成同一段牌型時額外 +2 分',
-    points: 2,
-  },
-]
-
-export function bonusColumn(kind: BonusKind): ColumnId | null {
-  if (kind === 'aColumn') return 'a'
-  if (kind === 'iColumn') return 'i'
-  return null
+export function makeTargetBonus(kana: KanaSound, points = 3): BonusMission {
+  const cardId = `${kana.sound}-vocabulary`
+  return {
+    kind: 'targetSound',
+    sound: kana.sound,
+    cardId,
+    label: kana.vocabulary,
+    detail: `完成「${kana.hiragana}」同音組、該行揃い，或拼出「${kana.vocabulary}」時額外 +${points} 分`,
+    points,
+  }
 }
+
+export function bonusCardOf(bonus: BonusMission): KanaCard {
+  return getCardById(bonus.cardId)
+}
+
+export function bonusSpelling(bonus: BonusMission, rows: readonly RowId[]): string[] {
+  const kana = getSound(bonus.sound)
+  return spellingInRows(kana.spelling, rows) ? kana.spelling : []
+}
+
+/** 測試或預設用：目標音為ね，避免干擾あ行／か行牌型分數 */
+export const DEFAULT_BONUS: BonusMission = makeTargetBonus(getSound('ne'), 0)

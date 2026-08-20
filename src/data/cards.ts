@@ -1,4 +1,4 @@
-import { KANA_SOUNDS, type KanaSound } from './kana'
+import { KANA_SOUNDS, soundsForRows, type KanaSound, type RowId } from './kana'
 
 export type CardType = 'hiragana' | 'katakana' | 'vocabulary'
 
@@ -47,12 +47,12 @@ export function buildCard(sound: KanaSound, cardType: CardType): KanaCard {
   }
 }
 
-/** 第一版完整牌庫定義：25 讀音 × 3 類型 = 75 張 */
+/** 完整牌庫：40 讀音 × 3 類型 = 120 張（不含課程複本） */
 export function createCardCatalog(): KanaCard[] {
   const cards: KanaCard[] = []
-  for (const sound of KANA_SOUNDS) {
+  for (const kana of KANA_SOUNDS) {
     for (const type of CARD_TYPES) {
-      cards.push(buildCard(sound, type))
+      cards.push(buildCard(kana, type))
     }
   }
   return cards
@@ -60,10 +60,25 @@ export function createCardCatalog(): KanaCard[] {
 
 export const CARD_CATALOG = createCardCatalog()
 
+export function catalogForRows(rows: readonly RowId[]): KanaCard[] {
+  const cards: KanaCard[] = []
+  for (const kana of soundsForRows(rows)) {
+    for (const type of CARD_TYPES) {
+      cards.push(buildCard(kana, type))
+    }
+  }
+  return cards
+}
+
+export function baseCardId(id: string): string {
+  return id.split('#')[0] ?? id
+}
+
 export function getCardById(id: string): KanaCard {
-  const card = CARD_CATALOG.find((c) => c.id === id)
+  const baseId = baseCardId(id)
+  const card = CARD_CATALOG.find((c) => c.id === baseId)
   if (!card) throw new Error(`Unknown card id: ${id}`)
-  return card
+  return id === card.id ? card : { ...card, id }
 }
 
 export function displayGlyph(card: KanaCard): string {

@@ -48,7 +48,11 @@ export function Tutorial({ onClose }: Props) {
             </div>
           </section>
           <section>
-            <h3>4. 自己抽到 vs 使用別人的棄牌</h3>
+            <h3>4. 組字 · 5 分</h3>
+            <p>用手牌拼出桌上 BONUS 單字的讀音，例如 ね＋こ → ねこ。</p>
+          </section>
+          <section>
+            <h3>5. 自己抽到 vs 使用別人的棄牌</h3>
             <p>
               自己抽牌完成（自摸／できた）：其他三位玩家各支付該牌型分數。
               <br />
@@ -56,15 +60,12 @@ export function Tutorial({ onClose }: Props) {
             </p>
           </section>
           <section>
-            <h3>5. 同類型加成</h3>
+            <h3>6. 同類型加成</h3>
             <p>「同一行」或「同一段」若五張都是同一類型：平假名 +3、片假名 +4、單字圖像 +5。</p>
           </section>
           <section>
-            <h3>6. 如何抽牌與棄牌</h3>
-            <p>
-              回合開始會自動抽一張。若有合法牌型可選擇結算或暫不結算。
-              不結算時必須選一張手牌並按「確認棄牌」。完成牌型的卡片會移到完成區，再補回 7 張。
-            </p>
+            <h3>7. 本次登場的行</h3>
+            <p>每局只出場部分行，讓同樣的假名反覆出現。少於五行時不會出現「同一段」牌型。完成牌型後會複習讀音，可選擇回想小題。</p>
           </section>
         </div>
         <footer className="modal-foot">

@@ -4,20 +4,21 @@ import type { ColumnId, RowId } from '../data/kana'
 
 export type Phase =
   | 'lobby'
+  | 'preview'
   | 'dealing'
   | 'playerDraw'
   | 'playerAction'
   | 'discard'
   | 'reaction'
-  | 'pronunciation'
   | 'scoring'
+  | 'review'
   | 'refill'
   | 'nextTurn'
   | 'gameOver'
 
 export type PlayerKind = 'human' | 'ai' | 'local' | 'remote'
 export type AiDifficulty = 'easy' | 'normal'
-export type YakuKind = 'sameSound' | 'sameRow' | 'sameColumn'
+export type YakuKind = 'sameSound' | 'sameRow' | 'sameColumn' | 'word'
 export type ScoreSource = 'tsumo' | 'ron'
 
 export interface YakuCandidate {
@@ -27,6 +28,7 @@ export interface YakuCandidate {
   sound?: string
   row?: RowId
   column?: ColumnId
+  word?: string
   uniformType?: CardType
   baseScore: number
   typeBonus: number
@@ -50,6 +52,7 @@ export interface PlayerState {
   gold: number
   score: number
   hand: KanaCard[]
+  discards: KanaCard[]
   completed: CompletedYaku[]
 }
 
@@ -81,6 +84,8 @@ export interface GameState {
   currentPlayerIndex: number
   startPlayerIndex: number
   bonus: BonusMission
+  lessonId: string
+  activeRows: RowId[]
   pendingScore: PendingScore | null
   reactionOptions: ReactionOption[]
   reactionIndex: number
@@ -94,6 +99,7 @@ export interface GameState {
   rankings: Ranking[] | null
   lastFx: 'dekita' | 'moratta' | 'draw' | 'discard' | 'coin' | null
   lastTransfers: { fromId: string; toId: string; amount: number }[]
+  lastDiscardPlayerId: string | null
 }
 
 export interface Ranking {
@@ -110,6 +116,10 @@ export interface StartConfig {
   playerName?: string
   aiDifficulty?: AiDifficulty
   aiNames?: string[]
+  lessonId?: string
+  activeRows?: RowId[]
+  /** 測試用：略過「本次登場」預覽 */
+  skipPreview?: boolean
   /** 測試用：指定起始玩家 */
   startPlayerIndex?: number
   /** 測試用：指定 bonus */

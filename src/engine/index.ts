@@ -1,6 +1,6 @@
 export { CARD_CATALOG, getCardById, buildCard } from '../data/cards'
 export { KANA_SOUNDS } from '../data/kana'
-export { BONUS_MISSIONS } from '../data/bonuses'
+export { DEFAULT_BONUS, makeTargetBonus } from '../data/bonuses'
 export { createRng, createRngFromExactState } from './rng'
 export { findYaku, findNearYaku, typeBonusFor, missionBonusFor, BASE_SCORE } from './yaku'
 export { settleGold, removeCardsFromHand, computeRankings } from './scoring'

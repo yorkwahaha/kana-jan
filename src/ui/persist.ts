@@ -23,6 +23,9 @@ export function loadGame(): GameState | null {
     const parsed = JSON.parse(raw) as GameState
     if (!parsed || !parsed.phase || !Array.isArray(parsed.players)) return null
     if (parsed.phase === 'lobby') return null
+    if (!Array.isArray(parsed.activeRows) || !parsed.lessonId || !parsed.bonus?.sound) return null
+    if (parsed.lastDiscardPlayerId === undefined) parsed.lastDiscardPlayerId = null
+    parsed.players = parsed.players.map((p) => ({ ...p, discards: p.discards ?? [] }))
     return parsed
   } catch {
     return null

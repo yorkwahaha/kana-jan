@@ -11,6 +11,7 @@ function player(partial: Partial<PlayerState> & Pick<PlayerState, 'id' | 'name'>
     gold: 20,
     score: 0,
     hand: [],
+    discards: [],
     completed: [],
     ...partial,
   }

@@ -92,7 +92,7 @@ function shouldDelayLowYaku(yaku: YakuCandidate, hand: KanaCard[], rng: Rng): bo
 
 function decideAction(state: GameState, rng: Rng): GameAction {
   const player = currentPlayer(state)
-  const yakus = findYaku(player.hand, state.bonus)
+  const yakus = findYaku(player.hand, state.bonus, { activeRows: state.activeRows })
   if (yakus.length === 0) return { type: 'SKIP_YAKU' }
 
   if (player.aiDifficulty === 'easy') {
@@ -132,11 +132,8 @@ export function decideAi(state: GameState, rng: Rng): GameAction | null {
       }
       return { type: 'CLAIM_YAKU', yakuId: yakus[0]!.id }
     }
-    case 'pronunciation': {
-      const pending = state.pendingScore
-      const player = state.players.find((p) => p.id === pending?.playerId)
-      if (player?.kind === 'ai') return { type: 'FINISH_PRONUNCIATION' }
-      return null
+    case 'review': {
+      return { type: 'FINISH_REVIEW' }
     }
     default:
       return null
@@ -150,10 +147,8 @@ export function needsHumanInput(state: GameState): boolean {
   if (state.phase === 'reaction') {
     return reactionActor(state)?.kind === 'human'
   }
-  if (state.phase === 'pronunciation') {
-    const pending = state.pendingScore
-    const player = state.players.find((p) => p.id === pending?.playerId)
-    return player?.kind === 'human'
+  if (state.phase === 'review' || state.phase === 'preview') {
+    return state.players.some((p) => p.kind === 'human')
   }
   return false
 }

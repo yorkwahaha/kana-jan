@@ -1,9 +1,10 @@
 import { displayGlyph, type KanaCard } from '../data/cards'
+import { ROW_MARK } from '../data/kana'
 import type { Settings } from './settings'
 
 interface Props {
   card: KanaCard
-  size?: 'sm' | 'md' | 'lg' | 'mini'
+  size?: 'sm' | 'md' | 'lg' | 'mini' | 'river'
   selected?: boolean
   hinted?: boolean
   yakuPart?: boolean
@@ -11,6 +12,7 @@ interface Props {
   showHints?: Settings
   onClick?: () => void
   faceDown?: boolean
+  revealMeaning?: boolean
 }
 
 export function CardView({
@@ -23,6 +25,7 @@ export function CardView({
   showHints,
   onClick,
   faceDown,
+  revealMeaning,
 }: Props) {
   const glyph = displayGlyph(card)
   const className = [
@@ -36,6 +39,8 @@ export function CardView({
     card.confusable ? 'is-confusable' : '',
   ].join(' ')
   const style = { ['--row-color' as string]: card.color }
+  const showRomaji = Boolean(showHints?.showRomaji)
+  const showMeaning = Boolean(revealMeaning || showHints?.showMeaning)
 
   if (faceDown) {
     return (
@@ -47,24 +52,21 @@ export function CardView({
 
   const inner = (
     <>
-      <span className="card-row-bar" />
+      <span className="card-row-mark" style={{ background: card.color }}>
+        {ROW_MARK[card.row]}
+      </span>
       <span className="card-type-tag">
         {card.cardType === 'hiragana' ? '平' : card.cardType === 'katakana' ? '片' : '語'}
       </span>
       {card.cardType === 'vocabulary' ? (
         <span className="card-vocab">
-          <span className="card-icon" aria-hidden>
-            {card.icon}
-          </span>
           <span className="card-word">{card.vocabulary}</span>
-          <span className="card-meaning">{card.meaning}</span>
+          {showMeaning ? <span className="card-meaning">{card.meaning}</span> : null}
         </span>
       ) : (
         <span className="card-glyph">{glyph}</span>
       )}
-      {showHints?.showRomaji || showHints?.learningHints ? (
-        <span className="card-romaji">{card.romaji}</span>
-      ) : null}
+      {showRomaji ? <span className="card-romaji">{card.romaji}</span> : null}
       {(showHints?.showRow || showHints?.showColumn) && (
         <span className="card-meta">
           {showHints.showRow ? card.rowLabel : ''}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { displayGlyph } from '../data/cards'
 import {
   availableYakuFor,
@@ -6,13 +6,18 @@ import {
   currentReactionYakus,
   reactionActor,
 } from '../engine/game'
+import { computeRankings } from '../engine/scoring'
 import { findNearYaku } from '../engine/yaku'
 import type { GameState, YakuCandidate } from '../engine/types'
 import type { Settings } from './settings'
+import { tablePosition } from './seats'
 import { CardView } from './CardView'
+import { CenterBoard } from './CenterBoard'
+import { DiscardRiver } from './DiscardRiver'
 import { EventLog } from './EventLog'
 import { Mascot } from './Mascot'
-import { PlayerPanel } from './PlayerPanel'
+import { MeldArea } from './MeldArea'
+import { SeatHud } from './SeatHud'
 
 interface Props {
   state: GameState
@@ -21,7 +26,6 @@ interface Props {
   hoverYaku: YakuCandidate | null
   locked: boolean
   onSelectCard: (id: string) => void
-  onConfirmDiscard: () => void
   onChooseYaku: (id: string) => void
   onSkipYaku: () => void
   onClaim: (yakuId: string) => void
@@ -29,23 +33,32 @@ interface Props {
   onHoverYaku: (yaku: YakuCandidate | null) => void
   onOpenSettings: () => void
   onOpenHelp: () => void
+  onOpenCatalog: () => void
 }
 
 function phaseText(state: GameState): string {
-  const name = currentPlayer(state).name
+  if (state.phase === 'preview') return '查看本次登場的行'
+  const current = currentPlayer(state)
+  const discarder = state.players.find((p) => p.id === state.lastDiscardPlayerId)
+  const glyph = state.currentDiscard ? displayGlyph(state.currentDiscard) : ''
   switch (state.phase) {
     case 'dealing':
       return '正在發牌…'
     case 'playerDraw':
-      return `${name} 抽牌中`
+      return `${current.name} 抽牌中`
     case 'playerAction':
-      return `${name} 選擇是否結算牌型`
+      return `${current.name} 選擇是否結算牌型`
     case 'discard':
-      return `${name} 選擇要丟出的牌`
-    case 'reaction':
-      return `${reactionActor(state)?.name ?? ''} 可以宣告もらった？`
-    case 'pronunciation':
-      return '發音挑戰'
+      return `${current.name} 正在出牌`
+    case 'reaction': {
+      const actor = reactionActor(state)
+      if (actor && discarder && glyph) {
+        return `${actor.name} 要不要抄 ${discarder.name} 的「${glyph}」？`
+      }
+      return `${actor?.name ?? ''} 可以宣告もらった？`
+    }
+    case 'review':
+      return '複習剛才的牌型'
     case 'scoring':
       return '結算金幣'
     case 'refill':
@@ -59,6 +72,10 @@ function phaseText(state: GameState): string {
   }
 }
 
+function fanCount(n: number) {
+  return Math.min(n, 8)
+}
+
 export function GameTable({
   state,
   settings,
@@ -66,7 +83,6 @@ export function GameTable({
   hoverYaku,
   locked,
   onSelectCard,
-  onConfirmDiscard,
   onChooseYaku,
   onSkipYaku,
   onClaim,
@@ -74,174 +90,174 @@ export function GameTable({
   onHoverYaku,
   onOpenSettings,
   onOpenHelp,
+  onOpenCatalog,
 }: Props) {
   const human = state.players[0]!
-  const p1 = state.players[1]!
-  const p2 = state.players[2]!
-  const p3 = state.players[3]!
+  const left = state.players[1]!
+  const top = state.players[2]!
+  const right = state.players[3]!
   const current = currentPlayer(state)
+  const actor = state.phase === 'reaction' ? (reactionActor(state) ?? current) : current
+  const discarder = state.players.find((p) => p.id === state.lastDiscardPlayerId)
   const humanTurn = current.id === human.id
   const yakus = humanTurn && state.phase === 'playerAction' ? availableYakuFor(state, human.id) : []
   const reactionYakus =
     state.phase === 'reaction' && reactionActor(state)?.id === human.id ? currentReactionYakus(state) : []
   const nearIds = new Set(
     settings.highlightNear && settings.learningHints
-      ? findNearYaku(human.hand).flatMap((n) => n.cardIds)
+      ? findNearYaku(human.hand, state.activeRows).flatMap((n) => n.cardIds)
       : [],
   )
   const yakuHighlight = new Set((hoverYaku?.cards ?? []).map((c) => c.id))
   const canDiscard = state.phase === 'discard' && humanTurn && !locked
-  const thinking = current.kind === 'ai' && ['playerAction', 'discard', 'playerDraw', 'reaction'].includes(state.phase)
-  const [banner, setBanner] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (state.lastFx === 'dekita' || state.lastFx === 'moratta') {
-      setBanner(state.lastFx)
-      const t = window.setTimeout(() => setBanner(null), settings.animation === 'off' ? 200 : 1000)
-      return () => window.clearTimeout(t)
-    }
-    return
-  }, [state.lastFx, state.eventSeq, settings.animation])
+  const thinking =
+    actor.kind === 'ai' && ['playerAction', 'discard', 'playerDraw', 'reaction'].includes(state.phase)
+  const rankings = computeRankings(state.players)
+  const placeOf = (id: string) => rankings.find((r) => r.playerId === id)?.place ?? 4
+  const [showLog, setShowLog] = useState(false)
+  const hudFor = (player: typeof human) => ({
+    player,
+    place: placeOf(player.id),
+    position: tablePosition(player.seat),
+    active: actor.id === player.id && state.phase !== 'reaction',
+    thinking: thinking && actor.id === player.id,
+    discarder: state.phase === 'reaction' && discarder?.id === player.id,
+    claiming: state.phase === 'reaction' && actor.id === player.id,
+  })
 
   return (
     <div className={`table-shell anim-${settings.animation}`}>
-      <div className="petals" aria-hidden />
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">かなジャン！</p>
-          <h1>Kana Jan</h1>
-        </div>
-        <div className="topbar-actions">
-          <button className="btn ghost" onClick={onOpenHelp}>
-            玩法說明
-          </button>
-          <button className="btn ghost" onClick={onOpenSettings}>
-            設定
-          </button>
-        </div>
-      </header>
+      <button className="chrome-fab top-left" onClick={onOpenHelp} aria-label="玩法說明">
+        説
+      </button>
+      <p className="table-prompt">高點を取れ</p>
+      <button className="chrome-fab top-right" onClick={onOpenSettings} aria-label="設定">
+        設
+      </button>
 
-      <div className="table-grid">
-        <div className="area-top">
-          <PlayerPanel player={p1} active={current.id === p1.id} thinking={thinking && current.id === p1.id} position="top" />
+      <div className="felt-oval">
+        <p className="clockwise-hint" aria-hidden>
+          出牌方向 ↻
+        </p>
+        <SeatHud {...hudFor(top)} />
+        <SeatHud {...hudFor(left)} />
+        <SeatHud {...hudFor(right)} />
+
+        <div className="hand-fan pos-top" data-hand-origin="top" aria-hidden>
+          {Array.from({ length: fanCount(top.hand.length) }).map((_, i) => (
+            <i key={i} className="mini-back" />
+          ))}
         </div>
-        <div className="area-left">
-          <PlayerPanel player={p2} active={current.id === p2.id} thinking={thinking && current.id === p2.id} position="left" />
+        <div className="hand-fan pos-left" data-hand-origin="left" aria-hidden>
+          {Array.from({ length: fanCount(left.hand.length) }).map((_, i) => (
+            <i key={i} className="mini-back" />
+          ))}
         </div>
-        <div className="area-center">
-          <div className="felt">
+        <div className="hand-fan pos-right" data-hand-origin="right" aria-hidden>
+          {Array.from({ length: fanCount(right.hand.length) }).map((_, i) => (
+            <i key={i} className="mini-back" />
+          ))}
+        </div>
+
+        <MeldArea player={top} position="top" />
+        <MeldArea player={left} position="left" />
+        <MeldArea player={right} position="right" />
+        <MeldArea player={human} position="human" />
+
+        <DiscardRiver player={top} position="top" liveCardId={state.currentDiscard?.id} settings={settings} />
+        <DiscardRiver player={left} position="left" liveCardId={state.currentDiscard?.id} settings={settings} />
+        <DiscardRiver player={right} position="right" liveCardId={state.currentDiscard?.id} settings={settings} />
+        <DiscardRiver player={human} position="human" liveCardId={state.currentDiscard?.id} settings={settings} />
+
+        <CenterBoard state={state} settings={settings} />
+        <p className="turn-status">{phaseText(state)}</p>
+
+        <div className="human-on-table">
+          <div className="human-side">
             <Mascot mood={state.lastFx === 'dekita' || state.lastFx === 'moratta' ? 'cheer' : thinking ? 'think' : 'idle'} />
-            <div className="bonus-banner">
-              <span>本局 Bonus</span>
-              <strong>{state.bonus.label} ＋{state.bonus.points}</strong>
-              <small>{state.bonus.detail}</small>
-            </div>
-            <div className="center-piles">
-              <div className="deck-pile">
-                <div className="kana-card face-down size-md">
-                  <span className="card-back-kana">あ</span>
-                </div>
-                <span>牌庫 {state.deck.length}</span>
-              </div>
-              <div className="discard-pile">
-                {state.currentDiscard ? (
-                  <CardView card={state.currentDiscard} size="md" showHints={settings} />
-                ) : (
-                  <div className="discard-empty">棄牌</div>
-                )}
-                <span>
-                  {state.currentDiscard ? `最新：${displayGlyph(state.currentDiscard)}` : '尚無棄牌'}
-                </span>
-              </div>
-            </div>
-            <p className="turn-status">{phaseText(state)}</p>
-            {banner === 'dekita' && <div className="fx-banner dekita">できた！</div>}
-            {banner === 'moratta' && <div className="fx-banner moratta">もらった！</div>}
-            {state.lastTransfers.length > 0 && (
-              <div className="coin-fx" aria-hidden>
-                {state.lastTransfers.map((t) => (
-                  <span key={`${t.fromId}-${t.toId}-${t.amount}`}>🪙 {t.amount}</span>
+            <SeatHud {...hudFor(human)} />
+          </div>
+          <div className="human-main">
+            {yakus.length > 0 && (
+              <div className="action-bar">
+                <p>有可完成的牌型。選一組結算，或暫不結算繼續收集。</p>
+                {yakus.map((y) => (
+                  <button
+                    key={y.id}
+                    className="btn yaku"
+                    disabled={locked}
+                    onMouseEnter={() => onHoverYaku(y)}
+                    onMouseLeave={() => onHoverYaku(null)}
+                    onFocus={() => onHoverYaku(y)}
+                    onBlur={() => onHoverYaku(null)}
+                    onClick={() => onChooseYaku(y.id)}
+                  >
+                    できた！{y.label}（{y.totalScore} 分）
+                  </button>
                 ))}
+                <button className="btn" disabled={locked} onClick={onSkipYaku}>
+                  暫不結算
+                </button>
               </div>
             )}
+            {reactionYakus.length > 0 && (
+              <div className="action-bar">
+                <p>
+                  {discarder ? `${discarder.name} 丟出了「${state.currentDiscard ? displayGlyph(state.currentDiscard) : ''}」。` : ''}
+                  你要抄走這張牌來完成牌型嗎？
+                </p>
+                {reactionYakus.map((y) => (
+                  <button
+                    key={y.id}
+                    className="btn yaku"
+                    disabled={locked}
+                    onMouseEnter={() => onHoverYaku(y)}
+                    onMouseLeave={() => onHoverYaku(null)}
+                    onClick={() => onClaim(y.id)}
+                  >
+                    もらった！{y.label}（{y.totalScore} 分）
+                  </button>
+                ))}
+                <button className="btn" disabled={locked} onClick={onPassClaim}>
+                  讓過
+                </button>
+              </div>
+            )}
+            <div className="hand-row" data-hand-origin="human">
+              {human.hand.map((card) => (
+                <CardView
+                  key={card.id}
+                  card={card}
+                  size="lg"
+                  selected={selectedCardId === card.id}
+                  hinted={nearIds.has(card.id)}
+                  yakuPart={yakuHighlight.has(card.id)}
+                  showHints={settings}
+                  disabled={locked}
+                  onClick={() => {
+                    if (canDiscard) onSelectCard(card.id)
+                  }}
+                />
+              ))}
+            </div>
           </div>
         </div>
-        <div className="area-right">
-          <PlayerPanel player={p3} active={current.id === p3.id} thinking={thinking && current.id === p3.id} position="right" />
-        </div>
-        <div className="area-human">
-          <PlayerPanel player={human} active={humanTurn} position="human" />
-          {yakus.length > 0 && (
-            <div className="action-row">
-              <p>有可完成的牌型，請選擇一組結算，或暫不結算繼續收集。</p>
-              {yakus.map((y) => (
-                <button
-                  key={y.id}
-                  className="btn yaku"
-                  disabled={locked}
-                  onMouseEnter={() => onHoverYaku(y)}
-                  onMouseLeave={() => onHoverYaku(null)}
-                  onFocus={() => onHoverYaku(y)}
-                  onBlur={() => onHoverYaku(null)}
-                  onClick={() => onChooseYaku(y.id)}
-                >
-                  できた！{y.label}（{y.totalScore} 分）
-                </button>
-              ))}
-              <button className="btn" disabled={locked} onClick={onSkipYaku}>
-                暫不結算
-              </button>
-            </div>
-          )}
-          {reactionYakus.length > 0 && (
-            <div className="action-row">
-              <p>你可以用這張棄牌完成牌型！</p>
-              {reactionYakus.map((y) => (
-                <button
-                  key={y.id}
-                  className="btn yaku"
-                  disabled={locked}
-                  onMouseEnter={() => onHoverYaku(y)}
-                  onMouseLeave={() => onHoverYaku(null)}
-                  onClick={() => onClaim(y.id)}
-                >
-                  もらった！{y.label}（{y.totalScore} 分）
-                </button>
-              ))}
-              <button className="btn" disabled={locked} onClick={onPassClaim}>
-                讓過
-              </button>
-            </div>
-          )}
-          {canDiscard && (
-            <div className="action-row">
-              <p>請點選一張手牌，再按確認棄牌。棄牌後無法收回。</p>
-              <button className="btn primary" disabled={!selectedCardId || locked} onClick={onConfirmDiscard}>
-                確認棄牌
-                {selectedCardId ? `：${displayGlyph(human.hand.find((c) => c.id === selectedCardId)!)}` : ''}
-              </button>
-            </div>
-          )}
-          <div className="hand-row">
-            {human.hand.map((card) => (
-              <CardView
-                key={card.id}
-                card={card}
-                size="lg"
-                selected={selectedCardId === card.id}
-                hinted={nearIds.has(card.id)}
-                yakuPart={yakuHighlight.has(card.id)}
-                showHints={settings}
-                disabled={locked}
-                onClick={() => {
-                  if (canDiscard) onSelectCard(card.id)
-                }}
-              />
-            ))}
-          </div>
-        </div>
-        <EventLog state={state} />
       </div>
+
+      <div className="table-chrome-br">
+        <button className="chrome-fab" onClick={onOpenCatalog} aria-label="五十音圖鑑">
+          図
+        </button>
+        <button className="chrome-fab" onClick={() => setShowLog((v) => !v)} aria-label="對局記錄">
+          記
+        </button>
+      </div>
+
+      {showLog && (
+        <div className="log-drawer">
+          <EventLog state={state} />
+        </div>
+      )}
     </div>
   )
 }

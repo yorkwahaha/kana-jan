@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { BONUS_MISSIONS, type BonusMission } from '../data/bonuses'
+import { makeTargetBonus, type BonusMission } from '../data/bonuses'
 import { getCardById, type KanaCard } from '../data/cards'
+import { getSound } from '../data/kana'
 import { findYaku, missionBonusFor, typeBonusFor } from './yaku'
 
-const noBonus: BonusMission = {
-  kind: 'rowYaku',
-  label: 'none-test',
-  detail: '',
-  points: 0,
-}
+const noBonus: BonusMission = makeTargetBonus(getSound('ne'), 0)
 
 function cards(...ids: string[]): KanaCard[] {
   return ids.map(getCardById)
@@ -89,9 +85,46 @@ describe('同一段五張', () => {
       'chi-hiragana',
       'ni-hiragana',
     )
-    const found = findYaku(hand, noBonus).filter((y) => y.kind === 'sameColumn')
-    expect(found[0]?.column).toBe('i')
-    expect(found[0]?.uniformType).toBe('hiragana')
+    const found = findYaku(hand, noBonus)[0]!
+    expect(found.column).toBe('i')
+    expect(found.uniformType).toBe('hiragana')
+  })
+
+  it('少於五行時不判定同一段', () => {
+    const hand = cards(
+      'a-hiragana',
+      'ka-katakana',
+      'sa-vocabulary',
+      'ta-hiragana',
+      'na-katakana',
+    )
+    const found = findYaku(hand, noBonus, { activeRows: ['a', 'ka'] }).filter((y) => y.kind === 'sameColumn')
+    expect(found).toHaveLength(0)
+  })
+})
+
+describe('組字役', () => {
+  it('能用讀音卡拼出 Bonus 單字', () => {
+    const bonus = makeTargetBonus(getSound('ne'), 3)
+    const hand = cards('ne-hiragana', 'ko-katakana', 'a-hiragana')
+    const found = findYaku(hand, bonus, { activeRows: ['a', 'ka', 'sa', 'ta', 'na'] }).filter((y) => y.kind === 'word')
+    expect(found).toHaveLength(1)
+    expect(found[0]?.word).toBe('ねこ')
+    expect(found[0]?.baseScore).toBe(5)
+    expect(found[0]?.missionBonus).toBe(3)
+    expect(found[0]?.totalScore).toBe(8)
+  })
+
+  it('缺音時不能組字', () => {
+    const bonus = makeTargetBonus(getSound('ne'), 3)
+    const hand = cards('ne-hiragana', 'a-hiragana')
+    expect(findYaku(hand, bonus).filter((y) => y.kind === 'word')).toHaveLength(0)
+  })
+
+  it('單字所需行未出場時不提供組字', () => {
+    const bonus = makeTargetBonus(getSound('ne'), 3)
+    const hand = cards('ne-hiragana', 'ko-hiragana')
+    expect(findYaku(hand, bonus, { activeRows: ['a'] }).filter((y) => y.kind === 'word')).toHaveLength(0)
   })
 })
 
@@ -134,49 +167,16 @@ describe('同類型加成與 Bonus', () => {
     expect(typeBonusFor('sameSound', hand)).toBe(0)
   })
 
-  it('Bonus：平假名牌型 +2', () => {
-    const bonus = BONUS_MISSIONS.find((b) => b.kind === 'hiraganaYaku')!
-    const hira = cards(
-      'ka-hiragana',
-      'ki-hiragana',
-      'ku-hiragana',
-      'ke-hiragana',
-      'ko-hiragana',
-    )
-    expect(missionBonusFor('sameRow', hira, bonus)).toBe(2)
-    const mixed = cards(
-      'ka-hiragana',
-      'ki-katakana',
-      'ku-vocabulary',
-      'ke-hiragana',
-      'ko-hiragana',
-    )
-    expect(missionBonusFor('sameRow', mixed, bonus)).toBe(0)
+  it('Bonus：目標音的同音組加分', () => {
+    const bonus = makeTargetBonus(getSound('ka'), 3)
+    const same = cards('ka-hiragana', 'ka-katakana', 'ka-vocabulary')
+    expect(missionBonusFor('sameSound', same, bonus)).toBe(3)
+    const other = cards('sa-hiragana', 'sa-katakana', 'sa-vocabulary')
+    expect(missionBonusFor('sameSound', other, bonus)).toBe(0)
   })
 
-  it('Bonus：片假名牌型 +3', () => {
-    const bonus = BONUS_MISSIONS.find((b) => b.kind === 'katakanaYaku')!
-    const kata = cards(
-      'ka-katakana',
-      'ki-katakana',
-      'ku-katakana',
-      'ke-katakana',
-      'ko-katakana',
-    )
-    expect(missionBonusFor('sameRow', kata, bonus)).toBe(3)
-  })
-
-  it('Bonus：あ段完成 +3、同一行 +2、同一段 +2', () => {
-    const aCol = cards(
-      'a-hiragana',
-      'ka-hiragana',
-      'sa-hiragana',
-      'ta-hiragana',
-      'na-hiragana',
-    )
-    const aBonus = BONUS_MISSIONS.find((b) => b.kind === 'aColumn')!
-    expect(missionBonusFor('sameColumn', aCol, aBonus, 'a')).toBe(3)
-    const rowBonus = BONUS_MISSIONS.find((b) => b.kind === 'rowYaku')!
+  it('Bonus：含目標音的行揃い加分', () => {
+    const bonus = makeTargetBonus(getSound('ka'), 3)
     const row = cards(
       'ka-hiragana',
       'ki-hiragana',
@@ -184,9 +184,7 @@ describe('同類型加成與 Bonus', () => {
       'ke-hiragana',
       'ko-hiragana',
     )
-    expect(missionBonusFor('sameRow', row, rowBonus)).toBe(2)
-    const colBonus = BONUS_MISSIONS.find((b) => b.kind === 'columnYaku')!
-    expect(missionBonusFor('sameColumn', aCol, colBonus, 'a')).toBe(2)
+    expect(missionBonusFor('sameRow', row, bonus)).toBe(3)
   })
 })
 

@@ -7,9 +7,10 @@ import type { GameState } from './types'
 
 function stepAutoplay(state: GameState): GameState {
   if (state.phase === 'playerDraw') return drainAuto(reduce(state, { type: 'DRAW' }))
+  if (state.phase === 'preview') return drainAuto(reduce(state, { type: 'SKIP_PREVIEW' }))
   if (state.phase === 'dealing') return drainAuto(reduce(state, { type: 'DEAL_DONE' }))
-  if (state.phase === 'pronunciation') {
-    return drainAuto(reduce(state, { type: 'FINISH_PRONUNCIATION' }))
+  if (state.phase === 'review') {
+    return drainAuto(reduce(state, { type: 'FINISH_REVIEW' }))
   }
 
   const rng = createRngFromExactState(state.rngState)
@@ -24,13 +25,13 @@ function stepAutoplay(state: GameState): GameState {
 }
 
 describe('完整自動對局', () => {
-  it('牌庫為 75 張且 id 不重複', () => {
-    expect(CARD_CATALOG).toHaveLength(75)
-    expect(new Set(CARD_CATALOG.map((c) => c.id)).size).toBe(75)
+  it('完整牌庫為 120 張且 id 不重複', () => {
+    expect(CARD_CATALOG).toHaveLength(120)
+    expect(new Set(CARD_CATALOG.map((c) => c.id)).size).toBe(120)
   })
 
   it('能從開局自動進行到遊戲結束並產生排名', () => {
-    let state = startGame({ seed: 20260814, aiDifficulty: 'easy' })
+    let state = startGame({ seed: 20260814, aiDifficulty: 'easy', lessonId: 'a-na', skipPreview: true })
     let guard = 0
     while (state.phase !== 'gameOver' && guard < 800) {
       const next = stepAutoplay(state)

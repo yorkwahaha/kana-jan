@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { BONUS_MISSIONS } from '../data/bonuses'
+import { DEFAULT_BONUS } from '../data/bonuses'
 import { getCardById, type KanaCard } from '../data/cards'
 import { decideAi } from './ai'
 import { drainAuto, reduce, startGame } from './game'
 import { createRng } from './rng'
 
-const bonus = BONUS_MISSIONS.find((b) => b.kind === 'rowYaku')!
+const bonus = DEFAULT_BONUS
 
 function cards(...ids: string[]): KanaCard[] {
   return ids.map(getCardById)
