@@ -10,6 +10,8 @@ interface Props {
   lessonId: string
   hasSave: boolean
   initialRoomCode?: string | null
+  bgmEnabled?: boolean
+  onToggleBgm?: () => void
   onName: (v: string) => void
   onDifficulty: (v: AiDifficulty) => void
   onLesson: (id: string) => void
@@ -26,6 +28,8 @@ export function Lobby({
   lessonId,
   hasSave,
   initialRoomCode,
+  bgmEnabled = true,
+  onToggleBgm,
   onName,
   onDifficulty,
   onLesson,
@@ -49,6 +53,19 @@ export function Lobby({
       <div className="lobby-atmosphere" aria-hidden>
         <span className="ghost-kana">あ</span>
       </div>
+
+      {onToggleBgm && (
+        <button
+          className="chrome-fab top-right lobby-audio-fab"
+          onClick={onToggleBgm}
+          aria-label={bgmEnabled ? '靜音背景音樂' : '開啟背景音樂'}
+          title={bgmEnabled ? '點擊靜音背景音樂' : '點擊開啟背景音樂'}
+        >
+          <span className="fab-icon">{bgmEnabled ? '🔊' : '🔇'}</span>
+          <span className="fab-text">{bgmEnabled ? '音樂開' : '靜音'}</span>
+        </button>
+      )}
+
       <section className="lobby-sheet">
         <header className="lobby-brand">
           <Mascot mood="idle" />
@@ -64,6 +81,16 @@ export function Lobby({
             {profile.gold < 20 && (
               <button className="btn sm primary replenish-btn" onClick={handleReplenish}>
                 領取補給 (+100)
+              </button>
+            )}
+            {onToggleBgm && (
+              <button
+                type="button"
+                className={`profile-chip audio-toggle ${bgmEnabled ? 'is-on' : 'is-muted'}`}
+                onClick={onToggleBgm}
+                title={bgmEnabled ? '點擊靜音背景音樂' : '點擊開啟背景音樂'}
+              >
+                {bgmEnabled ? '🔊 音樂：開' : '🔇 靜音中'}
               </button>
             )}
           </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BGM_PATHS, playSfx, SFX_PATHS, startBgm, stopBgm, type SfxKind } from './sfx'
+import { BGM_PATHS, pauseBgm, playSfx, resumeBgm, SFX_PATHS, startBgm, stopBgm, type SfxKind } from './sfx'
 
 describe('audio/sfx', () => {
   it('defines all required SFX and BGM file paths', () => {
@@ -41,6 +41,8 @@ describe('audio/sfx', () => {
   it('safely starts and stops BGM without throwing', () => {
     expect(() => {
       startBgm('lobby', true)
+      pauseBgm()
+      resumeBgm()
       startBgm('table', true)
       stopBgm()
       startBgm(false)

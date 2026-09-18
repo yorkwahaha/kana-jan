@@ -389,6 +389,33 @@ body[data-anim='off'] .sakura-container {
   border-color: #f28b66;
   color: var(--vermillion);
 }
+.profile-chip.audio-toggle {
+  background: linear-gradient(180deg, #fffdf8 0%, #f7f1e6 100%);
+  border-color: rgba(140, 105, 75, 0.4);
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.profile-chip.audio-toggle:hover {
+  transform: translateY(-1px);
+  border-color: var(--gold);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+.profile-chip.audio-toggle.is-muted {
+  opacity: 0.75;
+  color: var(--muted);
+  border-style: dashed;
+}
+.profile-chip.audio-toggle.is-on {
+  color: var(--pine-deep);
+  border-color: rgba(27, 83, 56, 0.5);
+}
+.lobby-audio-fab {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 10;
+}
 
 .lobby-form {
   padding: 42px 38px;

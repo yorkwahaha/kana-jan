@@ -108,14 +108,25 @@ export function App() {
   useEffect(() => {
     saveSettings(settings)
     document.body.dataset.anim = settings.animation
+  }, [settings])
+
+  // BGM 播放管理：僅在「大廳」與「牌桌」切換時更新曲目，出牌／換人／抽牌等回合事件中保持不中斷連續播放
+  const inLobby = state.phase === 'lobby'
+  useEffect(() => {
     if (settings.bgm) {
-      const track: BgmTrack = state.phase === 'lobby' ? 'lobby' : 'table'
+      const track: BgmTrack = inLobby ? 'lobby' : 'table'
       startBgm(track, true)
     } else {
       stopBgm()
     }
-    return () => stopBgm()
-  }, [settings, state.phase])
+  }, [settings.bgm, inLobby])
+
+  // 離開網頁時完全停止 BGM
+  useEffect(() => {
+    return () => {
+      stopBgm()
+    }
+  }, [])
 
   useEffect(() => {
     if (state.lastFx === 'draw') playSfx('draw', settings.sfx)
@@ -425,6 +436,8 @@ export function App() {
           lessonId={lessonId}
           hasSave={hasSave}
           initialRoomCode={initialUrlRoom}
+          bgmEnabled={settings.bgm}
+          onToggleBgm={() => setSettings((s) => ({ ...s, bgm: !s.bgm }))}
           onName={setPlayerName}
           onDifficulty={setDifficulty}
           onLesson={setLessonId}

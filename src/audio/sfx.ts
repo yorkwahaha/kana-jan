@@ -256,7 +256,33 @@ export function startBgm(trackOrEnabled: BgmTrack | boolean = 'table', enabled =
   startSynthBgm()
 }
 
+let isBgmPausedForVisibility = false
+
+export function pauseBgm() {
+  if (currentBgmAudio && !currentBgmAudio.paused) {
+    try {
+      currentBgmAudio.pause()
+      isBgmPausedForVisibility = true
+    } catch {
+      // ignore
+    }
+  }
+  stopSynthBgm()
+}
+
+export function resumeBgm() {
+  if (isBgmPausedForVisibility) {
+    isBgmPausedForVisibility = false
+    if (currentBgmAudio && currentBgmAudio.paused) {
+      currentBgmAudio.play().catch(() => {})
+    } else if (currentBgmTrack) {
+      startBgm(currentBgmTrack, true)
+    }
+  }
+}
+
 export function stopBgm() {
+  isBgmPausedForVisibility = false
   if (currentBgmAudio) {
     try {
       currentBgmAudio.pause()
@@ -268,4 +294,15 @@ export function stopBgm() {
   }
   stopSynthBgm()
   currentBgmTrack = null
+}
+
+// 瀏覽器分頁切換時自動暫停/靜音，切回時繼續播放
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      pauseBgm()
+    } else {
+      resumeBgm()
+    }
+  })
 }
