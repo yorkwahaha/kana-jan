@@ -85,7 +85,7 @@ describe('完成牌型後卡片移出', () => {
 })
 
 describe('勝負判定', () => {
-  it('以局內剩餘籌碼為主、牌型得分為平手決勝', () => {
+  it('以局內剩餘籌碼為主排序', () => {
     const ranking = computeRankings([
       player({ id: 'a', name: 'A', score: 9, gold: 10, seat: 0 }),
       player({ id: 'b', name: 'B', score: 12, gold: 5, seat: 1 }),
@@ -94,5 +94,39 @@ describe('勝負判定', () => {
     ])
     expect(ranking.map((r) => r.playerId)).toEqual(['d', 'c', 'a', 'b'])
     expect(ranking[0]?.place).toBe(1)
+  })
+
+  it('開場時所有人持有硬幣相同（20點），四個人均為第 1 名', () => {
+    const ranking = computeRankings([
+      player({ id: 'p0', name: '玩家', gold: 20, seat: 0 }),
+      player({ id: 'p1', name: '電腦 1', gold: 20, seat: 1 }),
+      player({ id: 'p2', name: '電腦 2', gold: 20, seat: 2 }),
+      player({ id: 'p3', name: '電腦 3', gold: 20, seat: 3 }),
+    ])
+    expect(ranking.map((r) => r.place)).toEqual([1, 1, 1, 1])
+  })
+
+  it('同分（持有硬幣相同）時獲得同樣數字的順位', () => {
+    const ranking = computeRankings([
+      player({ id: 'a', name: 'A', gold: 31, score: 10, seat: 0 }),
+      player({ id: 'b', name: 'B', gold: 20, score: 6, seat: 1 }),
+      player({ id: 'c', name: 'C', gold: 20, score: 6, seat: 2 }),
+      player({ id: 'd', name: 'D', gold: 9, score: 0, seat: 3 }),
+    ])
+    expect(ranking.find((r) => r.playerId === 'a')?.place).toBe(1)
+    expect(ranking.find((r) => r.playerId === 'b')?.place).toBe(2)
+    expect(ranking.find((r) => r.playerId === 'c')?.place).toBe(2)
+    expect(ranking.find((r) => r.playerId === 'd')?.place).toBe(4)
+  })
+
+  it('持有硬幣相同時，以累計牌型得分為第一平手決勝', () => {
+    const ranking = computeRankings([
+      player({ id: 'a', name: 'A', gold: 20, score: 15, seat: 1 }),
+      player({ id: 'b', name: 'B', gold: 20, score: 8, seat: 0 }),
+    ])
+    expect(ranking[0]?.playerId).toBe('a')
+    expect(ranking[0]?.place).toBe(1)
+    expect(ranking[1]?.playerId).toBe('b')
+    expect(ranking[1]?.place).toBe(2)
   })
 })

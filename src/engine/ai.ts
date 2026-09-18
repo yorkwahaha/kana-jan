@@ -15,8 +15,7 @@ function minDistance(hand: KanaCard[]): { distance: number; cardIds: Set<string>
     bySound.set(card.sound, list)
   }
   for (const group of bySound.values()) {
-    const types = new Set(group.map((c) => c.cardType))
-    const distance = 3 - types.size
+    const distance = Math.max(0, 3 - group.length)
     if (distance < best.distance) best = { distance, cardIds: new Set(group.map((c) => c.id)) }
   }
 
@@ -40,11 +39,10 @@ function minDistance(hand: KanaCard[]): { distance: number; cardIds: Set<string>
 }
 
 function keepValue(card: KanaCard, hand: KanaCard[]): number {
-  const sameSound = hand.filter((c) => c.sound === card.sound)
-  const types = new Set(sameSound.map((c) => c.cardType)).size
+  const sameSoundCount = hand.filter((c) => c.sound === card.sound).length
   const rowSounds = new Set(hand.filter((c) => c.row === card.row).map((c) => c.sound)).size
   const colSounds = new Set(hand.filter((c) => c.column === card.column).map((c) => c.sound)).size
-  return types * 4 + rowSounds * 2 + colSounds * 2
+  return sameSoundCount * 4 + rowSounds * 2 + colSounds * 2
 }
 
 function isDangerousDiscard(card: KanaCard, state: GameState, selfId: string): number {

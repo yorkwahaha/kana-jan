@@ -4,6 +4,7 @@ import { tablePosition, type TablePosition } from './seats'
 interface Props {
   transfers: { fromId: string; toId: string; amount: number }[]
   players: PlayerState[]
+  mySeat?: number
 }
 
 /** 計算付款方到贏家之 SVG 1000×700 貝茲曲線路徑（全數繞行開闊綠呢桌面，避開中央卡牌） */
@@ -59,7 +60,7 @@ function getSettlementArrowPath(from: TablePosition, to: TablePosition): string 
   }
 }
 
-export function SettlementArrows({ transfers, players }: Props) {
+export function SettlementArrows({ transfers, players, mySeat = 0 }: Props) {
   if (!transfers || transfers.length === 0) return null
 
   const seatOf = (id: string) => players.find((p) => p.id === id)?.seat ?? 0
@@ -125,8 +126,8 @@ export function SettlementArrows({ transfers, players }: Props) {
         </defs>
 
         {transfers.map((t) => {
-          const fromPos = tablePosition(seatOf(t.fromId))
-          const toPos = tablePosition(seatOf(t.toId))
+          const fromPos = tablePosition(seatOf(t.fromId), mySeat)
+          const toPos = tablePosition(seatOf(t.toId), mySeat)
           const path = getSettlementArrowPath(fromPos, toPos)
           if (!path) return null
 
@@ -151,13 +152,14 @@ export function SettlementArrows({ transfers, players }: Props) {
               {Array.from({ length: coinCount }).map((_, i) => {
                 const delay = 0.15 + i * 0.15
                 return (
-                  <g key={`coin-${i}`} className="flying-coin-item">
+                  <g key={`coin-${i}`} className="flying-coin-item" opacity="0">
                     <use href="#flying-gold-coin" />
                     <animateMotion
                       path={path}
                       dur={`${streamDuration}s`}
                       begin={`${delay}s`}
-                      repeatCount="indefinite"
+                      repeatCount="1"
+                      fill="freeze"
                       rotate="auto"
                       keyPoints="0;1"
                       keyTimes="0;1"
@@ -168,7 +170,8 @@ export function SettlementArrows({ transfers, players }: Props) {
                       keyTimes="0; 0.12; 0.5; 0.88; 1"
                       dur={`${streamDuration}s`}
                       begin={`${delay}s`}
-                      repeatCount="indefinite"
+                      repeatCount="1"
+                      fill="freeze"
                     />
                     <animateTransform
                       attributeName="transform"
@@ -177,7 +180,8 @@ export function SettlementArrows({ transfers, players }: Props) {
                       keyTimes="0; 0.2; 0.8; 1"
                       dur={`${streamDuration}s`}
                       begin={`${delay}s`}
-                      repeatCount="indefinite"
+                      repeatCount="1"
+                      fill="freeze"
                       additive="sum"
                     />
                   </g>

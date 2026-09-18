@@ -18,7 +18,7 @@ export function Tutorial({ onClose }: Props) {
         <div className="tutorial-body">
           <section>
             <h3>1. 同音三張 · 3 分</h3>
-            <p>收集同一讀音的平假名、片假名與單字圖像。</p>
+            <p>收集同一讀音的任意三張卡即可成牌。若湊齊平假名＋片假名＋單字圖像（三位相和）享 <strong>＋3 全彩加成（共 6 分）</strong>！全同類型亦享純色加成。</p>
             <div className="tutorial-cards">
               <CardView card={getCardById('ka-hiragana')} size="sm" />
               <CardView card={getCardById('ka-katakana')} size="sm" />
@@ -26,8 +26,17 @@ export function Tutorial({ onClose }: Props) {
             </div>
           </section>
           <section>
-            <h3>2. 同一行五張 · 6 分</h3>
-            <p>同一行的五個不同讀音。卡片形式不限，但同一讀音不能重複計算。</p>
+            <h3>2. 拗音揃い · 4 分</h3>
+            <p>同一拗音行的 3 個不同讀音（如 きゃ・きゅ・きょ）。三張全同類型享 <strong>＋2 純色加成</strong>。</p>
+            <div className="tutorial-cards">
+              <CardView card={getCardById('kya-hiragana')} size="sm" />
+              <CardView card={getCardById('kyu-katakana')} size="sm" />
+              <CardView card={getCardById('kyo-vocabulary')} size="sm" />
+            </div>
+          </section>
+          <section>
+            <h3>3. 同一行五張 · 6 分</h3>
+            <p>清音／濁音同一行的 5 個不同讀音。卡片形式不限，但同一讀音不能重複計算。</p>
             <div className="tutorial-cards">
               <CardView card={getCardById('ka-hiragana')} size="sm" />
               <CardView card={getCardById('ki-katakana')} size="sm" />
@@ -37,22 +46,21 @@ export function Tutorial({ onClose }: Props) {
             </div>
           </section>
           <section>
-            <h3>3. 同一段五張 · 8 分</h3>
-            <p>例如「あ段」：あ・か・さ・た・な。</p>
+            <h3>4. 同一段揃い · 8 分</h3>
+            <p>出場行中同一段的不同讀音（至少 3～4 音，例如あ・か・さ・た）。</p>
             <div className="tutorial-cards">
               <CardView card={getCardById('a-hiragana')} size="sm" />
               <CardView card={getCardById('ka-hiragana')} size="sm" />
               <CardView card={getCardById('sa-hiragana')} size="sm" />
               <CardView card={getCardById('ta-hiragana')} size="sm" />
-              <CardView card={getCardById('na-hiragana')} size="sm" />
             </div>
           </section>
           <section>
-            <h3>4. 組字 · 5 分</h3>
+            <h3>5. 組字 · 5 分</h3>
             <p>用手牌拼出桌上 BONUS 單字的讀音，例如 ね＋こ → ねこ。</p>
           </section>
           <section>
-            <h3>5. 自己抽到 vs 使用別人的棄牌</h3>
+            <h3>6. 自己抽到 vs 使用別人的棄牌</h3>
             <p>
               自己抽牌完成（自摸／できた）：其他三位玩家各支付該牌型分數。
               <br />
@@ -60,12 +68,12 @@ export function Tutorial({ onClose }: Props) {
             </p>
           </section>
           <section>
-            <h3>6. 同類型加成</h3>
-            <p>「同一行」或「同一段」若五張都是同一類型：平假名 +3、片假名 +4、單字圖像 +5。</p>
+            <h3>7. 同類型純色加成</h3>
+            <p>牌型內若全為同類型：純平假名 +3、純片假名 +4、純單字圖像 +5（拗音全同類型 +2）。</p>
           </section>
           <section>
-            <h3>7. 本次登場的行</h3>
-            <p>每局只出場部分行，讓同樣的假名反覆出現。少於五行時不會出現「同一段」牌型。完成牌型後會複習讀音，可選擇回想小題。</p>
+            <h3>8. 本次登場的行與結算</h3>
+            <p>每局從五十音中抽出 4 行登場對局，讓學習焦點清晰集中。遊戲以剩餘金幣多寡排定勝負，牌型累計得分為平手第一決勝！</p>
           </section>
         </div>
         <footer className="modal-foot">

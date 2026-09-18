@@ -4,6 +4,8 @@ import { HAND_SIZE, PLAYER_COUNT } from './types'
 import type { Rng } from './rng'
 
 const MIN_DECK = 48
+export const TARGET_DECK_SIZE = 100
+export const COPIES_PER_CARD_TYPE = 3
 
 const TYPE_ORDER: Record<CardType, number> = {
   hiragana: 0,
@@ -30,11 +32,28 @@ export function copiesNeeded(baseLength: number, minDeck = MIN_DECK): number {
 
 export function buildLessonDeck(rows: readonly RowId[], rng: Rng): KanaCard[] {
   const base = catalogForRows(rows)
-  const copies = copiesNeeded(base.length)
-  const deck: KanaCard[] = []
-  for (let i = 0; i < copies; i++) {
+  const motherPool: KanaCard[] = []
+  for (let i = 0; i < COPIES_PER_CARD_TYPE; i++) {
     for (const card of base) {
-      deck.push(copies === 1 ? card : { ...card, id: `${card.id}#${i}` })
+      motherPool.push({ ...card, id: `${card.id}#${i}` })
+    }
+  }
+
+  // 若母池足以達到 TARGET_DECK_SIZE (100)，洗牌後切出前 100 張進入對局
+  if (motherPool.length >= TARGET_DECK_SIZE) {
+    return rng.shuffle(motherPool).slice(0, TARGET_DECK_SIZE)
+  }
+
+  // 若母池小於 100（如單行測試教學關卡），確保滿足 MIN_DECK (48) 以供 4 人發牌
+  if (motherPool.length >= MIN_DECK) {
+    return rng.shuffle(motherPool)
+  }
+
+  const extraCopies = copiesNeeded(motherPool.length, MIN_DECK)
+  const deck: KanaCard[] = []
+  for (let c = 0; c < extraCopies; c++) {
+    for (const card of motherPool) {
+      deck.push({ ...card, id: `${card.id}-$${c}` })
     }
   }
   return rng.shuffle(deck)

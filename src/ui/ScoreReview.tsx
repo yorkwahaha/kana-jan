@@ -12,6 +12,7 @@ import type { Settings } from './settings'
 interface Props {
   state: GameState
   settings: Settings
+  mySeat?: number
   onFinish: () => void
 }
 
@@ -22,7 +23,7 @@ const RANK_LABELS: Record<number, string> = {
   4: '4th',
 }
 
-export function ScoreReview({ state, settings, onFinish }: Props) {
+export function ScoreReview({ state, settings, mySeat = 0, onFinish }: Props) {
   const pending = state.pendingScore
   const rankings = useMemo(() => computeRankings(state.players), [state.players])
 
@@ -63,7 +64,7 @@ export function ScoreReview({ state, settings, onFinish }: Props) {
       {/* 1. 桌面 4 方結算銘牌 (參照圖二、圖三：上下左右四方位) */}
       <div className="settlement-badges-layer" onClick={(e) => e.stopPropagation()}>
         {state.players.map((player) => {
-          const pos = tablePosition(player.seat)
+          const pos = tablePosition(player.seat, mySeat)
           const delta = deltas[player.id] ?? 0
           const isWinner = player.id === pending.playerId
           const isPayer = delta < 0
@@ -114,7 +115,7 @@ export function ScoreReview({ state, settings, onFinish }: Props) {
       </div>
 
       {/* 2. 指向性立體粗紅箭頭 (付款方 -> 贏家，放槍單條、自摸三條匯聚) */}
-      <SettlementArrows transfers={state.lastTransfers} players={state.players} />
+      <SettlementArrows transfers={state.lastTransfers} players={state.players} mySeat={mySeat} />
 
       {/* 3. 中央焦點成牌區 (役種名 + 分數 + 卡牌一字排開 + 繼續對局按鈕) */}
       <div className="settlement-center" onClick={(e) => e.stopPropagation()}>

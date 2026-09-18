@@ -65,14 +65,36 @@ export function computeRankings(players: PlayerState[]) {
     if (b.score !== a.score) return b.score - a.score
     return a.seat - b.seat
   })
-  return sorted.map((p, i) => ({
-    playerId: p.id,
-    name: p.name,
-    score: p.score,
-    gold: p.gold,
-    completedCount: p.completed.length,
-    place: i + 1,
-  }))
+
+  const results: Array<{
+    playerId: string
+    name: string
+    score: number
+    gold: number
+    completedCount: number
+    place: number
+  }> = []
+
+  for (let i = 0; i < sorted.length; i++) {
+    const p = sorted[i]
+    if (!p) continue
+    const prev = results[i - 1]
+    const prevSorted = sorted[i - 1]
+    let place = i + 1
+    if (prev && prevSorted && p.gold === prevSorted.gold && p.score === prevSorted.score) {
+      place = prev.place
+    }
+    results.push({
+      playerId: p.id,
+      name: p.name,
+      score: p.score,
+      gold: p.gold,
+      completedCount: p.completed.length,
+      place,
+    })
+  }
+
+  return results
 }
 
 export function playerById(state: GameState, id: string): PlayerState {

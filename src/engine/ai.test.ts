@@ -63,4 +63,33 @@ describe('電腦決策', () => {
       expect(['ka-hiragana', 'ki-hiragana', 'ku-hiragana', 'ke-hiragana']).not.toContain(discard.cardId)
     }
   })
+
+  it('普通難度手牌有同音兩張相同類型（如2平）時，視為接近聽牌而不優先捨棄', () => {
+    const k1 = getCardById('ka-hiragana')
+    const k2 = { ...k1, id: 'ka-hiragana#1' }
+    let state = startGame({
+      seed: 101,
+      startPlayerIndex: 1,
+      aiDifficulty: 'normal',
+      bonus,
+      hands: [
+        cards('a-hiragana', 'i-hiragana', 'u-hiragana', 'e-hiragana', 'o-hiragana', 'na-hiragana', 'ni-hiragana'),
+        [k1, k2, getCardById('sa-vocabulary'), getCardById('chi-vocabulary'), getCardById('tsu-vocabulary'), getCardById('re-vocabulary'), getCardById('ro-vocabulary')],
+        cards('ta-hiragana', 'chi-hiragana', 'tsu-hiragana', 'te-hiragana', 'to-hiragana', 'ne-hiragana', 'no-hiragana'),
+        cards('ko-katakana', 'sa-katakana', 'shi-katakana', 'su-katakana', 'se-katakana', 'so-katakana', 'na-katakana'),
+      ],
+      deck: cards('nu-vocabulary', 'ne-vocabulary', 'no-vocabulary'),
+    })
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    const rng = createRng(5)
+    const skip = decideAi(state, rng)
+    expect(skip?.type).toBe('SKIP_YAKU')
+    state = play(state, skip!)
+    const discard = decideAi(state, rng)
+    expect(discard?.type).toBe('DISCARD')
+    if (discard?.type === 'DISCARD') {
+      expect([k1.id, k2.id]).not.toContain(discard.cardId)
+    }
+  })
 })

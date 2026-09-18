@@ -16,6 +16,7 @@ import { CenterBoard } from './CenterBoard'
 import { DiscardRiver } from './DiscardRiver'
 import { EventLog } from './EventLog'
 import { MeldArea } from './MeldArea'
+import { ReferenceDrawer } from './ReferenceDrawer'
 import { SeatHud } from './SeatHud'
 import { TurnTimer } from './TurnTimer'
 
@@ -90,6 +91,7 @@ export function GameTable({
   const rankings = computeRankings(state.players)
   const placeOf = (id: string) => rankings.find((r) => r.playerId === id)?.place ?? 4
   const [showLog, setShowLog] = useState(false)
+  const [showReference, setShowReference] = useState(false)
   const hudFor = (player: typeof human) => ({
     player,
     place: placeOf(player.id),
@@ -111,10 +113,21 @@ export function GameTable({
         <span className="sakura-petal p6" />
       </div>
 
-      <button className="chrome-fab top-left" onClick={onOpenHelp} aria-label="玩法說明" title="玩法說明">
-        <span className="fab-icon">📖</span>
-        <span className="fab-text">說明</span>
-      </button>
+      <div className="table-chrome-top-left">
+        <button className="chrome-fab" onClick={onOpenHelp} aria-label="玩法說明" title="玩法說明">
+          <span className="fab-icon">📖</span>
+          <span className="fab-text">說明</span>
+        </button>
+        <button
+          className="chrome-fab highlight-fab"
+          onClick={() => setShowReference((v) => !v)}
+          aria-label="牌況與役種"
+          title="牌況與役種"
+        >
+          <span className="fab-icon">🎴</span>
+          <span className="fab-text">牌況</span>
+        </button>
+      </div>
       <p className="table-prompt">
         {state.phase === 'reaction'
           ? reactionActor(state)?.id === human.id
@@ -281,6 +294,14 @@ export function GameTable({
       </div>
 
       <div className="table-chrome-br">
+        <button
+          className="chrome-fab highlight-fab"
+          onClick={() => setShowReference((v) => !v)}
+          aria-label="牌況與役種"
+          title="牌況與役種"
+        >
+          況
+        </button>
         <button className="chrome-fab" onClick={onOpenCatalog} aria-label="五十音圖鑑">
           図
         </button>
@@ -294,6 +315,13 @@ export function GameTable({
           <EventLog state={state} />
         </div>
       )}
+
+      <ReferenceDrawer
+        state={state}
+        myPlayerId={human.id}
+        isOpen={showReference}
+        onClose={() => setShowReference(false)}
+      />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { playSfx, startBgm, stopBgm, type BgmTrack } from './audio/sfx'
+import { getGameOverSfxKind, playSfx, startBgm, stopBgm, type BgmTrack } from './audio/sfx'
 import { speakJapanese } from './audio/speech'
 import { speechText } from './data/cards'
 import { decideAi, needsHumanInput } from './engine/ai'
@@ -130,21 +130,33 @@ export function App() {
   useEffect(() => {
     if (state.lastFx === 'draw') playSfx('draw', settings.sfx)
     if (state.lastFx === 'discard') playSfx('discard', settings.sfx)
-    if (state.lastFx === 'dekita') playSfx('dekita', settings.sfx)
+    if (state.lastFx === 'dekita') {
+      const myPlayer = state.players.find((p) => p.seat === mySeat) ?? state.players[0]
+      const isMe = state.pendingScore?.playerId === myPlayer?.id
+      if (isMe) {
+        playSfx('dekita', settings.sfx)
+      }
+    }
     if (state.lastFx === 'moratta') {
       const myPlayer = state.players.find((p) => p.seat === mySeat) ?? state.players[0]
       const isVictim = state.pendingScore?.fromPlayerId === myPlayer?.id
+      const isMe = state.pendingScore?.playerId === myPlayer?.id
       if (isVictim) {
         playSfx('ron', settings.sfx)
-      } else {
+      } else if (isMe) {
         playSfx('moratta', settings.sfx)
       }
     }
     if (state.lastTransfers.length > 0) playSfx('coin', settings.sfx)
     if (state.phase === 'gameOver') {
       const myPlayer = state.players.find((p) => p.seat === mySeat) ?? state.players[0]
-      const isWinner = state.rankings?.[0]?.playerId === myPlayer?.id
-      playSfx(isWinner ? 'win' : 'lose', settings.sfx)
+      const rankings = state.rankings ?? []
+      const myRanking = rankings.find((r) => r.playerId === myPlayer?.id)
+      const maxPlace = Math.max(...rankings.map((r) => r.place), 1)
+      if (myRanking) {
+        const sfx = getGameOverSfxKind(myRanking.place, maxPlace)
+        if (sfx) playSfx(sfx, settings.sfx)
+      }
     }
   }, [
     state.lastFx,
@@ -254,6 +266,13 @@ export function App() {
       onRoomChange: (r) => setRoomState({ ...r }),
       onClientAction: (seat, action) => {
         apply((s) => {
+          if (action.type === 'FINISH_REVIEW') {
+            const scoringPlayer = s.players.find((p) => p.id === s.pendingScore?.playerId)
+            if (scoringPlayer?.seat === seat || currentPlayer(s).seat === seat) {
+              return drainAuto(reduce(s, action))
+            }
+            return s
+          }
           const current = s.phase === 'reaction' ? reactionActor(s) : currentPlayer(s)
           if (current?.seat !== seat) return s
           return drainAuto(reduce(s, action))
@@ -522,10 +541,9 @@ export function App() {
         <ScoreReview
           state={state}
           settings={settings}
+          mySeat={mySeat}
           onFinish={() => {
-            if (networkMode === 'none' || networkMode === 'host') {
-              dispatch({ type: 'FINISH_REVIEW' })
-            }
+            dispatch({ type: 'FINISH_REVIEW' })
           }}
         />
       )}

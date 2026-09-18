@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { getCardById } from './cards'
+import { KANA_SOUNDS } from './kana'
 import { pickRecallCard, recallOptions } from './recall'
 
 describe('回想題選牌', () => {
@@ -31,5 +32,16 @@ describe('回想題選項', () => {
     expect(options).toContain('a')
     expect(options).toContain('o')
     expect(options).toHaveLength(3)
+  })
+})
+
+describe('假名資料完整性', () => {
+  it('所有單字拼字中的讀音均存在於 KANA_SOUNDS 中', () => {
+    const allSoundIds = new Set(KANA_SOUNDS.map((k) => k.sound))
+    for (const kana of KANA_SOUNDS) {
+      for (const mora of kana.spelling) {
+        expect(allSoundIds.has(mora)).toBe(true)
+      }
+    }
   })
 })

@@ -37,7 +37,13 @@ export function pickLessonRows(
   shuffle: <T>(items: readonly T[]) => T[],
 ): RowId[] {
   if (lessonId === 'random-4') {
-    return shuffle(ROW_ORDER).slice(0, 4)
+    const seionAndDakuon: RowId[] = [...SEION_ROWS, ...DAKUON_ROWS]
+    const pickedSeionDakuon = shuffle(seionAndDakuon).slice(0, 2)
+    const pickedYoon = shuffle(YOON_ROWS).slice(0, 1)
+    const alreadyPicked = new Set<RowId>([...pickedSeionDakuon, ...pickedYoon])
+    const remainingRows = ROW_ORDER.filter((r) => !alreadyPicked.has(r))
+    const fourthRow = shuffle(remainingRows).slice(0, 1)
+    return [...pickedSeionDakuon, ...pickedYoon, ...fourthRow]
   }
   if (lessonId === 'seion-4') {
     return shuffle(SEION_ROWS).slice(0, 4)

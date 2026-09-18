@@ -1,5 +1,5 @@
 import { bonusCardOf } from '../data/bonuses'
-import { ROW_COLOR, ROW_MARK, soundsForRows } from '../data/kana'
+import { ROW_COLOR, ROW_MARK, isYoonRow, soundsForRows } from '../data/kana'
 import type { GameState } from '../engine/types'
 import { CardView } from './CardView'
 import type { TablePosition } from './seats'
@@ -31,22 +31,31 @@ export function CenterBoard({ state, settings, actingPos }: Props) {
       </div>
       <div className="gojuon-mini" aria-label="本次登場的行">
         <div className="gojuon-header">登場行</div>
-        {state.activeRows.map((row) => (
-          <div key={row} className="gojuon-row">
-            <span className="gojuon-mark" style={{ background: ROW_COLOR[row] }}>
-              {ROW_MARK[row]}
-            </span>
-            {soundsForRows([row]).map((kana) => (
-              <i
-                key={kana.sound}
-                className={`gojuon-dot ${completedSounds.has(kana.sound) ? 'is-lit' : ''}`}
-                title={kana.hiragana}
+        {state.activeRows.map((row) => {
+          const isRowYoon = isYoonRow(row) || ROW_MARK[row].length > 1
+          return (
+            <div key={row} className="gojuon-row">
+              <span
+                className={`gojuon-mark ${isRowYoon ? 'is-yoon' : ''}`}
+                style={{ background: ROW_COLOR[row] }}
               >
-                {kana.hiragana}
-              </i>
-            ))}
-          </div>
-        ))}
+                {ROW_MARK[row]}
+              </span>
+              {soundsForRows([row]).map((kana) => {
+                const isDotYoon = kana.hiragana.length > 1
+                return (
+                  <i
+                    key={kana.sound}
+                    className={`gojuon-dot ${isDotYoon ? 'is-yoon' : ''} ${completedSounds.has(kana.sound) ? 'is-lit' : ''}`}
+                    title={kana.hiragana}
+                  >
+                    {kana.hiragana}
+                  </i>
+                )
+              })}
+            </div>
+          )
+        })}
       </div>
       <div className="bonus-slot" title="懸賞役札（湊到額外加分）">
         <CardView card={bonusCard} size="sm" showHints={settings} />

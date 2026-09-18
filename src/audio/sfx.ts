@@ -19,6 +19,18 @@ export type SfxKind =
 
 export type BgmTrack = 'lobby' | 'table' | 'tension'
 
+/**
+ * 依玩家名次決定結算音效：
+ * - 第 1 名：'win'
+ * - 最後一名：'lose'
+ * - 第 2、3 名（中間名次）：null（不播放音效）
+ */
+export function getGameOverSfxKind(myPlace: number, maxPlace: number): 'win' | 'lose' | null {
+  if (myPlace === 1) return 'win'
+  if (myPlace === maxPlace && maxPlace > 1) return 'lose'
+  return null
+}
+
 const BASE = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
 const ROOT = BASE.endsWith('/') ? BASE : `${BASE}/`
 const AUDIO_BASE = `${ROOT}audio/`
@@ -100,8 +112,8 @@ function playFallbackTone(kind: SfxKind) {
         tone(audio, 320, 0.12, 'triangle', 0.05)
         break
       case 'coin':
-        tone(audio, 880, 0.08, 'square', 0.03)
-        tone(audio, 1320, 0.1, 'square', 0.025, 0.07)
+        tone(audio, 988, 0.15, 'triangle', 0.22)
+        tone(audio, 1319, 0.28, 'sine', 0.26, 0.07)
         break
       case 'dekita':
       case 'yaku':

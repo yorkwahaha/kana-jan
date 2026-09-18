@@ -671,7 +671,7 @@ export const KANA_SOUNDS: KanaSound[] = [
   sound({ sound: 'shu', romaji: 'shu', hiragana: 'しゅ', katakana: 'シュ', row: 'sha', column: 'u', vocabulary: 'しゅみ', meaning: '愛好', icon: '🎨', spelling: ['shu', 'mi'] }),
   sound({ sound: 'sho', romaji: 'sho', hiragana: 'しょ', katakana: 'ショ', row: 'sha', column: 'o', vocabulary: 'しょくじ', meaning: '用餐', icon: '🍽️', spelling: ['sho', 'ku', 'ji'] }),
 
-  sound({ sound: 'cha', romaji: 'cha', hiragana: 'ちゃ', katakana: 'チャ', row: 'cha', column: 'a', vocabulary: 'ちゃわん', meaning: '茶碗', icon: '🍵', spelling: ['cha', 'wa'] }),
+  sound({ sound: 'cha', romaji: 'cha', hiragana: 'ちゃ', katakana: 'チャ', row: 'cha', column: 'a', vocabulary: 'おちゃ', meaning: '綠茶', icon: '🍵', spelling: ['o', 'cha'] }),
   sound({ sound: 'chu', romaji: 'chu', hiragana: 'ちゅ', katakana: 'チュ', row: 'cha', column: 'u', vocabulary: 'ちゅうしゃ', meaning: '打針', icon: '💉', spelling: ['chu', 'sha'] }),
   sound({ sound: 'cho', romaji: 'cho', hiragana: 'ちょ', katakana: 'チョ', row: 'cha', column: 'o', vocabulary: 'ちょこ', meaning: '巧克力', icon: '🍫', spelling: ['cho', 'ko'] }),
 

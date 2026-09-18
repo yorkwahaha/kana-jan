@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { makeTargetBonus, type BonusMission } from '../data/bonuses'
 import { getCardById, type KanaCard } from '../data/cards'
 import { getSound } from '../data/kana'
-import { findYaku, missionBonusFor, typeBonusFor } from './yaku'
+import { findNearYaku, findYaku, missionBonusFor, typeBonusFor } from './yaku'
 
 const noBonus: BonusMission = makeTargetBonus(getSound('ne'), 0)
 
@@ -11,14 +11,73 @@ function cards(...ids: string[]): KanaCard[] {
 }
 
 describe('同音三張', () => {
-  it('正確辨識同一讀音的三種卡片', () => {
+  it('正確辨識同一讀音的三種不同形式（三位相和，享 +3 全彩加成）', () => {
     const hand = cards('ka-hiragana', 'ka-katakana', 'ka-vocabulary', 'a-hiragana')
     const found = findYaku(hand, noBonus)
     expect(found.some((y) => y.kind === 'sameSound' && y.sound === 'ka')).toBe(true)
     const yaku = found.find((y) => y.kind === 'sameSound')!
     expect(yaku.baseScore).toBe(3)
-    expect(yaku.totalScore).toBe(3)
+    expect(yaku.typeBonus).toBe(3) // 三位相和加成
+    expect(yaku.totalScore).toBe(6)
+    expect(yaku.label).toContain('三位相和')
     expect(yaku.cards).toHaveLength(3)
+  })
+
+  it('同一讀音的任意三張卡（如 2平1片）即可組成同音三張（基礎分 3）', () => {
+    const k1 = getCardById('ka-hiragana')
+    const k2 = { ...k1, id: 'ka-hiragana#1' }
+    const k3 = getCardById('ka-katakana')
+    const found = findYaku([k1, k2, k3], noBonus)
+    const yaku = found.find((y) => y.kind === 'sameSound')
+    expect(yaku).toBeTruthy()
+    expect(yaku?.baseScore).toBe(3)
+    expect(yaku?.typeBonus).toBe(0)
+    expect(yaku?.totalScore).toBe(3)
+  })
+
+  it('同音三張純平假名享 +3 純色加成', () => {
+    const k1 = getCardById('ka-hiragana')
+    const k2 = { ...k1, id: 'ka-hiragana#1' }
+    const k3 = { ...k1, id: 'ka-hiragana#2' }
+    const found = findYaku([k1, k2, k3], noBonus)
+    const yaku = found.find((y) => y.kind === 'sameSound')
+    expect(yaku).toBeTruthy()
+    expect(yaku?.typeBonus).toBe(3)
+    expect(yaku?.totalScore).toBe(6)
+  })
+
+  it('同音三張純片假名享 +4 純色加成', () => {
+    const k1 = getCardById('ka-katakana')
+    const k2 = { ...k1, id: 'ka-katakana#1' }
+    const k3 = { ...k1, id: 'ka-katakana#2' }
+    const found = findYaku([k1, k2, k3], noBonus)
+    const yaku = found.find((y) => y.kind === 'sameSound')
+    expect(yaku).toBeTruthy()
+    expect(yaku?.typeBonus).toBe(4)
+    expect(yaku?.totalScore).toBe(7)
+  })
+
+  it('同音三張純單字圖像享 +5 純色加成', () => {
+    const k1 = getCardById('ka-vocabulary')
+    const k2 = { ...k1, id: 'ka-vocabulary#1' }
+    const k3 = { ...k1, id: 'ka-vocabulary#2' }
+    const found = findYaku([k1, k2, k3], noBonus)
+    const yaku = found.find((y) => y.kind === 'sameSound')
+    expect(yaku).toBeTruthy()
+    expect(yaku?.typeBonus).toBe(5)
+    expect(yaku?.totalScore).toBe(8)
+  })
+
+  it('手牌有多張同音牌時優先挑選最高分組合（三位相和或純色）', () => {
+    // 2平 + 1片 + 1字 -> 應該挑選 1平+1片+1字 達成三位相和 (6分)
+    const h1 = getCardById('ka-hiragana')
+    const h2 = { ...h1, id: 'ka-hiragana#1' }
+    const kata = getCardById('ka-katakana')
+    const vocab = getCardById('ka-vocabulary')
+    const found = findYaku([h1, h2, kata, vocab], noBonus)
+    const yaku = found.find((y) => y.kind === 'sameSound')
+    expect(yaku?.totalScore).toBe(6)
+    expect(yaku?.label).toContain('三位相和')
   })
 
   it('不同讀音不能誤判為同音三張', () => {
@@ -27,7 +86,7 @@ describe('同音三張', () => {
     expect(found.filter((y) => y.kind === 'sameSound')).toHaveLength(0)
   })
 
-  it('缺少一種卡片形式時不能成立', () => {
+  it('同音少於三張時不能成立', () => {
     const hand = cards('ka-hiragana', 'ka-katakana', 'ki-vocabulary')
     expect(findYaku(hand, noBonus).filter((y) => y.kind === 'sameSound')).toHaveLength(0)
   })
@@ -162,9 +221,18 @@ describe('同類型加成與 Bonus', () => {
     expect(typeBonusFor('sameColumn', vocab)).toBe(5)
   })
 
-  it('同音組沒有同類型加成', () => {
-    const hand = cards('ka-hiragana', 'ka-katakana', 'ka-vocabulary')
-    expect(typeBonusFor('sameSound', hand)).toBe(0)
+  it('同音組混色時無加成，三位相和享 +3，純色享對應加成', () => {
+    const k1 = getCardById('ka-hiragana')
+    const k2 = { ...k1, id: 'ka-hiragana#1' }
+    const kKata = getCardById('ka-katakana')
+    const kVocab = getCardById('ka-vocabulary')
+    // 2平1片 -> 混色無加成
+    expect(typeBonusFor('sameSound', [k1, k2, kKata])).toBe(0)
+    // 平片字各一 -> 三位相和 +3
+    expect(typeBonusFor('sameSound', [k1, kKata, kVocab])).toBe(3)
+    // 3平 -> 純色 +3
+    const k3 = { ...k1, id: 'ka-hiragana#2' }
+    expect(typeBonusFor('sameSound', [k1, k2, k3])).toBe(3)
   })
 
   it('Bonus：目標音的同音組加分', () => {
@@ -216,13 +284,14 @@ describe('拗音牌型', () => {
     expect(yoon?.label).toContain('しゃ行揃い')
   })
 
-  it('拗音同音三張（しゃ/シャ/写真）正確判定 sameSound（3 分）', () => {
+  it('拗音同音三張（しゃ/シャ/写真）正確判定 sameSound（三位相和 6 分）', () => {
     const hand = cards('sha-hiragana', 'sha-katakana', 'sha-vocabulary')
     const found = findYaku(hand, noBonus, { activeRows: ['sha', 'ka', 'sa', 'ta'] })
     const same = found.find((y) => y.kind === 'sameSound')
     expect(same).toBeTruthy()
     expect(same?.baseScore).toBe(3)
-    expect(same?.totalScore).toBe(3)
+    expect(same?.typeBonus).toBe(3) // 三位相和加成
+    expect(same?.totalScore).toBe(6)
   })
 
   it('拗音三張全同類型享 +2 純色加成', () => {
@@ -262,6 +331,44 @@ describe('4 行環境下的段牌型與抄牌 Bug 修復', () => {
       activeRows: ['a'],
     })
     expect(found.some((y) => y.cards.some((c) => c.id === a1.id))).toBe(true)
+  })
+
+  it('段揃い候選超過 targetCount 時，抄牌 mustIncludeCardId 必定包含在切片中不會被截斷', () => {
+    // 5 行環境下 targetCount = 4，有 a, ka, sa, ta, na 全為平假名
+    // 對手打出 na-hiragana#1 (排在最後)
+    const a = getCardById('a-hiragana')
+    const ka = getCardById('ka-hiragana')
+    const sa = getCardById('sa-hiragana')
+    const ta = getCardById('ta-hiragana')
+    const na = { ...getCardById('na-hiragana'), id: 'na-hiragana#1' }
+
+    const found = findYaku([a, ka, sa, ta, na], noBonus, {
+      mustIncludeCardId: na.id,
+      activeRows: ['a', 'ka', 'sa', 'ta', 'na'],
+    })
+    const col = found.find((y) => y.kind === 'sameColumn')
+    expect(col).toBeTruthy()
+    expect(col?.cards.some((c) => c.id === na.id)).toBe(true)
+  })
+
+  it('已有同音 3 張（例如 2平1片）時已成牌，findNearYaku 不應誤報為聽牌', () => {
+    const k1 = getCardById('ka-hiragana')
+    const k2 = { ...k1, id: 'ka-hiragana#1' }
+    const kKata = getCardById('ka-katakana')
+    const hints = findNearYaku([k1, k2, kKata], ['ka'])
+    expect(hints.filter((h) => h.kind === 'sameSound')).toHaveLength(0)
+  })
+
+  it('當局包含拗音時，findNearYaku 應正確依各段在 activeRows 的存在數判斷聽牌', () => {
+    // 當局為 sha (只有 a, u, o) + ka (a, i, u, e, o) + sa + ta: 共 4 行
+    // 對於 i 段，只有 ka, sa, ta 有 i 段 (共 3 行) -> targetCount = 3
+    // 若手牌有 2 個 i 段不同音 (ki, shi)，距離 targetCount 差 1，應提示聽牌
+    const ki = getCardById('ki-hiragana')
+    const shi = getCardById('shi-hiragana')
+    const hints = findNearYaku([ki, shi], ['sha', 'ka', 'sa', 'ta'])
+    const iCol = hints.find((h) => h.kind === 'sameColumn' && h.label.includes('い段'))
+    expect(iCol).toBeTruthy()
+    expect(iCol?.distance).toBe(1)
   })
 })
 

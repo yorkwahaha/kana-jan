@@ -19,7 +19,7 @@ export function makeTargetBonus(kana: KanaSound, points = 3): BonusMission {
     sound: kana.sound,
     cardId,
     label: kana.vocabulary,
-    detail: `完成「${kana.hiragana}」同音組、該行揃い，或拼出「${kana.vocabulary}」時額外 +${points} 分`,
+    detail: `包含「${kana.hiragana}」之同音組、行揃い、段揃い，或拼出「${kana.vocabulary}」時額外 +${points} 分`,
     points,
   }
 }

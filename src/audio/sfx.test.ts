@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { BGM_PATHS, pauseBgm, playSfx, resumeBgm, SFX_PATHS, startBgm, stopBgm, type SfxKind } from './sfx'
+import {
+  BGM_PATHS,
+  getGameOverSfxKind,
+  pauseBgm,
+  playSfx,
+  resumeBgm,
+  SFX_PATHS,
+  startBgm,
+  stopBgm,
+  type SfxKind,
+} from './sfx'
 
 describe('audio/sfx', () => {
   it('defines all required SFX and BGM file paths', () => {
@@ -47,5 +57,23 @@ describe('audio/sfx', () => {
       stopBgm()
       startBgm(false)
     }).not.toThrow()
+  })
+
+  it('correctly resolves game over SFX based on placement', () => {
+    // 4 人局正常情況
+    expect(getGameOverSfxKind(1, 4)).toBe('win')
+    expect(getGameOverSfxKind(2, 4)).toBeNull()
+    expect(getGameOverSfxKind(3, 4)).toBeNull()
+    expect(getGameOverSfxKind(4, 4)).toBe('lose')
+
+    // 2 人局
+    expect(getGameOverSfxKind(1, 2)).toBe('win')
+    expect(getGameOverSfxKind(2, 2)).toBe('lose')
+
+    // 並列最後一名
+    expect(getGameOverSfxKind(3, 3)).toBe('lose')
+
+    // 全員平手第 1 名
+    expect(getGameOverSfxKind(1, 1)).toBe('win')
   })
 })
