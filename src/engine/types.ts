@@ -143,5 +143,5 @@ export interface StartConfig {
 
 export const HAND_SIZE = 7
 export const PLAYER_COUNT = 4
-export const INITIAL_GOLD = 25
+export const INITIAL_GOLD = 20
 export const DEFAULT_AI_NAMES = ['さくら', 'ひなた', 'あおい']

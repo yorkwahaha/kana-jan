@@ -479,7 +479,7 @@ export function App() {
         mySeat={mySeat}
         turnTimer={{
           active: isTurnActive,
-          seconds: 18,
+          seconds: state.phase === 'reaction' ? 12 : 18,
           turnKey: `${state.turnNumber}-${state.phase}-${currentActor?.id}`,
           onTimeout: handleTurnTimeout,
         }}

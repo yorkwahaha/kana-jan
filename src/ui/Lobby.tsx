@@ -54,17 +54,6 @@ export function Lobby({
         <span className="ghost-kana">あ</span>
       </div>
 
-      {onToggleBgm && (
-        <button
-          className="chrome-fab top-right lobby-audio-fab"
-          onClick={onToggleBgm}
-          aria-label={bgmEnabled ? '靜音背景音樂' : '開啟背景音樂'}
-          title={bgmEnabled ? '點擊靜音背景音樂' : '點擊開啟背景音樂'}
-        >
-          <span className="fab-icon">{bgmEnabled ? '🔊' : '🔇'}</span>
-          <span className="fab-text">{bgmEnabled ? '音樂開' : '靜音'}</span>
-        </button>
-      )}
 
       <section className="lobby-sheet">
         <header className="lobby-brand">

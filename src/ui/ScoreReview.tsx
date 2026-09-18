@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { speechText } from '../data/cards'
 import { speakJapanese } from '../audio/speech'
+import { playSfx } from '../audio/sfx'
 import type { GameState } from '../engine/types'
 import { computeRankings } from '../engine/scoring'
 import { CardView } from './CardView'
@@ -40,7 +41,16 @@ export function ScoreReview({ state, settings, onFinish }: Props) {
       const first = pending.yaku.cards[0]
       if (first) void speakJapanese(speechText(first), true)
     }
-  }, [pending, settings.speech])
+    if (settings.sfx) {
+      playSfx('coin', true)
+      const t1 = setTimeout(() => playSfx('coin', true), 300)
+      const t2 = setTimeout(() => playSfx('coin', true), 600)
+      return () => {
+        clearTimeout(t1)
+        clearTimeout(t2)
+      }
+    }
+  }, [pending, settings.speech, settings.sfx])
 
   if (!pending) return null
 
@@ -96,7 +106,7 @@ export function ScoreReview({ state, settings, onFinish }: Props) {
                 <span className={`settlement-rank rank-${place}`}>
                   {RANK_LABELS[place] ?? `${place}th`}
                 </span>
-                <span className="settlement-coins">🟡 {player.score}</span>
+                <span className="settlement-coins">🟡 {player.gold}</span>
               </div>
             </div>
           )

@@ -1845,6 +1845,11 @@ button.kana-card { appearance: none; }
   to { opacity: 1; stroke-dasharray: 400; stroke-dashoffset: 0; }
 }
 
+.flying-coin-item {
+  transform-origin: center center;
+  pointer-events: none;
+}
+
 /* 中央成牌焦點區 (Settlement Center) */
 .settlement-center {
   position: relative;
@@ -2116,17 +2121,50 @@ button.kana-card { appearance: none; }
 .learned-box {
   background: #f4ecdf;
   border: 1px solid rgba(140, 105, 75, 0.25);
-  border-radius: 6px;
+  border-radius: 10px;
   padding: 14px 18px;
   margin-top: 14px;
 }
-.learned-box h3 {
-  margin: 0 0 8px;
-  font-family: var(--font-display);
-  letter-spacing: 0.1em;
-  font-size: 1.05rem;
+.learned-box-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
-.learned-words { color: var(--muted); font-size: 0.92rem; }
+.learned-box h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+.learned-box-sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.learned-cards-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  padding: 6px 0;
+}
+.learned-card-wrapper {
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.learned-card-wrapper:hover {
+  transform: translateY(-4px) scale(1.05);
+}
+.learned-empty {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin: 6px 0;
+  text-align: center;
+}
 
 /* 假名測驗 (Quiz Options) */
 .quiz-options {

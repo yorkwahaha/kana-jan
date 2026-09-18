@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function TurnTimer({
-  seconds = 20,
+  seconds = 18,
   turnKey,
   active,
   onTimeout,

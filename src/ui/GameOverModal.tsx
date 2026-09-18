@@ -1,5 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { GameState } from '../engine/types'
+import type { KanaCard } from '../data/cards'
+import { speechText } from '../data/cards'
+import { speakJapanese } from '../audio/speech'
+import { CardView } from './CardView'
 import {
   loadProfile,
   replenishGold,
@@ -34,24 +38,21 @@ export function GameOverModal({ state, onRestart, onLobby }: Props) {
   }
 
   const reason = state.gameOverReason === 'gold' ? '有人點數歸零' : '牌庫耗盡'
-  const learned = [
-    ...new Set(
-      state.players.flatMap((p) =>
-        p.completed.flatMap((c) => c.yaku.cards.map((card) => card.hiragana)),
-      ),
-    ),
-  ]
-  const words = [
-    ...new Set(
-      state.players.flatMap((p) =>
-        p.completed.flatMap((c) =>
-          c.yaku.cards
-            .filter((card) => card.cardType === 'vocabulary')
-            .map((card) => `${card.vocabulary}（${card.meaning}）`),
-        ),
-      ),
-    ),
-  ]
+
+  // 收集本局所有玩家完成牌型中的詞彙卡牌（排除重複），並以卡牌呈現
+  const vocabCards = useMemo(() => {
+    const map = new Map<string, KanaCard>()
+    for (const p of state.players) {
+      for (const c of p.completed) {
+        for (const card of c.yaku.cards) {
+          if (card.cardType === 'vocabulary' && !map.has(card.vocabulary)) {
+            map.set(card.vocabulary, card)
+          }
+        }
+      }
+    }
+    return Array.from(map.values())
+  }, [state.players])
 
   return (
     <div className="modal-backdrop" role="dialog" aria-labelledby="over-title">
@@ -113,9 +114,26 @@ export function GameOverModal({ state, onRestart, onLobby }: Props) {
           })}
         </ol>
         <section className="learned-box">
-          <h3>本局學會</h3>
-          <p>{learned.length > 0 ? learned.join('　') : '還沒完成任何同音組，再玩一局吧。'}</p>
-          {words.length > 0 && <p className="learned-words">{words.join('、')}</p>}
+          <div className="learned-box-header">
+            <h3>本局學會單字</h3>
+            <span className="learned-box-sub">點擊卡牌可聆聽日語發音</span>
+          </div>
+          {vocabCards.length > 0 ? (
+            <div className="learned-cards-grid">
+              {vocabCards.map((card) => (
+                <div
+                  key={card.id}
+                  className="learned-card-wrapper"
+                  onClick={() => void speakJapanese(speechText(card), true)}
+                  title={`點擊聆聽發音：${card.vocabulary}（${card.meaning}）`}
+                >
+                  <CardView card={card} size="md" revealMeaning showHints={{ showRomaji: true }} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="learned-empty">本局尚未達成詞彙牌，下局試著將單字牌湊入牌型吧！</p>
+          )}
         </section>
         <footer className="modal-foot">
           <button className="btn" onClick={onLobby}>

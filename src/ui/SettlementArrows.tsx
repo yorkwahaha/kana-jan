@@ -93,6 +93,35 @@ export function SettlementArrows({ transfers, players }: Props) {
               strokeWidth="1.8"
             />
           </marker>
+          {/* 金幣立體陰影與發光濾鏡 */}
+          <filter id="settlement-coin-glow" x="-40%" y="-40%" width="180%" height="180%">
+            <feDropShadow dx="0" dy="2.5" stdDeviation="3" floodColor="rgba(0, 0, 0, 0.45)" />
+            <feDropShadow dx="0" dy="0" stdDeviation="4.5" floodColor="rgba(255, 215, 0, 0.55)" />
+          </filter>
+
+          {/* 金幣金屬漸層 */}
+          <linearGradient id="coin-edge-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#fffbeb" />
+            <stop offset="35%" stopColor="#fde047" />
+            <stop offset="70%" stopColor="#d97706" />
+            <stop offset="100%" stopColor="#92400e" />
+          </linearGradient>
+          <linearGradient id="coin-face-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#fef08a" />
+            <stop offset="45%" stopColor="#f59e0b" />
+            <stop offset="100%" stopColor="#b45309" />
+          </linearGradient>
+
+          {/* 3D 傾斜金幣物件（參照圖二） */}
+          <g id="flying-gold-coin" filter="url(#settlement-coin-glow)">
+            <ellipse cx="0" cy="2.5" rx="15" ry="11.5" fill="#78350f" />
+            <ellipse cx="0" cy="1.5" rx="15" ry="11.5" fill="#b45309" />
+            <ellipse cx="0" cy="0" rx="15" ry="11.5" fill="url(#coin-edge-grad)" stroke="#fef9c3" strokeWidth="1.2" />
+            <ellipse cx="0" cy="0" rx="11" ry="8.2" fill="url(#coin-face-grad)" stroke="#d97706" strokeWidth="0.8" />
+            <ellipse cx="0" cy="0" rx="4" ry="3" fill="#fef08a" opacity="0.9" />
+            <path d="M -3.2,0 L 3.2,0 M 0,-2.2 L 0,2.2" stroke="#92400e" strokeWidth="1" strokeLinecap="round" />
+            <ellipse cx="-4" cy="-3" rx="3.5" ry="1.8" fill="#ffffff" opacity="0.75" />
+          </g>
         </defs>
 
         {transfers.map((t) => {
@@ -101,18 +130,60 @@ export function SettlementArrows({ transfers, players }: Props) {
           const path = getSettlementArrowPath(fromPos, toPos)
           if (!path) return null
 
+          const coinCount = 5
+          const streamDuration = 1.15
+
           return (
-            <path
-              key={`${t.fromId}-${t.toId}`}
-              className="settlement-arrow-path"
-              d={path}
-              fill="none"
-              stroke="url(#settlement-arrow-grad)"
-              strokeWidth="12"
-              strokeLinecap="round"
-              markerEnd="url(#settlement-red-arrowhead)"
-              filter="url(#settlement-arrow-shadow)"
-            />
+            <g key={`transfer-${t.fromId}-${t.toId}`}>
+              {/* 1. 底層紅光箭頭路徑 */}
+              <path
+                className="settlement-arrow-path"
+                d={path}
+                fill="none"
+                stroke="url(#settlement-arrow-grad)"
+                strokeWidth="12"
+                strokeLinecap="round"
+                markerEnd="url(#settlement-red-arrowhead)"
+                filter="url(#settlement-arrow-shadow)"
+              />
+
+              {/* 2. 沿著箭頭軌跡飛舞的金幣串（參照圖二：由放槍方飛入和牌贏家） */}
+              {Array.from({ length: coinCount }).map((_, i) => {
+                const delay = 0.15 + i * 0.15
+                return (
+                  <g key={`coin-${i}`} className="flying-coin-item">
+                    <use href="#flying-gold-coin" />
+                    <animateMotion
+                      path={path}
+                      dur={`${streamDuration}s`}
+                      begin={`${delay}s`}
+                      repeatCount="indefinite"
+                      rotate="auto"
+                      keyPoints="0;1"
+                      keyTimes="0;1"
+                    />
+                    <animate
+                      attributeName="opacity"
+                      values="0; 0.95; 1; 1; 0"
+                      keyTimes="0; 0.12; 0.5; 0.88; 1"
+                      dur={`${streamDuration}s`}
+                      begin={`${delay}s`}
+                      repeatCount="indefinite"
+                    />
+                    <animateTransform
+                      attributeName="transform"
+                      type="scale"
+                      values="0.75; 1.08; 1; 0.8"
+                      keyTimes="0; 0.2; 0.8; 1"
+                      dur={`${streamDuration}s`}
+                      begin={`${delay}s`}
+                      repeatCount="indefinite"
+                      additive="sum"
+                    />
+                  </g>
+                )
+              })}
+            </g>
           )
         })}
       </svg>

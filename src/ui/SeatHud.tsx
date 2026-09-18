@@ -41,7 +41,7 @@ export function SeatHud({
         <span className={`seat-place place-${place}`}>{PLACE_BADGES[place] ?? `${place}th`}</span>
       </div>
       <div className="seat-hud-row seat-hud-row-bottom">
-        <span className="chip-badge">點數 {player.score}</span>
+        <span className="chip-badge">點數 {player.gold}</span>
         {goldDelta !== undefined && goldDelta !== 0 && (
           <em className={goldDelta > 0 ? 'delta-up' : 'delta-down'}>
             {goldDelta > 0 ? `＋${goldDelta}` : goldDelta}

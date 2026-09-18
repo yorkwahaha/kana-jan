@@ -11,7 +11,7 @@ interface Props {
   disabled?: boolean
   drawn?: boolean
   hasTimer?: boolean
-  showHints?: Settings
+  showHints?: Partial<Settings>
   onClick?: () => void
   faceDown?: boolean
   revealMeaning?: boolean
