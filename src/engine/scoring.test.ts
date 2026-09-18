@@ -85,14 +85,14 @@ describe('完成牌型後卡片移出', () => {
 })
 
 describe('勝負判定', () => {
-  it('以分數為主、金幣為平手決勝', () => {
+  it('以局內剩餘籌碼為主、牌型得分為平手決勝', () => {
     const ranking = computeRankings([
       player({ id: 'a', name: 'A', score: 9, gold: 10, seat: 0 }),
       player({ id: 'b', name: 'B', score: 12, gold: 5, seat: 1 }),
       player({ id: 'c', name: 'C', score: 9, gold: 30, seat: 2 }),
       player({ id: 'd', name: 'D', score: 3, gold: 40, seat: 3 }),
     ])
-    expect(ranking.map((r) => r.playerId)).toEqual(['b', 'c', 'a', 'd'])
+    expect(ranking.map((r) => r.playerId)).toEqual(['d', 'c', 'a', 'b'])
     expect(ranking[0]?.place).toBe(1)
   })
 })

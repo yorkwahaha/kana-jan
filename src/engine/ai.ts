@@ -1,4 +1,5 @@
 import type { KanaCard } from '../data/cards'
+import { isYoonRow, type RowId } from '../data/kana'
 import { currentPlayer, currentReactionYakus, reactionActor, type GameAction } from './game'
 import type { Rng } from './rng'
 import type { GameState, PlayerState, YakuCandidate } from './types'
@@ -26,9 +27,10 @@ function minDistance(hand: KanaCard[]): { distance: number; cardIds: Set<string>
       list.push(card)
       grouped.set(card[key], list)
     }
-    for (const group of grouped.values()) {
+    for (const [groupKey, group] of grouped.entries()) {
       const sounds = new Set(group.map((c) => c.sound))
-      const distance = 5 - sounds.size
+      const targetSize = key === 'row' && isYoonRow(groupKey as RowId) ? 3 : key === 'column' ? 4 : 5
+      const distance = Math.max(0, targetSize - sounds.size)
       const ids = new Set(group.map((c) => c.id))
       if (distance < best.distance) best = { distance, cardIds: ids }
     }

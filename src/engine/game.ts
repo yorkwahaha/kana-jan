@@ -1,7 +1,7 @@
 import { DEFAULT_BONUS, makeTargetBonus } from '../data/bonuses'
 import { displayGlyph, type KanaCard } from '../data/cards'
 import { soundsForRows } from '../data/kana'
-import { DEFAULT_LESSON_ID, getLesson } from '../data/lessons'
+import { DEFAULT_LESSON_ID, getLesson, pickLessonRows } from '../data/lessons'
 import { buildLessonDeck, dealHands, drawOne, refillHand, sortHandByGojuon } from './deck'
 import { createRng } from './rng'
 import { computeRankings, removeCardsFromHand, settleGold } from './scoring'
@@ -165,7 +165,9 @@ export function startGame(config: StartConfig = {}): GameState {
   const seed = config.seed ?? (Date.now() ^ 0x9e3779b9) >>> 0
   const rng = createRng(seed)
   const lesson = getLesson(config.lessonId)
-  const activeRows = config.activeRows ?? lesson.rows
+  const activeRows =
+    config.activeRows ??
+    (lesson.rows.length > 0 ? lesson.rows : pickLessonRows(lesson.id, (arr) => rng.shuffle(arr)))
   const lessonSounds = soundsForRows(activeRows)
   const bonus = config.bonus ?? makeTargetBonus(rng.pick(lessonSounds), 3)
   const aiNames = config.aiNames ?? DEFAULT_AI_NAMES
@@ -187,32 +189,45 @@ export function startGame(config: StartConfig = {}): GameState {
   const startPlayerIndex =
     config.startPlayerIndex !== undefined ? config.startPlayerIndex : rng.nextInt(PLAYER_COUNT)
 
-  const players: PlayerState[] = [
-    {
-      id: 'p0',
-      name: playerName,
-      kind: 'human',
-      seat: 0,
-      aiDifficulty: difficulty,
-      gold,
-      score: 0,
-      hand: sortHandByGojuon(hands[0] ?? []),
-      discards: [],
-      completed: [],
-    },
-    ...[0, 1, 2].map((i) => ({
-      id: `p${i + 1}`,
-      name: aiNames[i] ?? `電腦${i + 2}`,
-      kind: 'ai' as const,
-      seat: i + 1,
-      aiDifficulty: difficulty,
-      gold,
-      score: 0,
-      hand: sortHandByGojuon(hands[i + 1] ?? []),
-      discards: [],
-      completed: [],
-    })),
-  ]
+  const players: PlayerState[] = config.playerConfigs
+    ? config.playerConfigs.map((cfg, idx) => ({
+        id: cfg.id,
+        name: cfg.name,
+        kind: cfg.kind,
+        seat: cfg.seat,
+        aiDifficulty: cfg.aiDifficulty ?? difficulty,
+        gold,
+        score: 0,
+        hand: sortHandByGojuon(hands[idx] ?? []),
+        discards: [],
+        completed: [],
+      }))
+    : [
+        {
+          id: 'p0',
+          name: playerName,
+          kind: 'human',
+          seat: 0,
+          aiDifficulty: difficulty,
+          gold,
+          score: 0,
+          hand: sortHandByGojuon(hands[0] ?? []),
+          discards: [],
+          completed: [],
+        },
+        ...[0, 1, 2].map((i) => ({
+          id: `p${i + 1}`,
+          name: aiNames[i] ?? `電腦${i + 2}`,
+          kind: 'ai' as const,
+          seat: i + 1,
+          aiDifficulty: difficulty,
+          gold,
+          score: 0,
+          hand: sortHandByGojuon(hands[i + 1] ?? []),
+          discards: [],
+          completed: [],
+        })),
+      ]
 
   const skipPreview = config.skipPreview || Boolean(config.hands)
   let state: GameState = {
@@ -382,7 +397,7 @@ export function reduce(state: GameState, action: GameAction): GameState {
       if (!card) {
         return { ...state, phase: 'playerAction', drewThisTurn: false }
       }
-      const updated: PlayerState = { ...player, hand: sortHandByGojuon([...player.hand, card]) }
+      const updated: PlayerState = { ...player, hand: [...player.hand, card] }
       let next = replacePlayer(state, updated)
       next = {
         ...next,
@@ -430,7 +445,7 @@ export function reduce(state: GameState, action: GameAction): GameState {
       if (!card) return state
       const updated: PlayerState = {
         ...player,
-        hand: player.hand.filter((c) => c.id !== action.cardId),
+        hand: sortHandByGojuon(player.hand.filter((c) => c.id !== action.cardId)),
         discards: [...(player.discards ?? []), card],
       }
       let next = replacePlayer(state, updated)

@@ -1,5 +1,26 @@
 /** 五十音行 */
-export type RowId = 'a' | 'ka' | 'sa' | 'ta' | 'na' | 'ha' | 'ma' | 'ra'
+export type RowId =
+  | 'a'
+  | 'ka'
+  | 'sa'
+  | 'ta'
+  | 'na'
+  | 'ha'
+  | 'ma'
+  | 'ra'
+  | 'ga'
+  | 'za'
+  | 'da'
+  | 'ba'
+  | 'pa'
+  | 'kya'
+  | 'sha'
+  | 'cha'
+  | 'nya'
+  | 'hya'
+  | 'mya'
+  | 'rya'
+  | 'ja'
 
 /** 五十音段 */
 export type ColumnId = 'a' | 'i' | 'u' | 'e' | 'o'
@@ -33,6 +54,19 @@ export const ROW_LABEL: Record<RowId, string> = {
   ha: 'は行',
   ma: 'ま行',
   ra: 'ら行',
+  ga: 'が行',
+  za: 'ざ行',
+  da: 'だ行',
+  ba: 'ば行',
+  pa: 'ぱ行',
+  kya: 'きゃ行',
+  sha: 'しゃ行',
+  cha: 'ちゃ行',
+  nya: 'にゃ行',
+  hya: 'ひゃ行',
+  mya: 'みゃ行',
+  rya: 'りゃ行',
+  ja: 'じゃ行',
 }
 
 export const ROW_MARK: Record<RowId, string> = {
@@ -44,6 +78,19 @@ export const ROW_MARK: Record<RowId, string> = {
   ha: 'は',
   ma: 'ま',
   ra: 'ら',
+  ga: 'が',
+  za: 'ざ',
+  da: 'だ',
+  ba: 'ば',
+  pa: 'ぱ',
+  kya: 'きゃ',
+  sha: 'しゃ',
+  cha: 'ちゃ',
+  nya: 'にゃ',
+  hya: 'ひゃ',
+  mya: 'みゃ',
+  rya: 'りゃ',
+  ja: 'じゃ',
 }
 
 export const COLUMN_LABEL: Record<ColumnId, string> = {
@@ -63,10 +110,31 @@ export const ROW_COLOR: Record<RowId, string> = {
   ha: '#D45D8C',
   ma: '#C9A227',
   ra: '#3D9B8F',
+  ga: '#3A86C8',
+  za: '#5C9EAD',
+  da: '#8C68A8',
+  ba: '#D97443',
+  pa: '#E65F8E',
+  kya: '#E05A47',
+  sha: '#2A9D8F',
+  cha: '#E76F51',
+  nya: '#F4A261',
+  hya: '#9D4EDD',
+  mya: '#D68C45',
+  rya: '#2B9348',
+  ja: '#7209B7',
 }
 
-export const ROW_ORDER: RowId[] = ['a', 'ka', 'sa', 'ta', 'na', 'ha', 'ma', 'ra']
+export const SEION_ROWS: RowId[] = ['a', 'ka', 'sa', 'ta', 'na', 'ha', 'ma', 'ra']
+export const DAKUON_ROWS: RowId[] = ['ga', 'za', 'da', 'ba', 'pa']
+export const YOON_ROWS: RowId[] = ['kya', 'sha', 'cha', 'nya', 'hya', 'mya', 'rya', 'ja']
+
+export const ROW_ORDER: RowId[] = [...SEION_ROWS, ...DAKUON_ROWS, ...YOON_ROWS]
 export const COLUMN_ORDER: ColumnId[] = ['a', 'i', 'u', 'e', 'o']
+
+export function isYoonRow(row: RowId): boolean {
+  return YOON_ROWS.includes(row)
+}
 
 function sound(partial: Omit<KanaSound, 'rowLabel' | 'columnLabel' | 'color' | 'image'>): KanaSound {
   return {
@@ -562,6 +630,70 @@ export const KANA_SOUNDS: KanaSound[] = [
     icon: '6️⃣',
     spelling: ['ro', 'ku'],
   }),
+
+  // --- 濁音 / 半濁音 ---
+  sound({ sound: 'ga', romaji: 'ga', hiragana: 'が', katakana: 'ガ', row: 'ga', column: 'a', vocabulary: 'がっこう', meaning: '學校', icon: '🏫', spelling: ['ga', 'ko', 'u'] }),
+  sound({ sound: 'gi', romaji: 'gi', hiragana: 'ぎ', katakana: 'ギ', row: 'ga', column: 'i', vocabulary: 'ぎんこう', meaning: '銀行', icon: '🏦', spelling: ['gi', 'ko', 'u'] }),
+  sound({ sound: 'gu', romaji: 'gu', hiragana: 'ぐ', katakana: 'グ', row: 'ga', column: 'u', vocabulary: 'ぐんたい', meaning: '軍隊', icon: '💂', spelling: ['gu', 'ta', 'i'] }),
+  sound({ sound: 'ge', romaji: 'ge', hiragana: 'げ', katakana: 'ゲ', row: 'ga', column: 'e', vocabulary: 'げーむ', meaning: '遊戲', icon: '🎮', spelling: ['ge', 'mu'] }),
+  sound({ sound: 'go', romaji: 'go', hiragana: 'ご', katakana: 'ゴ', row: 'ga', column: 'o', vocabulary: 'ごはん', meaning: '米飯', icon: '🍚', spelling: ['go', 'ha'] }),
+
+  sound({ sound: 'za', romaji: 'za', hiragana: 'ざ', katakana: 'ザ', row: 'za', column: 'a', vocabulary: 'ざっし', meaning: '雜誌', icon: '📖', spelling: ['za', 'shi'] }),
+  sound({ sound: 'ji', romaji: 'ji', hiragana: 'じ', katakana: 'ジ', row: 'za', column: 'i', vocabulary: 'じかん', meaning: '時間', icon: '⏱️', spelling: ['ji', 'ka'] }),
+  sound({ sound: 'zu', romaji: 'zu', hiragana: 'ず', katakana: 'ズ', row: 'za', column: 'u', vocabulary: 'ずぼん', meaning: '長褲', icon: '👖', spelling: ['zu', 'bo'] }),
+  sound({ sound: 'ze', romaji: 'ze', hiragana: 'ぜ', katakana: 'ゼ', row: 'za', column: 'e', vocabulary: 'ぜんぶ', meaning: '全部', icon: '📦', spelling: ['ze', 'bu'] }),
+  sound({ sound: 'zo', romaji: 'zo', hiragana: 'ぞ', katakana: 'ゾ', row: 'za', column: 'o', vocabulary: 'ぞう', meaning: '大象', icon: '🐘', spelling: ['zo', 'u'] }),
+
+  sound({ sound: 'da', romaji: 'da', hiragana: 'だ', katakana: 'ダ', row: 'da', column: 'a', vocabulary: 'だんご', meaning: '糰子', icon: '🍡', spelling: ['da', 'go'] }),
+  sound({ sound: 'di', romaji: 'di', hiragana: 'ぢ', katakana: 'ヂ', row: 'da', column: 'i', vocabulary: 'はなぢ', meaning: '鼻血', icon: '🩸', spelling: ['ha', 'na', 'di'] }),
+  sound({ sound: 'du', romaji: 'du', hiragana: 'づ', katakana: 'ヅ', row: 'da', column: 'u', vocabulary: 'つづく', meaning: '持續', icon: '⏩', spelling: ['tsu', 'du', 'ku'] }),
+  sound({ sound: 'de', romaji: 'de', hiragana: 'で', katakana: 'デ', row: 'da', column: 'e', vocabulary: 'でんしゃ', meaning: '電車', icon: '🚃', spelling: ['de', 'sha'] }),
+  sound({ sound: 'do', romaji: 'do', hiragana: 'ど', katakana: 'ド', row: 'da', column: 'o', vocabulary: 'どあ', meaning: '門', icon: '🚪', spelling: ['do', 'a'] }),
+
+  sound({ sound: 'ba', romaji: 'ba', hiragana: 'ば', katakana: 'バ', row: 'ba', column: 'a', vocabulary: 'ばす', meaning: '公車', icon: '🚌', spelling: ['ba', 'su'] }),
+  sound({ sound: 'bi', romaji: 'bi', hiragana: 'び', katakana: 'ビ', row: 'ba', column: 'i', vocabulary: 'びーる', meaning: '啤酒', icon: '🍺', spelling: ['bi', 'ru'] }),
+  sound({ sound: 'bu', romaji: 'bu', hiragana: 'ぶ', katakana: 'ブ', row: 'ba', column: 'u', vocabulary: 'ぶた', meaning: '豬', icon: '🐷', spelling: ['bu', 'ta'] }),
+  sound({ sound: 'be', romaji: 'be', hiragana: 'べ', katakana: 'ベ', row: 'ba', column: 'e', vocabulary: 'べんとう', meaning: '便當', icon: '🍱', spelling: ['be', 'to', 'u'] }),
+  sound({ sound: 'bo', romaji: 'bo', hiragana: 'ぼ', katakana: 'ボ', row: 'ba', column: 'o', vocabulary: 'ぼーる', meaning: '球', icon: '⚽', spelling: ['bo', 'ru'] }),
+
+  sound({ sound: 'pa', romaji: 'pa', hiragana: 'ぱ', katakana: 'パ', row: 'pa', column: 'a', vocabulary: 'ぱん', meaning: '麵包', icon: '🍞', spelling: ['pa'] }),
+  sound({ sound: 'pi', romaji: 'pi', hiragana: 'ぴ', katakana: 'ピ', row: 'pa', column: 'i', vocabulary: 'ぴあの', meaning: '鋼琴', icon: '🎹', spelling: ['pi', 'a', 'no'] }),
+  sound({ sound: 'pu', romaji: 'pu', hiragana: 'ぷ', katakana: 'プ', row: 'pa', column: 'u', vocabulary: 'ぷりん', meaning: '布丁', icon: '🍮', spelling: ['pu', 'ri'] }),
+  sound({ sound: 'pe', romaji: 'pe', hiragana: 'ぺ', katakana: 'ペ', row: 'pa', column: 'e', vocabulary: 'ぺん', meaning: '原子筆', icon: '🖊️', spelling: ['pe'] }),
+  sound({ sound: 'po', romaji: 'po', hiragana: 'ぽ', katakana: 'ポ', row: 'pa', column: 'o', vocabulary: 'ぽすと', meaning: '郵筒', icon: '📮', spelling: ['po', 'su', 'to'] }),
+
+  // --- 拗音 (每行 3 音: a, u, o) ---
+  sound({ sound: 'kya', romaji: 'kya', hiragana: 'きゃ', katakana: 'キャ', row: 'kya', column: 'a', vocabulary: 'きゃく', meaning: '客人', icon: '👥', spelling: ['kya', 'ku'] }),
+  sound({ sound: 'kyu', romaji: 'kyu', hiragana: 'きゅ', katakana: 'キュ', row: 'kya', column: 'u', vocabulary: 'きゅうり', meaning: '小黃瓜', icon: '🥒', spelling: ['kyu', 'ri'] }),
+  sound({ sound: 'kyo', romaji: 'kyo', hiragana: 'きょ', katakana: 'キョ', row: 'kya', column: 'o', vocabulary: 'きょう', meaning: '今天', icon: '📅', spelling: ['kyo', 'u'] }),
+
+  sound({ sound: 'sha', romaji: 'sha', hiragana: 'しゃ', katakana: 'シャ', row: 'sha', column: 'a', vocabulary: 'しゃしん', meaning: '照片', icon: '📸', spelling: ['sha', 'shi'] }),
+  sound({ sound: 'shu', romaji: 'shu', hiragana: 'しゅ', katakana: 'シュ', row: 'sha', column: 'u', vocabulary: 'しゅみ', meaning: '愛好', icon: '🎨', spelling: ['shu', 'mi'] }),
+  sound({ sound: 'sho', romaji: 'sho', hiragana: 'しょ', katakana: 'ショ', row: 'sha', column: 'o', vocabulary: 'しょくじ', meaning: '用餐', icon: '🍽️', spelling: ['sho', 'ku', 'ji'] }),
+
+  sound({ sound: 'cha', romaji: 'cha', hiragana: 'ちゃ', katakana: 'チャ', row: 'cha', column: 'a', vocabulary: 'ちゃわん', meaning: '茶碗', icon: '🍵', spelling: ['cha', 'wa'] }),
+  sound({ sound: 'chu', romaji: 'chu', hiragana: 'ちゅ', katakana: 'チュ', row: 'cha', column: 'u', vocabulary: 'ちゅうしゃ', meaning: '打針', icon: '💉', spelling: ['chu', 'sha'] }),
+  sound({ sound: 'cho', romaji: 'cho', hiragana: 'ちょ', katakana: 'チョ', row: 'cha', column: 'o', vocabulary: 'ちょこ', meaning: '巧克力', icon: '🍫', spelling: ['cho', 'ko'] }),
+
+  sound({ sound: 'nya', romaji: 'nya', hiragana: 'にゃ', katakana: 'ニャ', row: 'nya', column: 'a', vocabulary: 'にゃんこ', meaning: '貓咪', icon: '🐱', spelling: ['nya', 'ko'] }),
+  sound({ sound: 'nyu', romaji: 'nyu', hiragana: 'にゅ', katakana: 'ニュ', row: 'nya', column: 'u', vocabulary: 'にゅうがく', meaning: '入學', icon: '🎒', spelling: ['nyu', 'ga', 'ku'] }),
+  sound({ sound: 'nyo', romaji: 'nyo', hiragana: 'にょ', katakana: 'ニョ', row: 'nya', column: 'o', vocabulary: 'にょろにょろ', meaning: '扭動', icon: '🐍', spelling: ['nyo', 'ro'] }),
+
+  sound({ sound: 'hya', romaji: 'hya', hiragana: 'ひゃ', katakana: 'ヒャ', row: 'hya', column: 'a', vocabulary: 'ひゃく', meaning: '一百', icon: '💯', spelling: ['hya', 'ku'] }),
+  sound({ sound: 'hyu', romaji: 'hyu', hiragana: 'ひゅ', katakana: 'ヒュ', row: 'hya', column: 'u', vocabulary: 'ひゅうが', meaning: '日向', icon: '☀️', spelling: ['hyu', 'ga'] }),
+  sound({ sound: 'hyo', romaji: 'hyo', hiragana: 'ひょ', katakana: 'ヒョ', row: 'hya', column: 'o', vocabulary: 'ひょう', meaning: '豹', icon: '🐆', spelling: ['hyo', 'u'] }),
+
+  sound({ sound: 'mya', romaji: 'mya', hiragana: 'みゃ', katakana: 'ミャ', row: 'mya', column: 'a', vocabulary: 'みゃく', meaning: '脈搏', icon: '💓', spelling: ['mya', 'ku'] }),
+  sound({ sound: 'myu', romaji: 'myu', hiragana: 'みゅ', katakana: 'ミュ', row: 'mya', column: 'u', vocabulary: 'みゅーじっく', meaning: '音樂', icon: '🎵', spelling: ['myu', 'ji'] }),
+  sound({ sound: 'myo', romaji: 'myo', hiragana: 'みょ', katakana: 'ミョ', row: 'mya', column: 'o', vocabulary: 'みょうじ', meaning: '姓氏', icon: '🏷️', spelling: ['myo', 'ji'] }),
+
+  sound({ sound: 'rya', romaji: 'rya', hiragana: 'りゃ', katakana: 'リャ', row: 'rya', column: 'a', vocabulary: 'りゃく', meaning: '省略', icon: '✂️', spelling: ['rya', 'ku'] }),
+  sound({ sound: 'ryu', romaji: 'ryu', hiragana: 'りゅ', katakana: 'リュ', row: 'rya', column: 'u', vocabulary: 'りゅう', meaning: '龍', icon: '🐉', spelling: ['ryu', 'u'] }),
+  sound({ sound: 'ryo', romaji: 'ryo', hiragana: 'りょ', katakana: 'リョ', row: 'rya', column: 'o', vocabulary: 'りょこう', meaning: '旅行', icon: '✈️', spelling: ['ryo', 'ko', 'u'] }),
+
+  sound({ sound: 'ja', romaji: 'ja', hiragana: 'じゃ', katakana: 'ジャ', row: 'ja', column: 'a', vocabulary: 'じゃがいも', meaning: '馬鈴薯', icon: '🥔', spelling: ['ja', 'ga', 'i', 'mo'] }),
+  sound({ sound: 'ju', romaji: 'ju', hiragana: 'じゅ', katakana: 'ジュ', row: 'ja', column: 'u', vocabulary: 'じゅう', meaning: '十', icon: '🔟', spelling: ['ju', 'u'] }),
+  sound({ sound: 'jo', romaji: 'jo', hiragana: 'じょ', katakana: 'ジョ', row: 'ja', column: 'o', vocabulary: 'じょせい', meaning: '女性', icon: '👩', spelling: ['jo', 'se', 'i'] }),
 ]
 
 export function getSound(soundId: string): KanaSound {

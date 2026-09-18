@@ -61,8 +61,8 @@ export function removeCardsFromHand(hand: KanaCard[], used: KanaCard[]): KanaCar
 
 export function computeRankings(players: PlayerState[]) {
   const sorted = [...players].sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score
     if (b.gold !== a.gold) return b.gold - a.gold
+    if (b.score !== a.score) return b.score - a.score
     return a.seat - b.seat
   })
   return sorted.map((p, i) => ({

@@ -4,7 +4,7 @@ import { CARD_CATALOG, getCardById, type KanaCard } from '../data/cards'
 import { createRng } from './rng'
 import { drainAuto, reduce, startGame } from './game'
 import { reactionOrder } from './game'
-import { HAND_SIZE } from './types'
+import { HAND_SIZE, INITIAL_GOLD } from './types'
 import { findYaku } from './yaku'
 
 const bonus = DEFAULT_BONUS
@@ -62,7 +62,7 @@ describe('回合：抽牌、棄牌、補牌', () => {
     expect(state.players[0]?.hand).toHaveLength(HAND_SIZE)
   })
 
-  it('抽牌後手牌依五十音重排，新牌插入對應位置', () => {
+  it('抽牌後新牌置於最右端不立即重排，棄牌後才整理手牌並自動排序', () => {
     let state = startGame({
       seed: 1,
       startPlayerIndex: 0,
@@ -77,8 +77,8 @@ describe('回合：抽牌、棄牌、補牌', () => {
     })
     state = play(state, { type: 'DEAL_DONE' })
     state = play(state, { type: 'DRAW' })
+    // 抽到的 a-hiragana 應在最右端（最後一格），前 7 張保持原排序
     expect(state.players[0]?.hand.map((c) => c.id)).toEqual([
-      'a-hiragana',
       'ka-hiragana',
       'sa-hiragana',
       'ta-hiragana',
@@ -86,8 +86,22 @@ describe('回合：抽牌、棄牌、補牌', () => {
       'ha-hiragana',
       'ma-hiragana',
       'ra-hiragana',
+      'a-hiragana',
     ])
     expect(state.lastDrawnCardId).toBe('a-hiragana')
+
+    // 打出手牌中的 ka-hiragana，打出後剩餘 7 張整理並自動排序
+    state = play(state, { type: 'SKIP_YAKU' })
+    state = play(state, { type: 'DISCARD', cardId: 'ka-hiragana' })
+    expect(state.players[0]?.hand.map((c) => c.id)).toEqual([
+      'a-hiragana',
+      'sa-hiragana',
+      'ta-hiragana',
+      'na-hiragana',
+      'ha-hiragana',
+      'ma-hiragana',
+      'ra-hiragana',
+    ])
   })
 })
 
@@ -116,7 +130,7 @@ describe('完成牌型流程', () => {
     expect(state.phase).toBe('review')
     const p0mid = state.players[0]!
     expect(p0mid.score).toBe(3)
-    expect(p0mid.gold).toBe(20 + 3 * 3)
+    expect(p0mid.gold).toBe(INITIAL_GOLD + 3 * 3)
     state = play(state, { type: 'FINISH_REVIEW' })
     expect(state.phase).toBe('playerDraw')
     const p0 = state.players[0]!
@@ -124,8 +138,8 @@ describe('完成牌型流程', () => {
     expect(p0.hand.some((c) => c.sound === 'ka')).toBe(false)
     expect(p0.completed).toHaveLength(1)
     expect(p0.score).toBe(3)
-    expect(p0.gold).toBe(20 + 3 * 3)
-    expect(state.players.slice(1).every((p) => p.gold === 17)).toBe(true)
+    expect(p0.gold).toBe(INITIAL_GOLD + 3 * 3)
+    expect(state.players.slice(1).every((p) => p.gold === INITIAL_GOLD - 3)).toBe(true)
   })
 })
 
@@ -164,10 +178,10 @@ describe('棄牌優先順序', () => {
     expect(state.players[1]?.completed[0]?.source).toBe('ron')
     expect(state.players[2]?.completed).toHaveLength(0)
     // only discarder (p0) pays 3
-    expect(state.players[0]?.gold).toBe(17)
-    expect(state.players[1]?.gold).toBe(23)
-    expect(state.players[2]?.gold).toBe(20)
-    expect(state.players[3]?.gold).toBe(20)
+    expect(state.players[0]?.gold).toBe(INITIAL_GOLD - 3)
+    expect(state.players[1]?.gold).toBe(INITIAL_GOLD + 3)
+    expect(state.players[2]?.gold).toBe(INITIAL_GOLD)
+    expect(state.players[3]?.gold).toBe(INITIAL_GOLD)
     expect(state.lastTransfers).toEqual([{ fromId: 'p0', toId: 'p1', amount: 3 }])
     expect(state.events.some((e) => e.text.includes('抄了'))).toBe(true)
     expect(state.players[0]?.discards.some((c) => c.id === discardId)).toBe(false)
@@ -317,7 +331,7 @@ describe('再玩一次', () => {
     expect(restarted.phase).toBe('dealing')
     const ready = play(restarted, { type: 'DEAL_DONE' })
     expect(ready.phase).toBe('playerDraw')
-    expect(ready.players.every((p) => p.gold === 20 && p.score === 0 && p.completed.length === 0)).toBe(true)
+    expect(ready.players.every((p) => p.gold === INITIAL_GOLD && p.score === 0 && p.completed.length === 0)).toBe(true)
     expect(ready.events.some((e) => e.text.includes('遊戲開始'))).toBe(true)
   })
 })
@@ -329,5 +343,31 @@ describe('課程預覽', () => {
     expect(state.activeRows).toEqual(['a'])
     const after = play(state, { type: 'SKIP_PREVIEW' })
     expect(after.phase).toBe('dealing')
+  })
+})
+
+describe('連線玩家設定 (playerConfigs)', () => {
+  it('支援指定 remote 真人玩家與 AI 混編之座位配置', () => {
+    const state = startGame({
+      seed: 99,
+      skipPreview: true,
+      playerConfigs: [
+        { id: 'host-1', name: '房主', kind: 'human', seat: 0 },
+        { id: 'peer-2', name: '朋友A', kind: 'remote', seat: 1 },
+        { id: 'peer-3', name: '朋友B', kind: 'remote', seat: 2 },
+        { id: 'ai-4', name: '電腦さくら', kind: 'ai', seat: 3, aiDifficulty: 'easy' },
+      ],
+    })
+    expect(state.players).toHaveLength(4)
+    expect(state.players[0]!.name).toBe('房主')
+    expect(state.players[0]!.kind).toBe('human')
+    expect(state.players[1]!.name).toBe('朋友A')
+    expect(state.players[1]!.kind).toBe('remote')
+    expect(state.players[2]!.name).toBe('朋友B')
+    expect(state.players[2]!.kind).toBe('remote')
+    expect(state.players[3]!.name).toBe('電腦さくら')
+    expect(state.players[3]!.kind).toBe('ai')
+    expect(state.players[3]!.aiDifficulty).toBe('easy')
+    expect(state.players.every((p) => p.hand.length === HAND_SIZE)).toBe(true)
   })
 })

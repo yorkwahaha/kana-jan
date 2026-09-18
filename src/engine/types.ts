@@ -18,7 +18,7 @@ export type Phase =
 
 export type PlayerKind = 'human' | 'ai' | 'local' | 'remote'
 export type AiDifficulty = 'easy' | 'normal'
-export type YakuKind = 'sameSound' | 'sameRow' | 'sameColumn' | 'word'
+export type YakuKind = 'sameSound' | 'sameRow' | 'sameColumn' | 'sameYoon' | 'word'
 export type ScoreSource = 'tsumo' | 'ron'
 
 export interface YakuCandidate {
@@ -111,6 +111,14 @@ export interface Ranking {
   place: number
 }
 
+export interface PlayerConfig {
+  id: string
+  name: string
+  kind: PlayerKind
+  seat: number
+  aiDifficulty?: AiDifficulty
+}
+
 export interface StartConfig {
   seed?: number
   playerName?: string
@@ -129,9 +137,11 @@ export interface StartConfig {
   /** 測試用：指定各玩家起始手牌，略過發牌 */
   hands?: KanaCard[][]
   initialGold?: number
+  /** 連線或自訂牌局：指定 4 個座位的詳細配置 */
+  playerConfigs?: PlayerConfig[]
 }
 
 export const HAND_SIZE = 7
 export const PLAYER_COUNT = 4
-export const INITIAL_GOLD = 20
+export const INITIAL_GOLD = 25
 export const DEFAULT_AI_NAMES = ['さくら', 'ひなた', 'あおい']

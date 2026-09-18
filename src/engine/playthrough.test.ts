@@ -25,9 +25,9 @@ function stepAutoplay(state: GameState): GameState {
 }
 
 describe('完整自動對局', () => {
-  it('完整牌庫為 120 張且 id 不重複', () => {
-    expect(CARD_CATALOG).toHaveLength(120)
-    expect(new Set(CARD_CATALOG.map((c) => c.id)).size).toBe(120)
+  it('完整牌庫為 267 張且 id 不重複', () => {
+    expect(CARD_CATALOG).toHaveLength(267)
+    expect(new Set(CARD_CATALOG.map((c) => c.id)).size).toBe(267)
   })
 
   it('能從開局自動進行到遊戲結束並產生排名', () => {

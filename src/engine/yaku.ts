@@ -1,7 +1,15 @@
 import type { BonusMission } from '../data/bonuses'
 import { bonusSpelling } from '../data/bonuses'
 import type { CardType, KanaCard } from '../data/cards'
-import { COLUMN_LABEL, ROW_LABEL, ROW_ORDER, getSound, type ColumnId, type RowId } from '../data/kana'
+import {
+  COLUMN_LABEL,
+  ROW_LABEL,
+  ROW_ORDER,
+  getSound,
+  isYoonRow,
+  type ColumnId,
+  type RowId,
+} from '../data/kana'
 import { columnYakuEnabled } from '../data/lessons'
 import type { YakuCandidate, YakuKind } from './types'
 
@@ -9,6 +17,7 @@ export const BASE_SCORE: Record<YakuKind, number> = {
   sameSound: 3,
   sameRow: 6,
   sameColumn: 8,
+  sameYoon: 4,
   word: 5,
 }
 
@@ -49,6 +58,7 @@ export function typeBonusFor(kind: YakuKind, cards: KanaCard[]): number {
   if (kind === 'sameSound' || kind === 'word') return 0
   const t = uniformType(cards)
   if (!t) return 0
+  if (kind === 'sameYoon') return 2
   return TYPE_BONUS[t]
 }
 
@@ -65,11 +75,12 @@ export function missionBonusFor(
     case 'sameSound':
       return cards[0]?.sound === bonus.sound ? bonus.points : 0
     case 'sameRow':
+    case 'sameYoon':
       return hitsTarget ? bonus.points : 0
     case 'word':
       return bonus.points
     case 'sameColumn':
-      return column !== undefined && cards.some((c) => c.sound === bonus.sound) ? bonus.points : 0
+      return column !== undefined && hitsTarget ? bonus.points : 0
     default:
       return 0
   }
@@ -102,49 +113,92 @@ function finishYaku(
 function pickBestSetForSounds(
   bySound: Map<string, KanaCard[]>,
   sounds: string[],
+  mustIncludeCardId?: string,
 ): KanaCard[] {
   const tryType = (t: CardType): KanaCard[] | null => {
     const picked: KanaCard[] = []
     for (const sound of sounds) {
-      const card = bySound.get(sound)?.find((c) => c.cardType === t)
+      const candidates = bySound.get(sound) ?? []
+      let card: KanaCard | undefined
+      if (mustIncludeCardId && candidates.some((c) => c.id === mustIncludeCardId)) {
+        card = candidates.find((c) => c.id === mustIncludeCardId)
+        if (card && card.cardType !== t) return null
+      } else {
+        card = candidates.find((c) => c.cardType === t)
+      }
       if (!card) return null
       picked.push(card)
     }
     return picked
   }
 
-  return (
+  const uniform =
     tryType('vocabulary') ??
     tryType('katakana') ??
-    tryType('hiragana') ??
-    sounds.map((sound) => {
-      const card = bySound.get(sound)?.[0]
-      if (!card) throw new Error(`Missing sound ${sound}`)
-      return card
-    })
-  )
+    tryType('hiragana')
+
+  if (uniform) return uniform
+
+  return sounds.map((sound) => {
+    const candidates = bySound.get(sound) ?? []
+    if (mustIncludeCardId) {
+      const target = candidates.find((c) => c.id === mustIncludeCardId)
+      if (target) return target
+    }
+    const card = candidates[0]
+    if (!card) throw new Error(`Missing sound ${sound}`)
+    return card
+  })
 }
 
-function pickFiveSounds(bySound: Map<string, KanaCard[]>): string[] {
+function pickDistinctSounds(
+  bySound: Map<string, KanaCard[]>,
+  targetCount: number,
+  mustIncludeCardId?: string,
+  bonusSound?: string,
+): string[] {
   const sounds = [...bySound.keys()]
+  if (sounds.length <= targetCount) return sounds
+
+  // Prioritize sounds containing mustIncludeCardId, then bonusSound, then matching types
+  sounds.sort((a, b) => {
+    const aHasMust = mustIncludeCardId && bySound.get(a)?.some((c) => c.id === mustIncludeCardId) ? 1 : 0
+    const bHasMust = mustIncludeCardId && bySound.get(b)?.some((c) => c.id === mustIncludeCardId) ? 1 : 0
+    if (bHasMust !== aHasMust) return bHasMust - aHasMust
+
+    const aHasBonus = bonusSound && a === bonusSound ? 1 : 0
+    const bHasBonus = bonusSound && b === bonusSound ? 1 : 0
+    if (bHasBonus !== aHasBonus) return bHasBonus - aHasBonus
+
+    return 0
+  })
+
+  // Try to find a group of targetCount sounds that share a uniform card type
   for (const t of ['vocabulary', 'katakana', 'hiragana'] as const) {
     const matching = sounds.filter((s) => bySound.get(s)?.some((c) => c.cardType === t))
-    if (matching.length >= 5) return matching.slice(0, 5)
+    if (matching.length >= targetCount) {
+      if (!mustIncludeCardId || matching.some((s) => bySound.get(s)?.some((c) => c.id === mustIncludeCardId))) {
+        return matching.slice(0, targetCount)
+      }
+    }
   }
-  return sounds.slice(0, 5)
+
+  return sounds.slice(0, targetCount)
 }
 
 function sameSoundLabel(hiragana: string): string {
   return `${hiragana}同音組`
 }
 
-function pickWordCards(cards: KanaCard[], spelling: string[]): KanaCard[] | null {
+function pickWordCards(cards: KanaCard[], spelling: string[], mustIncludeCardId?: string): KanaCard[] | null {
   const used = new Set<string>()
   const picked: KanaCard[] = []
   for (const mora of spelling) {
     const pool = cards.filter((c) => c.sound === mora && !used.has(c.id))
     if (pool.length === 0) return null
+    const target = mustIncludeCardId ? pool.find((c) => c.id === mustIncludeCardId) : undefined
     const card =
+      target ??
       pool.find((c) => c.cardType === 'hiragana') ??
       pool.find((c) => c.cardType === 'katakana') ??
       pool[0]!
@@ -166,43 +220,51 @@ export function findYaku(
   const includesRequired = (picked: KanaCard[]) =>
     !mustId || picked.some((c) => c.id === mustId)
 
+  // 1. 同音三張 (sameSound: 平+片+語，或同音三張複本)
   const bySound = groupBy(cards, (c) => c.sound)
   for (const [sound, group] of bySound) {
+    // 檢查是否有包含必須卡牌（若有指定）
+    if (mustId && !group.some((c) => c.id === mustId)) continue
+
     const hira = group.find((c) => c.cardType === 'hiragana')
     const kata = group.find((c) => c.cardType === 'katakana')
     const vocab = group.find((c) => c.cardType === 'vocabulary')
+
+    let picked: KanaCard[] | null = null
+
     if (hira && kata && vocab) {
-      const picked = [hira, kata, vocab]
-      if (includesRequired(picked)) {
-        results.push(
-          finishYaku(
-            {
-              kind: 'sameSound',
-              cards: picked,
-              sound,
-              label: sameSoundLabel(hira.hiragana),
-            },
-            bonus,
-          ),
+      // 優先湊平+片+語
+      if (mustId) {
+        const mustCard = group.find((c) => c.id === mustId)!
+        const otherTypes = (['hiragana', 'katakana', 'vocabulary'] as const).filter(
+          (t) => t !== mustCard.cardType,
         )
+        const c1 = group.find((c) => c.cardType === otherTypes[0] && c.id !== mustCard.id)
+        const c2 = group.find((c) => c.cardType === otherTypes[1] && c.id !== mustCard.id)
+        if (c1 && c2) picked = [mustCard, c1, c2]
+      } else {
+        picked = [hira, kata, vocab]
+      }
+    } else if (group.length >= 3) {
+      // 若為同音重複三張 (如 しゃ/しゃ/しゃ)
+      if (mustId) {
+        const mustCard = group.find((c) => c.id === mustId)!
+        const others = group.filter((c) => c.id !== mustCard.id).slice(0, 2)
+        if (others.length === 2) picked = [mustCard, ...others]
+      } else {
+        picked = group.slice(0, 3)
       }
     }
-  }
 
-  const byRow = groupBy(cards, (c) => c.row)
-  for (const [row, group] of byRow) {
-    const soundsInRow = groupBy(group, (c) => c.sound)
-    if (soundsInRow.size < 5) continue
-    const sounds = pickFiveSounds(soundsInRow)
-    const picked = pickBestSetForSounds(soundsInRow, sounds)
-    if (includesRequired(picked)) {
+    if (picked && includesRequired(picked)) {
+      const displaySound = picked.find((c) => c.cardType === 'hiragana')?.hiragana ?? picked[0]!.hiragana
       results.push(
         finishYaku(
           {
-            kind: 'sameRow',
+            kind: 'sameSound',
             cards: picked,
-            row: row as RowId,
-            label: `${ROW_LABEL[row as RowId]}揃い`,
+            sound,
+            label: sameSoundLabel(displaySound),
           },
           bonus,
         ),
@@ -210,32 +272,85 @@ export function findYaku(
     }
   }
 
-  if (columnYakuEnabled(activeRows)) {
-    const byColumn = groupBy(cards, (c) => c.column)
-    for (const [column, group] of byColumn) {
-      const soundsInCol = groupBy(group, (c) => c.sound)
-      if (soundsInCol.size < 5) continue
-      const sounds = pickFiveSounds(soundsInCol)
-      const picked = pickBestSetForSounds(soundsInCol, sounds)
-      if (includesRequired(picked)) {
-        results.push(
-          finishYaku(
-            {
-              kind: 'sameColumn',
-              cards: picked,
-              column: column as ColumnId,
-              label: `${COLUMN_LABEL[column as ColumnId]}揃い`,
-            },
-            bonus,
-          ),
-        )
+  // 2. 行牌型：一般行五張 (sameRow) 或 拗音三張 (sameYoon)
+  const byRow = groupBy(cards, (c) => c.row)
+  for (const [row, group] of byRow) {
+    if (mustId && !group.some((c) => c.id === mustId)) continue
+    const rowId = row as RowId
+
+    if (isYoonRow(rowId)) {
+      // 拗音行：3 個音 (a, u, o 段) 湊齊即成牌型
+      const soundsInRow = groupBy(group, (c) => c.sound)
+      if (soundsInRow.size === 3) {
+        const picked = pickBestSetForSounds(soundsInRow, [...soundsInRow.keys()], mustId)
+        if (includesRequired(picked)) {
+          results.push(
+            finishYaku(
+              {
+                kind: 'sameYoon',
+                cards: picked,
+                row: rowId,
+                label: `${ROW_LABEL[rowId]}揃い`,
+              },
+              bonus,
+            ),
+          )
+        }
+      }
+    } else {
+      // 清音 / 濁音行：5 個音
+      const soundsInRow = groupBy(group, (c) => c.sound)
+      if (soundsInRow.size >= 5) {
+        const sounds = pickDistinctSounds(soundsInRow, 5, mustId, bonus.sound)
+        const picked = pickBestSetForSounds(soundsInRow, sounds, mustId)
+        if (includesRequired(picked)) {
+          results.push(
+            finishYaku(
+              {
+                kind: 'sameRow',
+                cards: picked,
+                row: rowId,
+                label: `${ROW_LABEL[rowId]}揃い`,
+              },
+              bonus,
+            ),
+          )
+        }
       }
     }
   }
 
+  // 3. 段牌型：同一段 (sameColumn)
+  if (columnYakuEnabled(activeRows)) {
+    const targetCount = Math.min(4, activeRows.length)
+    const byColumn = groupBy(cards, (c) => c.column)
+    for (const [column, group] of byColumn) {
+      if (mustId && !group.some((c) => c.id === mustId)) continue
+      const soundsInCol = groupBy(group, (c) => c.sound)
+      if (soundsInCol.size >= targetCount) {
+        const sounds = pickDistinctSounds(soundsInCol, targetCount, mustId, bonus.sound)
+        const picked = pickBestSetForSounds(soundsInCol, sounds, mustId)
+        if (includesRequired(picked)) {
+          results.push(
+            finishYaku(
+              {
+                kind: 'sameColumn',
+                cards: picked,
+                column: column as ColumnId,
+                label: `${COLUMN_LABEL[column as ColumnId]}揃い`,
+              },
+              bonus,
+            ),
+          )
+        }
+      }
+    }
+  }
+
+  // 4. 組字牌型 (word)
   const spelling = bonusSpelling(bonus, activeRows)
   if (spelling.length >= 2) {
-    const picked = pickWordCards(cards, spelling)
+    const picked = pickWordCards(cards, spelling, mustId)
     if (picked && includesRequired(picked)) {
       const kana = getSound(bonus.sound)
       results.push(
@@ -271,7 +386,7 @@ export function findNearYaku(cards: KanaCard[], activeRows: readonly RowId[] = R
   const bySound = groupBy(cards, (c) => c.sound)
   for (const [, group] of bySound) {
     const types = new Set(group.map((c) => c.cardType))
-    if (types.size === 2) {
+    if (types.size === 2 || group.length === 2) {
       const sample = group[0]!
       hints.push({
         kind: 'sameSound',
@@ -285,23 +400,37 @@ export function findNearYaku(cards: KanaCard[], activeRows: readonly RowId[] = R
 
   const byRow = groupBy(cards, (c) => c.row)
   for (const [row, group] of byRow) {
+    const rowId = row as RowId
     const sounds = new Set(group.map((c) => c.sound))
-    if (sounds.size === 4) {
-      hints.push({
-        kind: 'sameRow',
-        label: `${ROW_LABEL[row as RowId]}揃い`,
-        distance: 1,
-        cardIds: group.map((c) => c.id),
-        missingSounds: [],
-      })
+    if (isYoonRow(rowId)) {
+      if (sounds.size === 2) {
+        hints.push({
+          kind: 'sameYoon',
+          label: `${ROW_LABEL[rowId]}揃い`,
+          distance: 1,
+          cardIds: group.map((c) => c.id),
+          missingSounds: [],
+        })
+      }
+    } else {
+      if (sounds.size === 4) {
+        hints.push({
+          kind: 'sameRow',
+          label: `${ROW_LABEL[rowId]}揃い`,
+          distance: 1,
+          cardIds: group.map((c) => c.id),
+          missingSounds: [],
+        })
+      }
     }
   }
 
   if (columnYakuEnabled(activeRows)) {
+    const targetCount = Math.min(4, activeRows.length)
     const byColumn = groupBy(cards, (c) => c.column)
     for (const [column, group] of byColumn) {
       const sounds = new Set(group.map((c) => c.sound))
-      if (sounds.size === 4) {
+      if (sounds.size === targetCount - 1) {
         hints.push({
           kind: 'sameColumn',
           label: `${COLUMN_LABEL[column as ColumnId]}揃い`,
@@ -319,3 +448,4 @@ export function findNearYaku(cards: KanaCard[], activeRows: readonly RowId[] = R
 export function yakuUsesCard(yaku: YakuCandidate, cardId: string): boolean {
   return yaku.cards.some((c) => c.id === cardId)
 }
+

@@ -9,6 +9,7 @@ interface Props {
   hinted?: boolean
   yakuPart?: boolean
   disabled?: boolean
+  drawn?: boolean
   showHints?: Settings
   onClick?: () => void
   faceDown?: boolean
@@ -22,22 +23,30 @@ export function CardView({
   hinted,
   yakuPart,
   disabled,
+  drawn,
   showHints,
   onClick,
   faceDown,
   revealMeaning,
 }: Props) {
   const glyph = displayGlyph(card)
+  const isVocab = card.cardType === 'vocabulary'
+  const charLength = isVocab ? card.vocabulary.length : glyph.length
+  const isYouon = !isVocab && glyph.length >= 2
+
   const className = [
     'kana-card',
     `size-${size}`,
     `type-${card.cardType}`,
+    `len-${Math.min(charLength, 6)}`,
+    isYouon ? 'is-youon' : '',
     selected ? 'is-selected' : '',
     hinted ? 'is-near' : '',
     yakuPart ? 'is-yaku' : '',
     disabled ? 'is-disabled' : '',
+    drawn ? 'is-drawn' : '',
     card.confusable ? 'is-confusable' : '',
-  ].join(' ')
+  ].filter(Boolean).join(' ')
   const style = { ['--row-color' as string]: card.color }
   const showRomaji = Boolean(showHints?.showRomaji)
   const showMeaning = Boolean(revealMeaning || showHints?.showMeaning)

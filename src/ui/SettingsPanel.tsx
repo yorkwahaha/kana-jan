@@ -5,9 +5,10 @@ interface Props {
   onChange: (next: Settings) => void
   onClose: () => void
   onRestart: () => void
+  onToLobby?: () => void
 }
 
-export function SettingsPanel({ settings, onChange, onClose, onRestart }: Props) {
+export function SettingsPanel({ settings, onChange, onClose, onRestart, onToLobby }: Props) {
   const toggle = (key: keyof Settings) => {
     const value = settings[key]
     if (typeof value === 'boolean') onChange({ ...settings, [key]: !value })
@@ -75,13 +76,14 @@ export function SettingsPanel({ settings, onChange, onClose, onRestart }: Props)
               <input type="checkbox" checked={settings.highlightNear} onChange={() => toggle('highlightNear')} />
               高亮接近完成的牌型
             </label>
-            <label className="toggle">
-              <input type="checkbox" checked={settings.recallQuiz} onChange={() => toggle('recallQuiz')} />
-              結算後必考一題讀音
-            </label>
           </fieldset>
         </div>
         <footer className="modal-foot">
+          {onToLobby && (
+            <button className="btn" onClick={onToLobby}>
+              回到大廳
+            </button>
+          )}
           <button className="btn danger" onClick={onRestart}>
             重新開始
           </button>

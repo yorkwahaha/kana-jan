@@ -204,3 +204,64 @@ describe('多個牌型同時成立', () => {
     expect(found.some((y) => y.kind === 'sameRow')).toBe(true)
   })
 })
+
+describe('拗音牌型', () => {
+  it('拗音三張（しゃ/しゅ/しょ）正確判定 sameYoon 且基礎分為 4', () => {
+    const hand = cards('sha-hiragana', 'shu-katakana', 'sho-vocabulary')
+    const found = findYaku(hand, noBonus, { activeRows: ['sha', 'ka', 'sa', 'ta'] })
+    const yoon = found.find((y) => y.kind === 'sameYoon')
+    expect(yoon).toBeTruthy()
+    expect(yoon?.baseScore).toBe(4)
+    expect(yoon?.totalScore).toBe(4)
+    expect(yoon?.label).toContain('しゃ行揃い')
+  })
+
+  it('拗音同音三張（しゃ/シャ/写真）正確判定 sameSound（3 分）', () => {
+    const hand = cards('sha-hiragana', 'sha-katakana', 'sha-vocabulary')
+    const found = findYaku(hand, noBonus, { activeRows: ['sha', 'ka', 'sa', 'ta'] })
+    const same = found.find((y) => y.kind === 'sameSound')
+    expect(same).toBeTruthy()
+    expect(same?.baseScore).toBe(3)
+    expect(same?.totalScore).toBe(3)
+  })
+
+  it('拗音三張全同類型享 +2 純色加成', () => {
+    const hand = cards('sha-hiragana', 'shu-hiragana', 'sho-hiragana')
+    const found = findYaku(hand, noBonus, { activeRows: ['sha', 'ka', 'sa', 'ta'] })
+    const yoon = found.find((y) => y.kind === 'sameYoon')
+    expect(yoon).toBeTruthy()
+    expect(yoon?.typeBonus).toBe(2)
+    expect(yoon?.totalScore).toBe(6) // 4 + 2
+  })
+
+  it('拗音同音重複卡（如 しゃ/しゃ/しゃ）亦可組成 sameSound', () => {
+    const h1 = getCardById('sha-hiragana')
+    const h2 = { ...h1, id: 'sha-hiragana#1' }
+    const h3 = { ...h1, id: 'sha-hiragana#2' }
+    const found = findYaku([h1, h2, h3], noBonus, { activeRows: ['sha'] })
+    expect(found.some((y) => y.kind === 'sameSound')).toBe(true)
+  })
+})
+
+describe('4 行環境下的段牌型與抄牌 Bug 修復', () => {
+  it('4 行環境下湊齊同段 4 張判定 sameColumn（8 分）', () => {
+    const hand = cards('a-hiragana', 'ka-hiragana', 'sa-hiragana', 'ta-hiragana')
+    const found = findYaku(hand, noBonus, { activeRows: ['a', 'ka', 'sa', 'ta'] })
+    const col = found.find((y) => y.kind === 'sameColumn')
+    expect(col).toBeTruthy()
+    expect(col?.baseScore).toBe(8)
+  })
+
+  it('手牌有重複牌時，抄對手打出的牌必定被包含進候選組合中', () => {
+    // 手牌有 a#0, 對手打出 a#1, 手牌還有 i, u, e, o
+    const a0 = getCardById('a-hiragana')
+    const a1 = { ...a0, id: 'a-hiragana#1' }
+    const other = cards('i-hiragana', 'u-hiragana', 'e-hiragana', 'o-hiragana')
+    const found = findYaku([a0, a1, ...other], noBonus, {
+      mustIncludeCardId: a1.id,
+      activeRows: ['a'],
+    })
+    expect(found.some((y) => y.cards.some((c) => c.id === a1.id))).toBe(true)
+  })
+})
+

@@ -1,4 +1,4 @@
-import { ROW_COLOR, ROW_LABEL, ROW_MARK, soundsForRows } from '../data/kana'
+import { ROW_COLOR, ROW_LABEL, soundsForRows } from '../data/kana'
 import { getLesson } from '../data/lessons'
 import type { GameState } from '../engine/types'
 import { CardView } from './CardView'
@@ -27,7 +27,7 @@ export function RowPreview({ state, onContinue }: Props) {
                 ))}
               </div>
               <strong style={{ color: ROW_COLOR[row] }}>
-                {ROW_MARK[row]} · {ROW_LABEL[row]}
+                {ROW_LABEL[row]}
               </strong>
             </div>
           ))}
