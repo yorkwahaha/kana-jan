@@ -46,6 +46,8 @@ export function ScoreReview({ state, settings, onFinish }: Props) {
 
   const placeOf = (id: string) => rankings.find((r) => r.playerId === id)?.place ?? 4
 
+  const singleTransfer = state.lastTransfers.length === 1 ? state.lastTransfers[0] : null
+
   return (
     <div className="settlement-overlay" onClick={onFinish} aria-live="polite">
       {/* 1. 桌面 4 方結算銘牌 (參照圖二、圖三：上下左右四方位) */}
@@ -106,6 +108,30 @@ export function ScoreReview({ state, settings, onFinish }: Props) {
 
       {/* 3. 中央焦點成牌區 (役種名 + 分數 + 卡牌一字排開 + 繼續對局按鈕) */}
       <div className="settlement-center" onClick={(e) => e.stopPropagation()}>
+        {/* 放槍 / 自摸 狀態橫幅提示 */}
+        {singleTransfer && (
+          <div className="settlement-deal-banner deal-ron">
+            <span className="deal-tag ron">⚡ 放槍</span>
+            <span className="deal-payer">
+              {state.players.find((p) => p.id === singleTransfer.fromId)?.name}
+            </span>
+            <span className="deal-arrow">➔</span>
+            <span className="deal-winner">
+              {state.players.find((p) => p.id === singleTransfer.toId)?.name}
+            </span>
+            <span className="deal-action">和牌</span>
+          </div>
+        )}
+        {state.lastTransfers.length > 1 && (
+          <div className="settlement-deal-banner deal-tsumo">
+            <span className="deal-tag tsumo">🌟 自摸</span>
+            <span className="deal-winner">
+              {state.players.find((p) => p.id === pending.playerId)?.name}
+            </span>
+            <span className="deal-action">和牌（三家支付）</span>
+          </div>
+        )}
+
         <div className="settlement-yaku-header">
           <span className="settlement-yaku-title">{pending.yaku.label}</span>
           <span className="settlement-yaku-score">+{pending.yaku.totalScore}</span>

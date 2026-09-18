@@ -15,9 +15,9 @@ import { CardView } from './CardView'
 import { CenterBoard } from './CenterBoard'
 import { DiscardRiver } from './DiscardRiver'
 import { EventLog } from './EventLog'
-import { Mascot } from './Mascot'
 import { MeldArea } from './MeldArea'
 import { SeatHud } from './SeatHud'
+import { TurnTimer } from './TurnTimer'
 
 interface Props {
   state: GameState
@@ -26,6 +26,12 @@ interface Props {
   selectedCardId: string | null
   hoverYaku: YakuCandidate | null
   locked: boolean
+  turnTimer?: {
+    active: boolean
+    seconds: number
+    turnKey: string | number
+    onTimeout: () => void
+  }
   onSelectCard: (id: string) => void
   onChooseYaku: (id: string) => void
   onSkipYaku: () => void
@@ -48,6 +54,7 @@ export function GameTable({
   selectedCardId,
   hoverYaku,
   locked,
+  turnTimer,
   onSelectCard,
   onChooseYaku,
   onSkipYaku,
@@ -159,9 +166,8 @@ export function GameTable({
 
         <CenterBoard state={state} settings={settings} actingPos={actingPos} />
 
-        {/* 自家玩家資訊角 (Bottom Left: Mascot + Seat HUD) - 參照圖一獨立置於角落 */}
+        {/* 自家玩家資訊角 (Bottom Left: Seat HUD) - 參照圖一獨立置於角落 */}
         <div className="human-seat-corner">
-          <Mascot mood={state.lastFx === 'dekita' || state.lastFx === 'moratta' ? 'cheer' : thinking ? 'think' : 'idle'} />
           <SeatHud {...hudFor(human)} />
         </div>
 
@@ -195,6 +201,15 @@ export function GameTable({
                 {discarder ? `${discarder.name} 丟出了「${state.currentDiscard ? displayGlyph(state.currentDiscard) : ''}」。` : ''}
                 你要抄走這張牌來完成牌型嗎？
               </p>
+              {turnTimer && turnTimer.active && (
+                <TurnTimer
+                  seconds={turnTimer.seconds}
+                  turnKey={turnTimer.turnKey}
+                  active={turnTimer.active}
+                  onTimeout={turnTimer.onTimeout}
+                  className="timer-in-action-bar"
+                />
+              )}
               {reactionYakus.map((y) => (
                 <button
                   key={y.id}
@@ -227,25 +242,38 @@ export function GameTable({
           <div className="hand-row" data-hand-origin="human">
             {human.hand.map((card, idx) => {
               const isDrawn =
-                state.lastDrawnCardId === card.id &&
                 humanTurn &&
                 human.hand.length === 8 &&
-                idx === human.hand.length - 1
+                (state.lastDrawnCardId === card.id || idx === human.hand.length - 1)
+              const showTimer = isDrawn && !!turnTimer?.active
+
               return (
-                <CardView
-                  key={card.id}
-                  card={card}
-                  size="lg"
-                  selected={selectedCardId === card.id}
-                  hinted={nearIds.has(card.id)}
-                  yakuPart={yakuHighlight.has(card.id)}
-                  showHints={settings}
-                  disabled={locked}
-                  drawn={isDrawn}
-                  onClick={() => {
-                    if (canDiscard) onSelectCard(card.id)
-                  }}
-                />
+                <div key={card.id} className={`hand-card-slot ${isDrawn ? 'is-drawn-slot' : ''}`}>
+                  {showTimer && turnTimer && (
+                    <TurnTimer
+                      seconds={turnTimer.seconds}
+                      turnKey={turnTimer.turnKey}
+                      active={turnTimer.active}
+                      onTimeout={turnTimer.onTimeout}
+                      label="摸牌"
+                      className="timer-above-drawn"
+                    />
+                  )}
+                  <CardView
+                    card={card}
+                    size="lg"
+                    selected={selectedCardId === card.id}
+                    hinted={nearIds.has(card.id)}
+                    yakuPart={yakuHighlight.has(card.id)}
+                    showHints={settings}
+                    disabled={locked}
+                    drawn={isDrawn}
+                    hasTimer={showTimer}
+                    onClick={() => {
+                      if (canDiscard) onSelectCard(card.id)
+                    }}
+                  />
+                </div>
               )
             })}
           </div>

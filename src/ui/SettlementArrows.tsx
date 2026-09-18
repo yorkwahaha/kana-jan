@@ -6,44 +6,53 @@ interface Props {
   players: PlayerState[]
 }
 
-/** 計算付款方到贏家之 SVG 1000×700 貝茲曲線與直線路徑 */
+/** 計算付款方到贏家之 SVG 1000×700 貝茲曲線路徑（全數繞行開闊綠呢桌面，避開中央卡牌） */
 function getSettlementArrowPath(from: TablePosition, to: TablePosition): string {
   const key = `${from}->${to}`
   switch (key) {
-    // 贏家在下方 (自家 - 最常見)
+    // 贏家在下方 (自家)
     case 'top->human':
-      // 垂直向下直箭頭 (對照圖二、圖三)
-      return 'M 500,165 L 500,285'
+      // 對家放槍給自家：自上方開闊左側大弧度橫跨直指自家
+      return 'M 440,110 Q 230,350 440,590'
     case 'left->human':
-      // 左側優雅向右下弧形箭頭
-      return 'M 220,410 Q 240,560 360,595'
+      // 左側向右下弧形指向自家
+      return 'M 220,390 Q 280,540 430,595'
     case 'right->human':
-      // 右側優雅向左下弧形箭頭
-      return 'M 780,410 Q 760,560 640,595'
+      // 右側向左下弧形指向自家
+      return 'M 780,390 Q 720,540 570,595'
 
-    // 贏家在上方
+    // 贏家在上方 (對家)
     case 'human->top':
-      return 'M 500,535 L 500,415'
+      // 自家放槍給對家：自自家左側大弧度向上直指對家
+      return 'M 440,590 Q 230,350 440,110'
     case 'left->top':
-      return 'M 220,290 Q 240,140 360,105'
+      // 左側向右上弧形指向對家
+      return 'M 220,290 Q 280,160 430,115'
     case 'right->top':
-      return 'M 780,290 Q 760,140 640,105'
+      // 右側向左上弧形指向對家
+      return 'M 780,290 Q 720,160 570,115'
 
     // 贏家在左方
     case 'right->left':
-      return 'M 740,350 L 615,350'
+      // 右側對家放槍給左側（如圖二）：自上方開闊區橫跨指向左側贏家
+      return 'M 780,280 Q 500,135 220,280'
     case 'top->left':
-      return 'M 410,120 Q 250,140 220,260'
+      // 上方流暢弧向左側贏家
+      return 'M 430,115 Q 280,160 220,290'
     case 'human->left':
-      return 'M 410,580 Q 250,560 220,440'
+      // 自家弧向左側贏家
+      return 'M 430,595 Q 280,540 220,390'
 
     // 贏家在右方
     case 'left->right':
-      return 'M 260,350 L 385,350'
+      // 左側對家放槍給右側：自上方開闊區橫跨指向右側贏家
+      return 'M 220,280 Q 500,135 780,280'
     case 'top->right':
-      return 'M 590,120 Q 750,140 780,260'
+      // 上方流暢弧向右側贏家
+      return 'M 570,115 Q 720,160 780,290'
     case 'human->right':
-      return 'M 590,580 Q 750,560 780,440'
+      // 自家弧向右側贏家
+      return 'M 570,590 Q 720,540 780,390'
 
     default:
       return ''
@@ -60,11 +69,12 @@ export function SettlementArrows({ transfers, players }: Props) {
       <svg className="settlement-svg" viewBox="0 0 1000 700" preserveAspectRatio="none">
         <defs>
           <linearGradient id="settlement-arrow-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ff597b" />
-            <stop offset="100%" stopColor="#e63946" />
+            <stop offset="0%" stopColor="#ff4d6d" />
+            <stop offset="100%" stopColor="#e60039" />
           </linearGradient>
           <filter id="settlement-arrow-shadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="rgba(0, 0, 0, 0.45)" />
+            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="rgba(0, 0, 0, 0.6)" />
+            <feDropShadow dx="0" dy="0" stdDeviation="6" floodColor="rgba(255, 0, 64, 0.4)" />
           </filter>
           <marker
             id="settlement-red-arrowhead"
@@ -72,15 +82,15 @@ export function SettlementArrows({ transfers, players }: Props) {
             refX="22"
             refY="16"
             markerUnits="userSpaceOnUse"
-            markerWidth="36"
-            markerHeight="36"
+            markerWidth="34"
+            markerHeight="34"
             orient="auto"
           >
             <path
-              d="M 4,4 L 28,16 L 4,28 Q 10,16 4,4 Z"
-              fill="#e63946"
-              stroke="#ff758f"
-              strokeWidth="1.5"
+              d="M 4,4 L 28,16 L 4,28 Q 11,16 4,4 Z"
+              fill="#e60039"
+              stroke="#ffffff"
+              strokeWidth="1.8"
             />
           </marker>
         </defs>
@@ -98,7 +108,7 @@ export function SettlementArrows({ transfers, players }: Props) {
               d={path}
               fill="none"
               stroke="url(#settlement-arrow-grad)"
-              strokeWidth="14"
+              strokeWidth="12"
               strokeLinecap="round"
               markerEnd="url(#settlement-red-arrowhead)"
               filter="url(#settlement-arrow-shadow)"

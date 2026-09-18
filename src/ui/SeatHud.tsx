@@ -35,20 +35,18 @@ export function SeatHud({
 
   return (
     <section className={className}>
-      <div className={`seat-place place-${place}`}>{PLACE_BADGES[place] ?? `${place}th`}</div>
-      <div className="seat-meta">
-        <div className="seat-header">
-          <strong className="seat-name">{player.name}</strong>
-          {position === 'human' ? <span className="kind">你</span> : null}
-        </div>
-        <div className="seat-chips" title="局內籌碼點數">
-          <span className="chip-badge">點數 {player.score}</span>
-          {goldDelta !== undefined && goldDelta !== 0 && (
-            <em className={goldDelta > 0 ? 'delta-up' : 'delta-down'}>
-              {goldDelta > 0 ? `＋${goldDelta}` : goldDelta}
-            </em>
-          )}
-        </div>
+      <div className="seat-hud-row seat-hud-row-top">
+        <strong className="seat-name">{player.name}</strong>
+        {position === 'human' ? <span className="kind">你</span> : null}
+        <span className={`seat-place place-${place}`}>{PLACE_BADGES[place] ?? `${place}th`}</span>
+      </div>
+      <div className="seat-hud-row seat-hud-row-bottom">
+        <span className="chip-badge">點數 {player.score}</span>
+        {goldDelta !== undefined && goldDelta !== 0 && (
+          <em className={goldDelta > 0 ? 'delta-up' : 'delta-down'}>
+            {goldDelta > 0 ? `＋${goldDelta}` : goldDelta}
+          </em>
+        )}
       </div>
     </section>
   )

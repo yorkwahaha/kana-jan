@@ -27,7 +27,6 @@ import { RoomLobby } from './ui/RoomLobby'
 import { RowPreview } from './ui/RowPreview'
 import { ScoreReview } from './ui/ScoreReview'
 import { SettingsPanel } from './ui/SettingsPanel'
-import { TurnTimer } from './ui/TurnTimer'
 import { Tutorial } from './ui/Tutorial'
 import { recordSounds } from './ui/mastery'
 import { clearGame, hasSeenTutorial, initialState, loadGame, markTutorialSeen, saveGame } from './ui/persist'
@@ -474,18 +473,16 @@ export function App() {
         </div>
       )}
 
-      {/* 回合倒數計時元件 */}
-      <TurnTimer
-        seconds={18}
-        turnKey={`${state.turnNumber}-${state.phase}-${currentActor?.id}`}
-        active={isTurnActive}
-        onTimeout={handleTurnTimeout}
-      />
-
       <GameTable
         state={state}
         settings={settings}
         mySeat={mySeat}
+        turnTimer={{
+          active: isTurnActive,
+          seconds: 18,
+          turnKey: `${state.turnNumber}-${state.phase}-${currentActor?.id}`,
+          onTimeout: handleTurnTimeout,
+        }}
         selectedCardId={selectedCardId}
         hoverYaku={hoverYaku}
         locked={locked || !isMyTurn}

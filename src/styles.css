@@ -640,13 +640,15 @@ body[data-anim='off'] .sakura-container {
 .seat-hud {
   position: absolute;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  background: linear-gradient(135deg, rgba(32, 22, 14, 0.84) 0%, rgba(18, 12, 8, 0.94) 100%);
+  justify-content: center;
+  gap: 2px;
+  background: linear-gradient(135deg, rgba(32, 22, 14, 0.88) 0%, rgba(18, 12, 8, 0.96) 100%);
   backdrop-filter: blur(8px);
   border: 1.5px solid rgba(245, 215, 127, 0.45);
-  border-radius: 999px;
-  padding: 3px 10px;
+  border-radius: 10px;
+  padding: 3px 8px 4px;
   z-index: 4;
   color: #fffdf8;
   box-shadow:
@@ -654,6 +656,7 @@ body[data-anim='off'] .sakura-container {
     0 0 0 1px rgba(0, 0, 0, 0.25);
   transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
   white-space: nowrap;
+  min-width: 84px;
 }
 
 /* 上家 HUD：置於上家手牌右側頂部，參照圖一絕不遮擋手牌 */
@@ -665,21 +668,20 @@ body[data-anim='off'] .sakura-container {
 /* 左家 HUD：置於左側手牌上方外側，垂直避開頂部 HUD，參照圖二 */
 .seat-hud.pos-left {
   left: clamp(12px, 2.5vw, 28px);
-  top: 22%;
+  top: 20%;
 }
 
 /* 右家 HUD：置於右側手牌上方外側，垂直避開頂部 HUD，參照圖二 */
 .seat-hud.pos-right {
   right: clamp(12px, 2.5vw, 28px);
-  top: 22%;
-  flex-direction: row-reverse;
-  padding: 3px 10px;
+  top: 20%;
+  padding: 3px 8px 4px;
 }
 
 /* 自家 HUD：置於左下角資訊角內 */
 .seat-hud.pos-human {
   position: static;
-  background: linear-gradient(135deg, rgba(38, 26, 16, 0.82) 0%, rgba(20, 14, 9, 0.92) 100%);
+  background: linear-gradient(135deg, rgba(38, 26, 16, 0.88) 0%, rgba(20, 14, 9, 0.96) 100%);
 }
 
 .seat-hud.is-active {
@@ -701,12 +703,49 @@ body[data-anim='off'] .sakura-container {
   transform: scale(1.04);
 }
 
-.seat-place {
-  font-size: 0.72rem;
-  font-weight: 800;
+.seat-hud-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+}
+.seat-hud-row-top {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 2px;
+}
+.seat-hud-row-bottom {
+  padding-top: 1px;
+}
+
+.seat-name {
+  font-family: var(--font-display);
   letter-spacing: 0.04em;
-  padding: 2px 7px;
+  font-size: 0.84rem;
+  color: #fffdf8;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kind {
+  font-size: 0.62rem;
+  color: #fff;
+  background: var(--vermillion);
+  padding: 0 5px;
   border-radius: 999px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.seat-place {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 1px 5px;
+  border-radius: 4px;
   color: #fff;
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -718,54 +757,25 @@ body[data-anim='off'] .sakura-container {
 .seat-place.place-3 { background: linear-gradient(135deg, #fed7aa, #ea580c); color: #431407; border-color: #ffedd5; }
 .seat-place.place-4 { background: rgba(60, 48, 42, 0.85); color: #e2e8f0; border-color: rgba(255, 255, 255, 0.25); }
 
-.seat-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.82rem;
-}
-.seat-header {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.seat-header .seat-name {
-  font-family: var(--font-display);
-  letter-spacing: 0.04em;
-  font-size: 0.88rem;
-  color: #fffdf8;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-  white-space: nowrap;
-}
-.kind {
-  font-size: 0.62rem;
-  color: #fff;
-  background: var(--vermillion);
-  padding: 0 5px;
-  border-radius: 999px;
-  font-weight: 700;
-}
-.seat-chips {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
 .chip-badge {
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   font-weight: 700;
   color: #f5d77f;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.3);
   padding: 1px 6px;
   border-radius: 999px;
-  border: 1px solid rgba(245, 215, 127, 0.3);
+  border: 1px solid rgba(245, 215, 127, 0.25);
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 .chip-badge::before {
   content: '🪙';
-  font-size: 0.8rem;
+  font-size: 0.76rem;
 }
-.delta-up { color: #4ade80; font-style: normal; font-weight: 800; font-size: 0.95rem; }
-.delta-down { color: #f87171; font-style: normal; font-weight: 800; font-size: 0.95rem; }
+.delta-up { color: #4ade80; font-style: normal; font-weight: 800; font-size: 0.88rem; }
+.delta-down { color: #f87171; font-style: normal; font-weight: 800; font-size: 0.88rem; }
 
 /* --- 他家手牌 (Opponents Hand Fans & Standing Tiles - 參照圖一) --- */
 .hand-fan {
@@ -1123,11 +1133,6 @@ body[data-anim='off'] .sakura-container {
   z-index: 5;
   pointer-events: auto;
 }
-.human-seat-corner .mascot {
-  width: 52px;
-  height: 52px;
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35));
-}
 
 /* --- 自家手牌區 (Human Hand Area - 參照圖二尺寸縮放，與左下名牌保持充裕間距) --- */
 .human-hand-area {
@@ -1208,7 +1213,18 @@ body[data-anim='off'] .sakura-container {
   padding: 4px 4px 2px;
 }
 
-/* 自家手牌卡片自適應縮放 (比照參考圖尺寸，絕不遮擋左下角資訊框) */
+/* 自家手牌卡片槽位與自適應縮放 (比照參考圖尺寸，絕不遮擋左下角資訊框) */
+.hand-card-slot {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: visible;
+}
+.hand-card-slot.is-drawn-slot {
+  margin-left: clamp(8px, 1.2vw, 14px);
+}
+
 .human-hand-area .kana-card {
   width: clamp(46px, 5.0vw, 58px);
   min-width: clamp(46px, 5.0vw, 58px);
@@ -1219,10 +1235,9 @@ body[data-anim='off'] .sakura-container {
     0 6px 16px rgba(15, 10, 5, 0.35);
 }
 
-/* 摸牌（第 8 張）獨立右移 */
-.human-hand-area .kana-card.is-drawn {
-  margin-left: clamp(8px, 1.2vw, 14px);
-  position: relative;
+/* 摸牌（第 8 張）槽位已有外距，手牌本體不再重複位移 */
+.hand-card-slot.is-drawn-slot .kana-card.is-drawn {
+  margin-left: 0;
 }
 
 /* ==========================================================================
@@ -1612,6 +1627,9 @@ button.kana-card { appearance: none; }
   letter-spacing: 0.1em;
   z-index: 5;
 }
+.kana-card.is-drawn.has-timer::after {
+  display: none;
+}
 
 /* ==========================================================================
    結算畫面 (Revamped Tabletop Settlement HUD - 參照圖二與圖三)
@@ -1807,12 +1825,12 @@ button.kana-card { appearance: none; }
   gap: 4px;
 }
 
-/* 指向性箭頭圖層 (Settlement Arrows) */
+/* 指向性箭頭圖層 (Settlement Arrows) - 提高層級以確保在桌面與中央區上清晰可見 */
 .settlement-arrows-layer {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 2;
+  z-index: 6;
 }
 .settlement-svg {
   width: 100%;
@@ -1835,12 +1853,74 @@ button.kana-card { appearance: none; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   animation: zoomCenter 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.28) backwards;
 }
 @keyframes zoomCenter {
   from { opacity: 0; transform: scale(0.9); }
   to { opacity: 1; transform: scale(1); }
+}
+
+/* 放槍 / 自摸 結算橫幅標籤 (Settlement Deal Banner) */
+.settlement-deal-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(18, 24, 38, 0.88);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 3px 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  margin-bottom: 2px;
+  animation: badgePopIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28) backwards;
+}
+.settlement-deal-banner.deal-ron {
+  border-color: rgba(255, 59, 92, 0.65);
+  background: linear-gradient(135deg, rgba(45, 15, 22, 0.92) 0%, rgba(20, 10, 15, 0.95) 100%);
+}
+.settlement-deal-banner.deal-tsumo {
+  border-color: rgba(56, 189, 248, 0.65);
+  background: linear-gradient(135deg, rgba(12, 35, 55, 0.92) 0%, rgba(8, 20, 32, 0.95) 100%);
+}
+.settlement-deal-banner .deal-tag {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+}
+.settlement-deal-banner .deal-tag.ron {
+  background: #ff334b;
+  color: #fff;
+}
+.settlement-deal-banner .deal-tag.tsumo {
+  background: #0284c7;
+  color: #fff;
+}
+.settlement-deal-banner .deal-payer {
+  color: #ff8595;
+  font-weight: 800;
+}
+.settlement-deal-banner .deal-arrow {
+  color: #ff334b;
+  font-weight: 900;
+  font-size: 1.1rem;
+}
+.settlement-deal-banner .deal-winner {
+  color: #38bdf8;
+  font-weight: 800;
+}
+.settlement-deal-banner .deal-action {
+  color: #cbd5e1;
+  font-size: 0.86rem;
+}
+.settlement-deal-banner .tsumo-note {
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: normal;
 }
 
 .settlement-yaku-header {
@@ -2563,20 +2643,41 @@ button.kana-card { appearance: none; }
 
 /* 回合思考倒數計時元件 (Turn Timer Widget) */
 .turn-timer-widget {
-  position: absolute;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
   z-index: 10;
-  background: rgba(22, 17, 14, 0.85);
-  border: 1px solid var(--gold);
-  border-radius: 20px;
-  padding: 4px 12px;
+  background: rgba(22, 17, 14, 0.92);
+  border: 1.5px solid var(--gold);
+  border-radius: 999px;
+  padding: 3px 10px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(4px);
+  user-select: none;
+  pointer-events: none;
+}
+
+/* 置於摸牌正上方 */
+.turn-timer-widget.timer-above-drawn {
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  top: auto;
+  white-space: nowrap;
+  padding: 2px 7px;
+  gap: 5px;
+}
+
+/* 置於吃碰操作列內 */
+.turn-timer-widget.timer-in-action-bar {
+  position: static;
+  transform: none;
+  display: inline-flex;
+  margin-left: 6px;
+  vertical-align: middle;
+  padding: 2px 8px;
 }
 
 .timer-inner {
@@ -2584,14 +2685,39 @@ button.kana-card { appearance: none; }
   align-items: center;
   gap: 4px;
   font-family: var(--font-display);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: bold;
   color: var(--gold-leaf);
 }
 
+.timer-tag {
+  font-size: 0.65rem;
+  font-weight: 800;
+  font-family: var(--font-display);
+  color: #fff;
+  background: linear-gradient(135deg, #1b5e3c, #103b25);
+  border: 1px solid rgba(245, 215, 127, 0.5);
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.timer-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.timer-num {
+  font-size: 0.86rem;
+  font-weight: 800;
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
 .timer-bar-track {
-  width: 60px;
-  height: 6px;
+  width: 38px;
+  height: 5px;
   background: rgba(255, 255, 255, 0.2);
   border-radius: 3px;
   overflow: hidden;
@@ -2605,8 +2731,8 @@ button.kana-card { appearance: none; }
 
 .turn-timer-widget.urgent {
   border-color: var(--vermillion-light);
-  box-shadow: 0 0 12px var(--vermillion-glow);
-  animation: urgentPulse 1s infinite alternate ease-in-out;
+  box-shadow: 0 0 14px var(--vermillion-glow);
+  animation: urgentPulse 0.9s infinite alternate ease-in-out;
 }
 
 .turn-timer-widget.urgent .timer-inner {
@@ -2619,7 +2745,15 @@ button.kana-card { appearance: none; }
 
 @keyframes urgentPulse {
   from { transform: translateX(-50%) scale(1); }
-  to { transform: translateX(-50%) scale(1.06); }
+  to { transform: translateX(-50%) scale(1.08); }
+}
+
+.turn-timer-widget.timer-in-action-bar.urgent {
+  animation: urgentPulseActionBar 0.9s infinite alternate ease-in-out;
+}
+@keyframes urgentPulseActionBar {
+  from { transform: scale(1); }
+  to { transform: scale(1.06); }
 }
 
 /* 連線錯誤提示浮動條 */

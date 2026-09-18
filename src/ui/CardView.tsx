@@ -10,6 +10,7 @@ interface Props {
   yakuPart?: boolean
   disabled?: boolean
   drawn?: boolean
+  hasTimer?: boolean
   showHints?: Settings
   onClick?: () => void
   faceDown?: boolean
@@ -24,6 +25,7 @@ export function CardView({
   yakuPart,
   disabled,
   drawn,
+  hasTimer,
   showHints,
   onClick,
   faceDown,
@@ -45,6 +47,7 @@ export function CardView({
     yakuPart ? 'is-yaku' : '',
     disabled ? 'is-disabled' : '',
     drawn ? 'is-drawn' : '',
+    hasTimer ? 'has-timer' : '',
     card.confusable ? 'is-confusable' : '',
   ].filter(Boolean).join(' ')
   const style = { ['--row-color' as string]: card.color }

@@ -5,9 +5,18 @@ interface Props {
   turnKey: string | number
   active: boolean
   onTimeout: () => void
+  label?: string
+  className?: string
 }
 
-export function TurnTimer({ seconds = 20, turnKey, active, onTimeout }: Props) {
+export function TurnTimer({
+  seconds = 20,
+  turnKey,
+  active,
+  onTimeout,
+  label,
+  className = '',
+}: Props) {
   const [remaining, setRemaining] = useState(seconds)
 
   useEffect(() => {
@@ -42,8 +51,12 @@ export function TurnTimer({ seconds = 20, turnKey, active, onTimeout }: Props) {
   const percent = Math.max(0, Math.min(100, (remaining / seconds) * 100))
 
   return (
-    <div className={`turn-timer-widget ${isUrgent ? 'urgent' : ''}`} title={`回合剩餘思考時間：${remaining} 秒`}>
+    <div
+      className={`turn-timer-widget ${isUrgent ? 'urgent' : ''} ${className}`}
+      title={`回合剩餘思考時間：${remaining} 秒`}
+    >
       <div className="timer-inner">
+        {label && <span className="timer-tag">{label}</span>}
         <span className="timer-icon">⏳</span>
         <span className="timer-num">{remaining}s</span>
       </div>
