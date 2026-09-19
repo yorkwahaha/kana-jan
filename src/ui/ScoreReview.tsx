@@ -53,6 +53,15 @@ export function ScoreReview({ state, settings, mySeat = 0, onFinish }: Props) {
     }
   }, [pending, settings.speech, settings.sfx])
 
+  // 金幣畫面結束後約 2 秒自動繼續對局，無需手動點擊
+  useEffect(() => {
+    if (!pending) return
+    const autoTimer = window.setTimeout(() => {
+      onFinish()
+    }, 2800)
+    return () => window.clearTimeout(autoTimer)
+  }, [pending, onFinish])
+
   if (!pending) return null
 
   const placeOf = (id: string) => rankings.find((r) => r.playerId === id)?.place ?? 4
@@ -176,6 +185,7 @@ export function ScoreReview({ state, settings, mySeat = 0, onFinish }: Props) {
         >
           繼續對局
         </button>
+        <span className="settlement-auto-timer">約 2 秒後自動進入下一回合</span>
       </div>
     </div>
   )

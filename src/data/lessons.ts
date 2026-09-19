@@ -17,7 +17,7 @@ export const LESSONS: Lesson[] = [
   { id: 'a-ka', label: 'あ・か行', detail: '加上かきくけこ', rows: ['a', 'ka'] },
   { id: 'a-sa', label: 'あ〜さ行', detail: '三次練習，同音組會很常出現', rows: ['a', 'ka', 'sa'] },
   { id: 'a-ta', label: 'あ〜た行', detail: '加入たちつてと', rows: ['a', 'ka', 'sa', 'ta'] },
-  { id: 'a-na', label: 'あ〜な行', detail: '前五行，可組成同一段', rows: ['a', 'ka', 'sa', 'ta', 'na'] },
+  { id: 'a-na', label: 'あ〜な行', detail: '前五行（あ・か・さ・た・な）', rows: ['a', 'ka', 'sa', 'ta', 'na'] },
   { id: 'a-ra', label: 'あ〜ら行', detail: '前八行清音', rows: ['a', 'ka', 'sa', 'ta', 'na', 'ha', 'ma', 'ra'] },
 ]
 
@@ -63,9 +63,5 @@ export function pickLessonRows(
     return lesson.rows.slice(0, 4)
   }
   return shuffle(ROW_ORDER).slice(0, 4)
-}
-
-export function columnYakuEnabled(rows: readonly RowId[]): boolean {
-  return rows.length >= 4
 }
 

@@ -83,7 +83,7 @@ function pickDiscard(player: PlayerState, state: GameState, rng: Rng): string {
 
 function shouldDelayLowYaku(yaku: YakuCandidate, hand: KanaCard[], rng: Rng): boolean {
   if (yaku.kind !== 'sameSound') return false
-  if (yaku.totalScore >= 6) return false
+  if (yaku.totalScore >= 480) return false
   const near = findNearYaku(hand)
   const high = near.find((n) => n.kind !== 'sameSound')
   if (!high) return false
@@ -101,7 +101,7 @@ function decideAction(state: GameState, rng: Rng): GameAction {
   }
 
   const best = yakus[0]!
-  if (shouldDelayLowYaku(best, player.hand, rng) && yakus.every((y) => y.totalScore <= 4)) {
+  if (shouldDelayLowYaku(best, player.hand, rng) && yakus.every((y) => y.totalScore <= 180)) {
     return { type: 'SKIP_YAKU' }
   }
   return { type: 'CHOOSE_YAKU', yakuId: best.id }

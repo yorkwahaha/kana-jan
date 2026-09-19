@@ -64,7 +64,7 @@ export function createLobbyState(): GameState {
   }
 }
 
-function pushEvent(state: GameState, text: string): GameState {
+export function pushEvent(state: GameState, text: string): GameState {
   const id = `e${state.eventSeq + 1}`
   return {
     ...state,
@@ -349,6 +349,8 @@ function applyRefill(state: GameState): GameState {
     reactionOptions: [],
     reactionIndex: 0,
     declaredThisTurn: false,
+    lastTransfers: [],
+    lastFx: null,
   }
   next = syncDiscardPile(next)
 
@@ -534,6 +536,8 @@ export function reduce(state: GameState, action: GameAction): GameState {
         pendingScore: null,
         reactionOptions: [],
         reactionIndex: 0,
+        lastFx: null,
+        lastTransfers: [],
       }
       next = pushEvent(next, `下一回合：${nextPlayer?.name ?? ''}`)
       return next

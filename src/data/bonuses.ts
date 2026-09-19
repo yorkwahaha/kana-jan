@@ -12,7 +12,7 @@ export interface BonusMission {
   points: number
 }
 
-export function makeTargetBonus(kana: KanaSound, points = 3): BonusMission {
+export function makeTargetBonus(kana: KanaSound, points = 90): BonusMission {
   const cardId = `${kana.sound}-vocabulary`
   return {
     kind: 'targetSound',

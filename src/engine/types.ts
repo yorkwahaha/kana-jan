@@ -18,7 +18,7 @@ export type Phase =
 
 export type PlayerKind = 'human' | 'ai' | 'local' | 'remote'
 export type AiDifficulty = 'easy' | 'normal'
-export type YakuKind = 'sameSound' | 'sameRow' | 'sameColumn' | 'sameYoon' | 'word'
+export type YakuKind = 'sameSound' | 'sameRow' | 'sameYoon' | 'word'
 export type ScoreSource = 'tsumo' | 'ron'
 
 export interface YakuCandidate {
@@ -143,5 +143,5 @@ export interface StartConfig {
 
 export const HAND_SIZE = 7
 export const PLAYER_COUNT = 4
-export const INITIAL_GOLD = 20
+export const INITIAL_GOLD = 2000
 export const DEFAULT_AI_NAMES = ['さくら', 'ひなた', 'あおい']

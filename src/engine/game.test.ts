@@ -129,17 +129,17 @@ describe('完成牌型流程', () => {
     state = play(state, { type: 'CHOOSE_YAKU', yakuId: sameSound!.id })
     expect(state.phase).toBe('review')
     const p0mid = state.players[0]!
-    expect(p0mid.score).toBe(6)
-    expect(p0mid.gold).toBe(INITIAL_GOLD + 6 * 3)
+    expect(p0mid.score).toBe(480)
+    expect(p0mid.gold).toBe(INITIAL_GOLD + 480 * 3)
     state = play(state, { type: 'FINISH_REVIEW' })
     expect(state.phase).toBe('playerDraw')
     const p0 = state.players[0]!
     expect(p0.hand).toHaveLength(7)
     expect(p0.hand.some((c) => c.sound === 'ka')).toBe(false)
     expect(p0.completed).toHaveLength(1)
-    expect(p0.score).toBe(6)
-    expect(p0.gold).toBe(INITIAL_GOLD + 6 * 3)
-    expect(state.players.slice(1).every((p) => p.gold === INITIAL_GOLD - 6)).toBe(true)
+    expect(p0.score).toBe(480)
+    expect(p0.gold).toBe(INITIAL_GOLD + 480 * 3)
+    expect(state.players.slice(1).every((p) => p.gold === INITIAL_GOLD - 480)).toBe(true)
   })
 })
 
@@ -177,12 +177,12 @@ describe('棄牌優先順序', () => {
     expect(state.players[1]?.completed).toHaveLength(1)
     expect(state.players[1]?.completed[0]?.source).toBe('ron')
     expect(state.players[2]?.completed).toHaveLength(0)
-    // only discarder (p0) pays 6 (三位相和 6 分)
-    expect(state.players[0]?.gold).toBe(INITIAL_GOLD - 6)
-    expect(state.players[1]?.gold).toBe(INITIAL_GOLD + 6)
+    // only discarder (p0) pays 480 (三位相和 480 分)
+    expect(state.players[0]?.gold).toBe(INITIAL_GOLD - 480)
+    expect(state.players[1]?.gold).toBe(INITIAL_GOLD + 480)
     expect(state.players[2]?.gold).toBe(INITIAL_GOLD)
     expect(state.players[3]?.gold).toBe(INITIAL_GOLD)
-    expect(state.lastTransfers).toEqual([{ fromId: 'p0', toId: 'p1', amount: 6 }])
+    expect(state.lastTransfers).toEqual([{ fromId: 'p0', toId: 'p1', amount: 480 }])
     expect(state.events.some((e) => e.text.includes('抄了'))).toBe(true)
     expect(state.players[0]?.discards.some((c) => c.id === discardId)).toBe(false)
   })
@@ -271,7 +271,7 @@ describe('金幣歸零結束', () => {
       seed: 8,
       startPlayerIndex: 0,
       bonus,
-      initialGold: 3,
+      initialGold: 50,
       hands: [
         [...yakuCards, ...rest],
         fillHand([], ['sa-hiragana', 'shi-hiragana', 'su-hiragana', 'se-hiragana', 'so-hiragana', 'ta-hiragana', 'chi-hiragana']),
@@ -331,14 +331,14 @@ describe('再玩一次', () => {
     expect(restarted.phase).toBe('dealing')
     const ready = play(restarted, { type: 'DEAL_DONE' })
     expect(ready.phase).toBe('playerDraw')
-    expect(INITIAL_GOLD).toBe(20)
-    expect(ready.players.every((p) => p.gold === 20 && p.score === 0 && p.completed.length === 0)).toBe(true)
+    expect(INITIAL_GOLD).toBe(2000)
+    expect(ready.players.every((p) => p.gold === 2000 && p.score === 0 && p.completed.length === 0)).toBe(true)
     expect(ready.events.some((e) => e.text.includes('遊戲開始'))).toBe(true)
   })
 })
 
 describe('課程預覽', () => {
-  it('未略過時先進入本次登場畫面，且あ行不判定同一段', () => {
+  it('未略過時先進入本次登場畫面', () => {
     const state = startGame({ seed: 12, lessonId: 'a' })
     expect(state.phase).toBe('preview')
     expect(state.activeRows).toEqual(['a'])

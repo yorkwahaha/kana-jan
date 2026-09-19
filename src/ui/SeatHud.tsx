@@ -38,6 +38,7 @@ export function SeatHud({
       <div className="seat-hud-row seat-hud-row-top">
         <strong className="seat-name">{player.name}</strong>
         {position === 'human' ? <span className="kind">你</span> : null}
+        {active && position !== 'human' ? <span className="active-turn-tag">思考中</span> : null}
         <span className={`seat-place place-${place}`}>{PLACE_BADGES[place] ?? `${place}th`}</span>
       </div>
       <div className="seat-hud-row seat-hud-row-bottom">

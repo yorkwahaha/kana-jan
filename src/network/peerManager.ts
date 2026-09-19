@@ -25,6 +25,7 @@ export const PEER_CONFIG = {
 export interface HostCallbacks {
   onRoomChange: (room: RoomState) => void
   onClientAction: (seat: number, action: GameAction) => void
+  onGuestDisconnect?: (seat: number) => void
   onError: (err: string) => void
   onChat?: (senderName: string, text: string) => void
 }
@@ -160,6 +161,12 @@ export class HostManager {
       return
     }
 
+    if (msg.type === 'LEAVE') {
+      this.handleGuestDisconnect(conn)
+      conn.close()
+      return
+    }
+
     if (msg.type === 'ACTION') {
       // 找出此連線對應的座位
       let senderSeat = -1
@@ -207,6 +214,9 @@ export class HostManager {
         }
       }
       this.broadcastRoomUpdate()
+      if (this.roomState.started) {
+        this.callbacks.onGuestDisconnect?.(disconnectedSeat)
+      }
     }
   }
 

@@ -11,6 +11,7 @@ import { findNearYaku } from '../engine/yaku'
 import type { GameState, YakuCandidate } from '../engine/types'
 import type { Settings } from './settings'
 import { playersByPerspective, tablePosition } from './seats'
+import { CardDrawFlight } from './CardDrawFlight'
 import { CardView } from './CardView'
 import { CenterBoard } from './CenterBoard'
 import { DiscardRiver } from './DiscardRiver'
@@ -153,17 +154,26 @@ export function GameTable({
 
         <div className="hand-fan pos-top" data-hand-origin="top" aria-hidden>
           {Array.from({ length: fanCount(top.hand.length) }).map((_, i) => (
-            <i key={i} className="mini-back" />
+            <i
+              key={i}
+              className={`mini-back ${i === top.hand.length - 1 && top.hand.length === 8 ? 'is-drawn-mini' : ''}`}
+            />
           ))}
         </div>
         <div className="hand-fan pos-left" data-hand-origin="left" aria-hidden>
           {Array.from({ length: fanCount(left.hand.length) }).map((_, i) => (
-            <i key={i} className="mini-back" />
+            <i
+              key={i}
+              className={`mini-back ${i === left.hand.length - 1 && left.hand.length === 8 ? 'is-drawn-mini' : ''}`}
+            />
           ))}
         </div>
         <div className="hand-fan pos-right" data-hand-origin="right" aria-hidden>
           {Array.from({ length: fanCount(right.hand.length) }).map((_, i) => (
-            <i key={i} className="mini-back" />
+            <i
+              key={i}
+              className={`mini-back ${i === right.hand.length - 1 && right.hand.length === 8 ? 'is-drawn-mini' : ''}`}
+            />
           ))}
         </div>
 
@@ -178,6 +188,7 @@ export function GameTable({
         <DiscardRiver player={human} position="human" liveCardId={state.currentDiscard?.id} settings={settings} />
 
         <CenterBoard state={state} settings={settings} actingPos={actingPos} />
+        <CardDrawFlight state={state} settings={settings} mySeat={mySeat} />
 
         {/* 自家玩家資訊角 (Bottom Left: Seat HUD) - 參照圖一獨立置於角落 */}
         <div className="human-seat-corner">

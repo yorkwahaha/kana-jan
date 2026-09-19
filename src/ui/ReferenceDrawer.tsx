@@ -157,9 +157,9 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
                 <div className="yaku-item-card">
                   <div className="yaku-info">
                     <strong>同音三張</strong>
-                    <p>同一個讀音的任意 3 張卡片</p>
+                    <p>同一個讀音的任意 3 張卡片（混色 120 / 純色 840）</p>
                   </div>
-                  <div className="yaku-score">3 分</div>
+                  <div className="yaku-score">120 / 840 點</div>
                 </div>
 
                 <div className="yaku-item-card highlight">
@@ -167,39 +167,24 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
                     <strong>三位相和（全彩加成）</strong>
                     <p>同音之「平假名 1 ＋ 片假名 1 ＋ 單字卡 1」各一張</p>
                   </div>
-                  <div className="yaku-score">6 分</div>
-                </div>
-
-                <div className="yaku-item-card">
-                  <div className="yaku-info">
-                    <strong>同音純色</strong>
-                    <p>同音 3 張皆為相同型態（純平假名 6分 / 純片假名 7分 / 純單字 8分）</p>
-                  </div>
-                  <div className="yaku-score">6～8 分</div>
+                  <div className="yaku-score">480 點</div>
                 </div>
 
                 <div className="yaku-item-card">
                   <div className="yaku-info">
                     <strong>拗音揃い（快攻首選）</strong>
-                    <p>同一拗音行的 3 個相異讀音（如 きゃ・きゅ・きょ）</p>
+                    <p>同一拗音行的 3 個相異讀音（混色 180 / 純色 480）</p>
                   </div>
-                  <div className="yaku-score">4 分</div>
+                  <div className="yaku-score">180 / 480 點</div>
                 </div>
 
-                <div className="yaku-item-card">
-                  <div className="yaku-info">
-                    <strong>一行揃い（全家福大牌）</strong>
-                    <p>清音／濁音同一行 5 個相異讀音（如 あ・い・う・え・お）</p>
-                  </div>
-                  <div className="yaku-score">6 分</div>
-                </div>
 
-                <div className="yaku-item-card">
+                <div className="yaku-item-card highlight">
                   <div className="yaku-info">
-                    <strong>同一段揃い</strong>
-                    <p>出場行中同一段的不同音（如 あ・か・さ・た）</p>
+                    <strong>一行揃い（滿貫大牌 5 張）</strong>
+                    <p>清音／濁音同一行 5 個相異讀音（混色 480 / 純色 1800）</p>
                   </div>
-                  <div className="yaku-score">8 分</div>
+                  <div className="yaku-score">480 / 1800 點</div>
                 </div>
 
                 <div className="yaku-item-card">
@@ -207,7 +192,7 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
                     <strong>組字牌型</strong>
                     <p>拼出本局指定 Bonus 目標單字</p>
                   </div>
-                  <div className="yaku-score">5分 ＋ Bonus</div>
+                  <div className="yaku-score">240～360 點 ＋ Bonus</div>
                 </div>
               </div>
             </div>
@@ -232,7 +217,7 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
                         組字目標：<strong>{bonusKana.vocabulary}</strong>（{bonusKana.meaning}）
                       </p>
                       <p className="bonus-points-tag">
-                        達成時額外加成：<strong>＋{state.bonus.points} 分</strong>
+                        達成時額外加成：<strong>＋{state.bonus.points} 點</strong>
                       </p>
                     </div>
                   </div>
@@ -266,18 +251,14 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
                 <ul className="rule-list">
                   <li>
                     <span className="dot dot-hira" />
-                    <strong>純平假名</strong>：牌型內全為平假名，額外 <strong>＋3 分</strong>
-                  </li>
-                  <li>
-                    <span className="dot dot-kata" />
-                    <strong>純片假名</strong>：牌型內全為片假名，額外 <strong>＋4 分</strong>
+                    <strong>一行揃い純色（5張）</strong>：全平假名 / 全片假名 / 全單字，得分提升至 <strong>1,800 點</strong>
                   </li>
                   <li>
                     <span className="dot dot-vocab" />
-                    <strong>純單字卡</strong>：牌型內全為單字圖像，額外 <strong>＋5 分</strong>
+                    <strong>同音純色（3張）</strong>：同讀音 3 張皆為同一字形，得分提升至 <strong>840 點</strong>
                   </li>
                   <li>
-                    <strong>拗音純色</strong>：拗音 3 音同型態額外 <strong>＋2 分</strong>
+                    <strong>拗音純色（3張）</strong>：拗音 3 音同字形，得分提升至 <strong>480 點</strong>
                   </li>
                 </ul>
               </section>

@@ -8,13 +8,14 @@ import {
   createLobbyState,
   currentPlayer,
   drainAuto,
+  pushEvent,
   reactionActor,
   reduce,
   startGame,
   type GameAction,
 } from './engine/game'
 import { createRngFromExactState } from './engine/rng'
-import type { AiDifficulty, GameState, PlayerConfig, YakuCandidate } from './engine/types'
+import { INITIAL_GOLD, type AiDifficulty, type GameState, type PlayerConfig, type YakuCandidate } from './engine/types'
 import { DEFAULT_LESSON_ID } from './data/lessons'
 import { GuestManager, HostManager } from './network/peerManager'
 import { generateRoomCode, getRoomFromUrl, parseRoomCode } from './network/roomCode'
@@ -56,6 +57,8 @@ export function App() {
   const guestManagerRef = useRef<GuestManager | null>(null)
 
   const initialUrlRoom = useMemo(() => getRoomFromUrl(), [])
+  const lastHandledEventSeqRef = useRef<number>(-1)
+  const gameOverPlayedRef = useRef<boolean>(false)
 
   // 清理 Peer 連線
   const cleanupNetwork = useCallback(() => {
@@ -128,27 +131,37 @@ export function App() {
   }, [])
 
   useEffect(() => {
-    if (state.lastFx === 'draw') playSfx('draw', settings.sfx)
-    if (state.lastFx === 'discard') playSfx('discard', settings.sfx)
-    if (state.lastFx === 'dekita') {
-      const myPlayer = state.players.find((p) => p.seat === mySeat) ?? state.players[0]
-      const isMe = state.pendingScore?.playerId === myPlayer?.id
-      if (isMe) {
-        playSfx('dekita', settings.sfx)
+    if (state.phase !== 'gameOver') {
+      gameOverPlayedRef.current = false
+    }
+
+    if (state.eventSeq !== lastHandledEventSeqRef.current) {
+      lastHandledEventSeqRef.current = state.eventSeq
+
+      if (state.lastFx === 'draw') {
+        playSfx('draw', settings.sfx)
+      } else if (state.lastFx === 'discard') {
+        playSfx('discard', settings.sfx)
+      } else if (state.lastFx === 'dekita') {
+        const myPlayer = state.players.find((p) => p.seat === mySeat) ?? state.players[0]
+        const isMe = state.pendingScore?.playerId === myPlayer?.id
+        if (isMe) {
+          playSfx('dekita', settings.sfx)
+        }
+      } else if (state.lastFx === 'moratta') {
+        const myPlayer = state.players.find((p) => p.seat === mySeat) ?? state.players[0]
+        const isVictim = state.pendingScore?.fromPlayerId === myPlayer?.id
+        const isMe = state.pendingScore?.playerId === myPlayer?.id
+        if (isVictim) {
+          playSfx('ron', settings.sfx)
+        } else if (isMe) {
+          playSfx('moratta', settings.sfx)
+        }
       }
     }
-    if (state.lastFx === 'moratta') {
-      const myPlayer = state.players.find((p) => p.seat === mySeat) ?? state.players[0]
-      const isVictim = state.pendingScore?.fromPlayerId === myPlayer?.id
-      const isMe = state.pendingScore?.playerId === myPlayer?.id
-      if (isVictim) {
-        playSfx('ron', settings.sfx)
-      } else if (isMe) {
-        playSfx('moratta', settings.sfx)
-      }
-    }
-    if (state.lastTransfers.length > 0) playSfx('coin', settings.sfx)
-    if (state.phase === 'gameOver') {
+
+    if (state.phase === 'gameOver' && !gameOverPlayedRef.current) {
+      gameOverPlayedRef.current = true
       const myPlayer = state.players.find((p) => p.seat === mySeat) ?? state.players[0]
       const rankings = state.rankings ?? []
       const myRanking = rankings.find((r) => r.playerId === myPlayer?.id)
@@ -159,11 +172,10 @@ export function App() {
       }
     }
   }, [
+    state.eventSeq,
     state.lastFx,
-    state.lastTransfers,
     state.phase,
     settings.sfx,
-    state.eventSeq,
     state.pendingScore,
     state.players,
     state.rankings,
@@ -185,7 +197,15 @@ export function App() {
   useEffect(() => {
     if (networkMode === 'guest') return
     if (state.phase === 'lobby' || state.phase === 'gameOver' || showTutorial || showSettings) return
-    if (state.phase === 'preview' || state.phase === 'review') return
+    if (state.phase === 'preview') return
+
+    // 1. 牌型結算展示畫面：等待 2.6 秒（金幣聲 0.6s + 停留 2s）自動進入下一回合，無需手動點擊
+    if (state.phase === 'review' && state.pendingScore) {
+      const t = window.setTimeout(() => {
+        dispatch({ type: 'FINISH_REVIEW' })
+      }, 2600)
+      return () => window.clearTimeout(t)
+    }
 
     if (state.phase === 'dealing') {
       const t = window.setTimeout(() => dispatch({ type: 'DEAL_DONE' }), delayFor(settings, 'deal'))
@@ -278,6 +298,28 @@ export function App() {
           return drainAuto(reduce(s, action))
         })
       },
+      onGuestDisconnect: (seat) => {
+        apply((s) => {
+          const player = s.players.find((p) => p.seat === seat)
+          if (!player || player.kind === 'ai') return s
+
+          const nextPlayers = s.players.map((p) =>
+            p.seat === seat
+              ? {
+                  ...p,
+                  kind: 'ai' as const,
+                  name: p.name.includes('(AI)') ? p.name : `${p.name} (AI)`,
+                }
+              : p,
+          )
+          let next: GameState = {
+            ...s,
+            players: nextPlayers,
+          }
+          next = pushEvent(next, `玩家 ${player.name} 斷線，已由電腦 AI 接管對局`)
+          return next
+        })
+      },
       onError: (err) => setNetError(err),
     })
 
@@ -336,7 +378,7 @@ export function App() {
         playerConfigs,
         lessonId: roomState.lessonId,
         aiDifficulty: difficulty,
-        initialGold: 25,
+        initialGold: INITIAL_GOLD,
       }),
     )
 
@@ -404,6 +446,35 @@ export function App() {
       }
     }
   }, [isTurnActive, isMyTurn, networkMode, currentActor, state.phase, state.players, dispatch])
+
+  // 房主統御權威回合計時器：防範遠端真人玩家斷線、背景化或掛網發呆卡住牌局
+  useEffect(() => {
+    if (networkMode !== 'host') return
+    if (state.phase !== 'playerAction' && state.phase !== 'discard' && state.phase !== 'reaction') return
+
+    const actor = state.phase === 'reaction' ? reactionActor(state) : currentPlayer(state)
+    if (!actor || actor.kind !== 'remote') return
+
+    // 思考時間上限：出牌 12 秒、抄牌 8 秒。超時自動由 AI 接管，並推進牌局
+    const timeoutMs = state.phase === 'reaction' ? 8000 : 12000
+    const timer = window.setTimeout(() => {
+      apply((s) => {
+        const player = s.players.find((p) => p.id === actor.id)
+        if (!player || player.kind === 'ai') return s
+
+        const nextPlayers = s.players.map((p) =>
+          p.id === actor.id
+            ? { ...p, kind: 'ai' as const, name: p.name.includes('(AI)') ? p.name : `${p.name} (AI)` }
+            : p,
+        )
+        let next: GameState = { ...s, players: nextPlayers }
+        next = pushEvent(next, `${player.name} 逾時未出牌，已切換為電腦 AI 自動接管`)
+        return next
+      })
+    }, timeoutMs)
+
+    return () => window.clearTimeout(timer)
+  }, [networkMode, state, apply])
 
   // 1. 若處於房間等待大廳且牌局尚未開始
   if (networkMode !== 'none' && roomState && !roomState.started && state.phase === 'lobby') {
