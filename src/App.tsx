@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getGameOverSfxKind, playSfx, startBgm, stopBgm, type BgmTrack } from './audio/sfx'
 import { speakJapanese } from './audio/speech'
 import { speechText } from './data/cards'
-import { decideAi, needsHumanInput } from './engine/ai'
+import { decideAi, needsHumanInput, shouldWaitForPlayer } from './engine/ai'
 import {
   availableYakuFor,
   createLobbyState,
@@ -17,6 +17,7 @@ import { createRngFromExactState } from './engine/rng'
 import type { AiDifficulty, GameState, PlayerConfig, YakuCandidate } from './engine/types'
 import { DEFAULT_LESSON_ID } from './data/lessons'
 import { GuestManager, HostManager } from './network/peerManager'
+import { playerKindFromRoomSlot } from './network/playerKind'
 import { generateRoomCode, getRoomFromUrl, parseRoomCode } from './network/roomCode'
 import type { RoomState } from './network/types'
 import { CatalogModal } from './ui/CatalogModal'
@@ -201,7 +202,10 @@ export function App() {
       return () => window.clearTimeout(t)
     }
 
-    if (state.phase === 'playerAction' && currentPlayer(state).kind === 'human') {
+    const connectedSeats = new Set(hostManagerRef.current?.getConnectedSeats() ?? [])
+    const actor = state.phase === 'reaction' ? reactionActor(state) : currentPlayer(state)
+
+    if (state.phase === 'playerAction' && shouldWaitForPlayer(currentPlayer(state), connectedSeats)) {
       const yakus = availableYakuFor(state, currentPlayer(state).id)
       if (yakus.length === 0) {
         const t = window.setTimeout(() => dispatch({ type: 'SKIP_YAKU' }), 280)
@@ -210,11 +214,9 @@ export function App() {
       return
     }
 
-    if (needsHumanInput(state)) return
-
-    const actor = state.phase === 'reaction' ? reactionActor(state) : currentPlayer(state)
-    // 若當前行動者不是 AI（例如遠端真人玩家），則 Host 等待該玩家操作，不跑 AI
-    if (actor && actor.kind !== 'ai') return
+    // 連線真人或本地玩家的回合：Host 必須等待，不得讓 decideAi 代打
+    if (shouldWaitForPlayer(actor, connectedSeats) || needsHumanInput(state)) return
+    if (!actor || actor.kind !== 'ai') return
 
     const rng = createRngFromExactState(state.rngState)
     const action = decideAi(state, rng)
@@ -266,16 +268,25 @@ export function App() {
       onRoomChange: (r) => setRoomState({ ...r }),
       onClientAction: (seat, action) => {
         apply((s) => {
-          if (action.type === 'FINISH_REVIEW') {
-            const scoringPlayer = s.players.find((p) => p.id === s.pendingScore?.playerId)
-            if (scoringPlayer?.seat === seat || currentPlayer(s).seat === seat) {
-              return drainAuto(reduce(s, action))
+          const seated = s.players.find((p) => p.seat === seat)
+          let next = s
+          // 有真人從該座位送來操作時，即使開局被誤標成 ai 也立刻改回 remote，停止 Host AI 代打
+          if (seated && seated.kind === 'ai') {
+            next = {
+              ...s,
+              players: s.players.map((p) => (p.seat === seat ? { ...p, kind: 'remote' as const } : p)),
             }
-            return s
           }
-          const current = s.phase === 'reaction' ? reactionActor(s) : currentPlayer(s)
-          if (current?.seat !== seat) return s
-          return drainAuto(reduce(s, action))
+          if (action.type === 'FINISH_REVIEW') {
+            const scoringPlayer = next.players.find((p) => p.id === next.pendingScore?.playerId)
+            if (scoringPlayer?.seat === seat || currentPlayer(next).seat === seat) {
+              return drainAuto(reduce(next, action))
+            }
+            return next
+          }
+          const current = next.phase === 'reaction' ? reactionActor(next) : currentPlayer(next)
+          if (current?.seat !== seat) return next
+          return drainAuto(reduce(next, action))
         })
       },
       onError: (err) => setNetError(err),
@@ -323,10 +334,13 @@ export function App() {
   const handleStartMultiplayerGame = useCallback(() => {
     if (!roomState || networkMode !== 'host' || !hostManagerRef.current) return
 
-    const playerConfigs: PlayerConfig[] = roomState.slots.map((slot) => ({
+    const live = hostManagerRef.current
+    const room = live.getRoomState()
+    const connectedSeats = new Set(live.getConnectedSeats())
+    const playerConfigs: PlayerConfig[] = room.slots.map((slot) => ({
       id: slot.playerId,
       name: slot.name,
-      kind: slot.isHost ? 'human' : slot.kind === 'ai' ? 'ai' : 'remote',
+      kind: playerKindFromRoomSlot(slot, connectedSeats),
       seat: slot.seat,
       aiDifficulty: difficulty,
     }))
@@ -334,7 +348,7 @@ export function App() {
     const initial = drainAuto(
       startGame({
         playerConfigs,
-        lessonId: roomState.lessonId,
+        lessonId: room.lessonId,
         aiDifficulty: difficulty,
         initialGold: 25,
       }),
@@ -389,8 +403,11 @@ export function App() {
   const handleTurnTimeout = useCallback(() => {
     if (!isTurnActive || !currentActor) return
 
-    // 只有輪到自己（或房主代管）才送出超時處置
-    if (isMyTurn || (networkMode === 'host' && currentActor?.kind === 'remote')) {
+    // 只有輪到自己，或房主代管「連線中的遠端真人」（含 kind 誤標為 ai 者）才送出超時處置
+    const connectedSeats = new Set(hostManagerRef.current?.getConnectedSeats() ?? [])
+    const hostShouldProxy =
+      networkMode === 'host' && currentActor && shouldWaitForPlayer(currentActor, connectedSeats)
+    if (isMyTurn || hostShouldProxy) {
       if (state.phase === 'playerAction') {
         dispatch({ type: 'SKIP_YAKU' })
       } else if (state.phase === 'discard') {
