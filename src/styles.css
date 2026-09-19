@@ -2619,19 +2619,19 @@ button.kana-card { appearance: none; }
   .seat-hud.pos-top {
     top: 2%;
     left: auto;
-    right: 13%;
+    right: 14%;
   }
   .seat-hud.pos-left {
     left: 1%;
-    top: 12%;
+    top: 11%;
   }
   .seat-hud.pos-right {
-    right: 1%;
-    top: 12%;
+    right: 1.2%;
+    top: 18%;
   }
   .human-seat-corner {
-    left: 1%;
-    bottom: 1.5%;
+    left: 6px;
+    bottom: 34px;
   }
 
   .hand-fan.pos-top { top: 2%; }
@@ -2664,21 +2664,23 @@ button.kana-card { appearance: none; }
   }
 
   .meld-area {
-    max-width: 120px;
-    gap: 2px;
+    max-width: 70px;
+    gap: 1px;
   }
+  .meld-area .meld-set:not(:nth-last-child(-n+2)) { display: none; }
   .meld-area .kana-card.size-mini {
-    width: 18px;
-    min-width: 18px;
-    height: 25px;
+    width: 16px;
+    min-width: 16px;
+    height: 22px;
   }
-  .meld-area.pos-top { top: 11%; left: 26%; }
-  .meld-area.pos-left { left: 6.5%; top: 56%; }
-  .meld-area.pos-right { right: 6.5%; top: 56%; }
-  .meld-area.pos-human { left: 11%; bottom: 23%; }
+  .meld-set { padding: 1px; gap: 1px; }
+  .meld-area.pos-top { top: 11%; left: 22%; }
+  .meld-area.pos-left { left: 1.5%; top: 22%; }
+  .meld-area.pos-right { right: 1.5%; top: 28%; }
+  .meld-area.pos-human { left: 7%; bottom: 28%; }
 
   .discard-river .river-slot { display: none; }
-  .discard-river .river-slot:nth-last-child(-n+8) { display: flex; }
+  .discard-river .river-slot:nth-last-child(-n+6) { display: flex; }
   .discard-river .kana-card.size-river {
     width: 24px;
     min-width: 24px;
@@ -2714,22 +2716,22 @@ button.kana-card { appearance: none; }
   .discard-river.pos-top .river-slot { margin-right: -11px; }
 
   .discard-river.pos-left {
-    left: 7.5%;
-    top: 26%;
+    left: 6.5%;
+    top: 30%;
     max-height: none;
     flex-wrap: nowrap;
     gap: 0;
   }
-  .discard-river.pos-left .river-slot { margin-bottom: -16px; }
+  .discard-river.pos-left .river-slot { margin-bottom: -20px; }
 
   .discard-river.pos-right {
-    right: 7.5%;
-    top: 26%;
+    right: 6.5%;
+    top: 32%;
     max-height: none;
     flex-wrap: nowrap;
     gap: 0;
   }
-  .discard-river.pos-right .river-slot { margin-bottom: -16px; }
+  .discard-river.pos-right .river-slot { margin-bottom: -20px; }
 
   .discard-river.pos-human {
     left: 50%;
@@ -2775,10 +2777,17 @@ button.kana-card { appearance: none; }
   }
 
   .human-hand-area {
-    left: 58%;
+    left: 124px;
+    right: 12px;
     bottom: 0.6%;
-    transform: translateX(-50%);
-    max-width: min(76vw, calc(100% - 128px));
+    transform: none;
+    width: auto;
+    max-width: none;
+    align-items: stretch;
+  }
+  .human-hand-area .hand-row {
+    justify-content: center;
+    width: 100%;
   }
   .human-hand-area .kana-card,
   .human-hand-area .kana-card.size-lg {
