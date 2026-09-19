@@ -486,7 +486,3 @@ export function findNearYaku(cards: KanaCard[], activeRows: readonly RowId[] = R
   return hints
 }
 
-export function yakuUsesCard(yaku: YakuCandidate, cardId: string): boolean {
-  return yaku.cards.some((c) => c.id === cardId)
-}
-
