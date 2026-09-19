@@ -7,5 +7,7 @@ describe('App render', () => {
     const html = renderToString(<App />)
     expect(html).toContain('かなジャン！')
     expect(html).toContain('lobby')
+    expect(html).not.toContain('牌局模式與登場行')
+    expect(html).not.toContain('tutorial-dialog')
   })
 })

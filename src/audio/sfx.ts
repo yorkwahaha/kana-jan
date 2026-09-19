@@ -163,21 +163,61 @@ function playFallbackTone(kind: SfxKind) {
   }
 }
 
+const sfxPool = new Map<string, HTMLAudioElement[]>()
+
+function getSfxAudio(path: string, volume: number): HTMLAudioElement | null {
+  if (typeof Audio === 'undefined') return null
+  let pool = sfxPool.get(path)
+  if (!pool) {
+    pool = []
+    sfxPool.set(path, pool)
+  }
+  let audio: HTMLAudioElement | null = pool.find((a) => a.paused || a.ended) ?? null
+  if (!audio && pool.length < 8) {
+    audio = new Audio(path)
+    audio.addEventListener('error', () => {
+      missingAudioPaths.add(path)
+    })
+    pool.push(audio)
+  }
+  if (!audio) {
+    audio = pool[0] ?? null
+  }
+  if (audio) {
+    try {
+      audio.volume = volume
+      if (!audio.paused) {
+        audio.pause()
+      }
+      audio.currentTime = 0
+    } catch {
+      // ignore
+    }
+  }
+  return audio
+}
+
 export function playSfx(kind: SfxKind, enabled: boolean) {
   if (!enabled) return
 
   const path = SFX_PATHS[kind]
   if (path && !missingAudioPaths.has(path) && typeof Audio !== 'undefined') {
     try {
-      const audio = new Audio(path)
-      audio.volume = kind === 'click' ? 0.4 : kind === 'ron' ? 0.9 : 0.75
-      const promise = audio.play()
-      if (promise !== undefined) {
-        promise.catch(() => {
-          missingAudioPaths.add(path)
-          playFallbackTone(kind)
-        })
-        return
+      const volume = kind === 'click' ? 0.4 : kind === 'ron' ? 0.9 : 0.75
+      const audio = getSfxAudio(path, volume)
+      if (audio) {
+        const promise = audio.play()
+        if (promise !== undefined) {
+          promise.catch((err) => {
+            // 中斷（AbortError）或瀏覽器自動播放策略（NotAllowedError）不代表檔案缺失
+            if (err && (err.name === 'AbortError' || err.name === 'NotAllowedError')) {
+              return
+            }
+            missingAudioPaths.add(path)
+            playFallbackTone(kind)
+          })
+          return
+        }
       }
     } catch {
       missingAudioPaths.add(path)
@@ -250,8 +290,10 @@ export function startBgm(trackOrEnabled: BgmTrack | boolean = 'table', enabled =
           .then(() => {
             // HTML5 BGM 正常播放中
           })
-          .catch(() => {
-            missingAudioPaths.add(path)
+          .catch((err) => {
+            if (err && err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+              missingAudioPaths.add(path)
+            }
             if (currentBgmAudio === audio) {
               currentBgmAudio = null
             }
@@ -317,4 +359,18 @@ if (typeof document !== 'undefined') {
       resumeBgm()
     }
   })
+}
+
+// 頁面任意點擊或鍵盤操作時，解鎖瀏覽器 AudioContext 並在需要時恢復/啟動 BGM
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    if (ctx && ctx.state === 'suspended') {
+      void ctx.resume()
+    }
+    if (currentBgmTrack && (!currentBgmAudio || currentBgmAudio.paused)) {
+      startBgm(currentBgmTrack, true)
+    }
+  }
+  window.addEventListener('pointerdown', unlockAudio, { capture: true })
+  window.addEventListener('keydown', unlockAudio, { capture: true })
 }

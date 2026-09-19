@@ -21,7 +21,6 @@ import { GuestManager, HostManager } from './network/peerManager'
 import { generateRoomCode, getRoomFromUrl, parseRoomCode } from './network/roomCode'
 import type { RoomState } from './network/types'
 import { CatalogModal } from './ui/CatalogModal'
-import { GameOverModal } from './ui/GameOverModal'
 import { GameTable } from './ui/GameTable'
 import { Lobby } from './ui/Lobby'
 import { RoomLobby } from './ui/RoomLobby'
@@ -29,8 +28,10 @@ import { RowPreview } from './ui/RowPreview'
 import { ScoreReview } from './ui/ScoreReview'
 import { SettingsPanel } from './ui/SettingsPanel'
 import { Tutorial } from './ui/Tutorial'
+import { WinAnnouncement } from './ui/WinAnnouncement'
+import { tablePosition } from './ui/seats'
 import { recordSounds } from './ui/mastery'
-import { clearGame, hasSeenTutorial, initialState, loadGame, markTutorialSeen, saveGame } from './ui/persist'
+import { clearGame, initialState, loadGame, markTutorialSeen, saveGame } from './ui/persist'
 import { forfeitGame } from './ui/profile'
 import { delayFor, loadSettings, saveSettings, type Settings } from './ui/settings'
 
@@ -42,7 +43,7 @@ export function App() {
   const [lessonId, setLessonId] = useState(DEFAULT_LESSON_ID)
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [hoverYaku, setHoverYaku] = useState<YakuCandidate | null>(null)
-  const [showTutorial, setShowTutorial] = useState(() => !hasSeenTutorial())
+  const [showTutorial, setShowTutorial] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showCatalog, setShowCatalog] = useState(false)
   const [locked, setLocked] = useState(false)
@@ -59,6 +60,8 @@ export function App() {
   const initialUrlRoom = useMemo(() => getRoomFromUrl(), [])
   const lastHandledEventSeqRef = useRef<number>(-1)
   const gameOverPlayedRef = useRef<boolean>(false)
+  const [announcementStage, setAnnouncementStage] = useState<'idle' | 'gun' | 'cutin' | 'settlement'>('idle')
+  const lastAnnouncedScoreKeyRef = useRef<string | null>(null)
 
   // 清理 Peer 連線
   const cleanupNetwork = useCallback(() => {
@@ -142,25 +145,16 @@ export function App() {
         playSfx('draw', settings.sfx)
       } else if (state.lastFx === 'discard') {
         playSfx('discard', settings.sfx)
-      } else if (state.lastFx === 'dekita') {
-        const myPlayer = state.players.find((p) => p.seat === mySeat) ?? state.players[0]
-        const isMe = state.pendingScore?.playerId === myPlayer?.id
-        if (isMe) {
-          playSfx('dekita', settings.sfx)
-        }
-      } else if (state.lastFx === 'moratta') {
-        const myPlayer = state.players.find((p) => p.seat === mySeat) ?? state.players[0]
-        const isVictim = state.pendingScore?.fromPlayerId === myPlayer?.id
-        const isMe = state.pendingScore?.playerId === myPlayer?.id
-        if (isVictim) {
-          playSfx('ron', settings.sfx)
-        } else if (isMe) {
-          playSfx('moratta', settings.sfx)
-        }
       }
     }
 
-    if (state.phase === 'gameOver' && !gameOverPlayedRef.current) {
+    // 對局結束音效：若有和牌宣告，延遲至金幣畫面再播放
+    const shouldPlayGameOverSfx =
+      state.phase === 'gameOver' &&
+      !gameOverPlayedRef.current &&
+      (!state.pendingScore || announcementStage === 'settlement')
+
+    if (shouldPlayGameOverSfx) {
       gameOverPlayedRef.current = true
       const myPlayer = state.players.find((p) => p.seat === mySeat) ?? state.players[0]
       const rankings = state.rankings ?? []
@@ -180,7 +174,54 @@ export function App() {
     state.players,
     state.rankings,
     mySeat,
+    announcementStage,
   ])
+
+  // 和牌宣告時序控制：1秒放槍牌發亮 -> 2秒胡牌玩家一側彈出 POKA JAN! 宣告 -> 金幣讓渡結算
+  useEffect(() => {
+    const isWinEvent = (state.phase === 'review' || state.phase === 'gameOver') && !!state.pendingScore
+    if (!isWinEvent || !state.pendingScore) {
+      if (state.phase !== 'review' && state.phase !== 'gameOver') {
+        setAnnouncementStage('idle')
+        lastAnnouncedScoreKeyRef.current = null
+      }
+      return
+    }
+
+    const scoreKey = `${state.pendingScore.playerId}-${state.pendingScore.yaku.id}-${state.turnNumber}-${state.eventSeq}`
+    if (lastAnnouncedScoreKeyRef.current === scoreKey) {
+      return
+    }
+    lastAnnouncedScoreKeyRef.current = scoreKey
+
+    // 1. 放槍牌／成牌發亮 1 秒（搭配 ron 放槍震撼音效或自摸提示音）
+    setAnnouncementStage('gun')
+    if (state.pendingScore.source === 'ron') {
+      playSfx('ron', settings.sfx)
+    } else {
+      playSfx('ready', settings.sfx)
+    }
+
+    // 2. 1.0 秒後，從胡牌玩家一側跳出 POKA JAN! 宣告 Cut-in（持續 2.0 秒，搭配宣告音效）
+    const cutinTimer = window.setTimeout(() => {
+      setAnnouncementStage('cutin')
+      if (state.pendingScore?.source === 'tsumo') {
+        playSfx('dekita', settings.sfx)
+      } else {
+        playSfx('moratta', settings.sfx)
+      }
+    }, 1000)
+
+    // 3. 總計 3.0 秒後，切換到金幣讓渡畫面 (settlement)
+    const settlementTimer = window.setTimeout(() => {
+      setAnnouncementStage('settlement')
+    }, 3000)
+
+    return () => {
+      window.clearTimeout(cutinTimer)
+      window.clearTimeout(settlementTimer)
+    }
+  }, [state.phase, state.pendingScore, state.turnNumber, state.eventSeq, settings.sfx])
 
   useEffect(() => {
     if (state.phase === 'review' && state.pendingScore) {
@@ -199,17 +240,22 @@ export function App() {
     if (state.phase === 'lobby' || state.phase === 'gameOver' || showTutorial || showSettings) return
     if (state.phase === 'preview') return
 
-    // 1. 牌型結算展示畫面：等待 2.6 秒（金幣聲 0.6s + 停留 2s）自動進入下一回合，無需手動點擊
-    if (state.phase === 'review' && state.pendingScore) {
+    // 1. 牌型結算展示畫面：在進入 settlement（金幣讓渡）畫面後等待 2.8 秒自動進入下一回合，無需手動點擊
+    if (state.phase === 'review' && state.pendingScore && announcementStage === 'settlement') {
       const t = window.setTimeout(() => {
         dispatch({ type: 'FINISH_REVIEW' })
-      }, 2600)
+      }, 2800)
       return () => window.clearTimeout(t)
     }
 
     if (state.phase === 'dealing') {
+      playSfx('draw', settings.sfx)
+      const t1 = window.setTimeout(() => playSfx('draw', settings.sfx), 160)
       const t = window.setTimeout(() => dispatch({ type: 'DEAL_DONE' }), delayFor(settings, 'deal'))
-      return () => window.clearTimeout(t)
+      return () => {
+        window.clearTimeout(t1)
+        window.clearTimeout(t)
+      }
     }
 
     if (state.phase === 'playerDraw') {
@@ -221,13 +267,16 @@ export function App() {
       return () => window.clearTimeout(t)
     }
 
-    if (state.phase === 'playerAction' && currentPlayer(state).kind === 'human') {
-      const yakus = availableYakuFor(state, currentPlayer(state).id)
-      if (yakus.length === 0) {
-        const t = window.setTimeout(() => dispatch({ type: 'SKIP_YAKU' }), 280)
-        return () => window.clearTimeout(t)
+    if (state.phase === 'playerAction') {
+      const p = currentPlayer(state)
+      if (p.kind === 'human' || p.kind === 'remote') {
+        const yakus = availableYakuFor(state, p.id)
+        if (yakus.length === 0) {
+          const t = window.setTimeout(() => dispatch({ type: 'SKIP_YAKU' }), 280)
+          return () => window.clearTimeout(t)
+        }
+        return
       }
-      return
     }
 
     if (needsHumanInput(state)) return
@@ -255,10 +304,11 @@ export function App() {
       })
     }, wait)
     return () => window.clearTimeout(t)
-  }, [state, settings, dispatch, apply, showTutorial, showSettings, networkMode])
+  }, [state, settings, dispatch, apply, showTutorial, showSettings, networkMode, announcementStage])
 
   // 單人遊戲開始
   const startSingle = (seed?: number, nextLesson = lessonId) => {
+    playSfx('click', settings.sfx)
     cleanupNetwork()
     clearGame()
     const next = drainAuto(
@@ -275,6 +325,7 @@ export function App() {
 
   // 多人連線：開房（Host）
   const handleCreateRoom = useCallback(() => {
+    playSfx('click', settings.sfx)
     cleanupNetwork()
     clearGame()
     const code = generateRoomCode()
@@ -286,16 +337,29 @@ export function App() {
       onRoomChange: (r) => setRoomState({ ...r }),
       onClientAction: (seat, action) => {
         apply((s) => {
-          if (action.type === 'FINISH_REVIEW') {
-            const scoringPlayer = s.players.find((p) => p.id === s.pendingScore?.playerId)
-            if (scoringPlayer?.seat === seat || currentPlayer(s).seat === seat) {
-              return drainAuto(reduce(s, action))
-            }
-            return s
+          let updated = s
+          const player = s.players.find((p) => p.seat === seat)
+          if (player && player.kind === 'ai') {
+            const cleanName = player.name.replace(/\s*\(AI\)$/, '')
+            const restoredPlayers = s.players.map((p) =>
+              p.seat === seat ? { ...p, kind: 'remote' as const, name: cleanName } : p,
+            )
+            updated = pushEvent(
+              { ...s, players: restoredPlayers },
+              `玩家 ${cleanName} 已重新連線接管操作`,
+            )
           }
-          const current = s.phase === 'reaction' ? reactionActor(s) : currentPlayer(s)
-          if (current?.seat !== seat) return s
-          return drainAuto(reduce(s, action))
+
+          if (action.type === 'FINISH_REVIEW') {
+            const scoringPlayer = updated.players.find((p) => p.id === updated.pendingScore?.playerId)
+            if (scoringPlayer?.seat === seat || currentPlayer(updated).seat === seat) {
+              return drainAuto(reduce(updated, action))
+            }
+            return updated
+          }
+          const current = updated.phase === 'reaction' ? reactionActor(updated) : currentPlayer(updated)
+          if (current?.seat !== seat) return updated
+          return drainAuto(reduce(updated, action))
         })
       },
       onGuestDisconnect: (seat) => {
@@ -327,11 +391,12 @@ export function App() {
     setNetworkMode('host')
     setMySeat(0)
     setRoomState(host.getRoomState())
-  }, [playerName, lessonId, cleanupNetwork, apply])
+  }, [playerName, lessonId, cleanupNetwork, apply, settings.sfx])
 
   // 多人連線：加入房間（Guest）
   const handleJoinRoom = useCallback(
     (code: string) => {
+      playSfx('click', settings.sfx)
       cleanupNetwork()
       clearGame()
       const normalized = parseRoomCode(code)
@@ -358,12 +423,13 @@ export function App() {
       guestManagerRef.current = guest
       setNetworkMode('guest')
     },
-    [playerName, cleanupNetwork],
+    [playerName, cleanupNetwork, settings.sfx],
   )
 
   // 房主啟動多人牌局
   const handleStartMultiplayerGame = useCallback(() => {
     if (!roomState || networkMode !== 'host' || !hostManagerRef.current) return
+    playSfx('click', settings.sfx)
 
     const playerConfigs: PlayerConfig[] = roomState.slots.map((slot) => ({
       id: slot.playerId,
@@ -384,9 +450,10 @@ export function App() {
 
     hostManagerRef.current.startGame(initial)
     setState(initial)
-  }, [roomState, networkMode, difficulty])
+  }, [roomState, networkMode, difficulty, settings.sfx])
 
   const restartSame = () => {
+    playSfx('click', settings.sfx)
     if (networkMode === 'host') {
       handleStartMultiplayerGame()
     } else {
@@ -395,6 +462,7 @@ export function App() {
   }
 
   const toLobby = () => {
+    playSfx('click', settings.sfx)
     if (state.phase !== 'lobby' && state.phase !== 'gameOver') {
       forfeitGame()
     }
@@ -447,7 +515,7 @@ export function App() {
     }
   }, [isTurnActive, isMyTurn, networkMode, currentActor, state.phase, state.players, dispatch])
 
-  // 房主統御權威回合計時器：防範遠端真人玩家斷線、背景化或掛網發呆卡住牌局
+  // 房主統御權威回合計時器：防範遠端真人玩家背景化或網路封包遺失卡住牌局（執行單次回合摸切／略過，絕不將玩家篡改為 AI）
   useEffect(() => {
     if (networkMode !== 'host') return
     if (state.phase !== 'playerAction' && state.phase !== 'discard' && state.phase !== 'reaction') return
@@ -455,26 +523,13 @@ export function App() {
     const actor = state.phase === 'reaction' ? reactionActor(state) : currentPlayer(state)
     if (!actor || actor.kind !== 'remote') return
 
-    // 思考時間上限：出牌 12 秒、抄牌 8 秒。超時自動由 AI 接管，並推進牌局
-    const timeoutMs = state.phase === 'reaction' ? 8000 : 12000
+    // 客端畫面倒數計時為出牌 18 秒、抄牌 12 秒。房主給予額外 2 秒網路寬限（20 秒／14 秒），若客端未送出動作則由房主執行單次回合摸切處置
+    const timeoutMs = state.phase === 'reaction' ? 14000 : 20000
     const timer = window.setTimeout(() => {
-      apply((s) => {
-        const player = s.players.find((p) => p.id === actor.id)
-        if (!player || player.kind === 'ai') return s
-
-        const nextPlayers = s.players.map((p) =>
-          p.id === actor.id
-            ? { ...p, kind: 'ai' as const, name: p.name.includes('(AI)') ? p.name : `${p.name} (AI)` }
-            : p,
-        )
-        let next: GameState = { ...s, players: nextPlayers }
-        next = pushEvent(next, `${player.name} 逾時未出牌，已切換為電腦 AI 自動接管`)
-        return next
-      })
+      handleTurnTimeout()
     }, timeoutMs)
-
     return () => window.clearTimeout(timer)
-  }, [networkMode, state, apply])
+  }, [networkMode, state, handleTurnTimeout])
 
   // 1. 若處於房間等待大廳且牌局尚未開始
   if (networkMode !== 'none' && roomState && !roomState.started && state.phase === 'lobby') {
@@ -567,10 +622,11 @@ export function App() {
         state={state}
         settings={settings}
         mySeat={mySeat}
+        isRonHighlight={announcementStage === 'gun' || announcementStage === 'cutin'}
         turnTimer={{
           active: isTurnActive,
           seconds: state.phase === 'reaction' ? 12 : 18,
-          turnKey: `${state.turnNumber}-${state.phase}-${currentActor?.id}`,
+          turnKey: `${state.turnNumber}-${state.phase}-${currentActor?.id}-${state.comboCount}`,
           onTimeout: handleTurnTimeout,
         }}
         selectedCardId={selectedCardId}
@@ -587,20 +643,43 @@ export function App() {
           const card = myPlayer.hand.find((c) => c.id === id)
           if (card) void speakJapanese(speechText(card), settings.speech)
         }}
-        onChooseYaku={(id) => dispatch({ type: 'CHOOSE_YAKU', yakuId: id })}
-        onSkipYaku={() => dispatch({ type: 'SKIP_YAKU' })}
-        onClaim={(id) => dispatch({ type: 'CLAIM_YAKU', yakuId: id })}
-        onPassClaim={() => dispatch({ type: 'PASS_CLAIM' })}
+        onChooseYaku={(id) => {
+          playSfx('click', settings.sfx)
+          dispatch({ type: 'CHOOSE_YAKU', yakuId: id })
+        }}
+        onSkipYaku={() => {
+          playSfx('click', settings.sfx)
+          dispatch({ type: 'SKIP_YAKU' })
+        }}
+        onClaim={(id) => {
+          playSfx('click', settings.sfx)
+          dispatch({ type: 'CLAIM_YAKU', yakuId: id })
+        }}
+        onPassClaim={() => {
+          playSfx('click', settings.sfx)
+          dispatch({ type: 'PASS_CLAIM' })
+        }}
         onHoverYaku={setHoverYaku}
-        onOpenSettings={() => setShowSettings(true)}
-        onOpenHelp={() => setShowTutorial(true)}
-        onOpenCatalog={() => setShowCatalog(true)}
+        onOpenSettings={() => {
+          playSfx('click', settings.sfx)
+          setShowSettings(true)
+        }}
+        onOpenHelp={() => {
+          playSfx('click', settings.sfx)
+          setShowTutorial(true)
+        }}
+        onOpenCatalog={() => {
+          playSfx('click', settings.sfx)
+          setShowCatalog(true)
+        }}
       />
 
       {state.phase === 'preview' && (
         <RowPreview
           state={state}
+          settings={settings}
           onContinue={() => {
+            playSfx('click', settings.sfx)
             if (networkMode === 'none' || networkMode === 'host') {
               dispatch({ type: 'SKIP_PREVIEW' })
             }
@@ -608,22 +687,43 @@ export function App() {
         />
       )}
 
-      {state.phase === 'review' && state.pendingScore && (
+      {state.pendingScore &&
+        (state.phase === 'review' || state.phase === 'gameOver') &&
+        announcementStage !== 'idle' &&
+        announcementStage !== 'settlement' && (
+          <WinAnnouncement
+            winner={
+              state.players.find((p) => p.id === state.pendingScore?.playerId) ?? state.players[0]!
+            }
+            winnerPos={tablePosition(
+              (
+                state.players.find((p) => p.id === state.pendingScore?.playerId) ?? state.players[0]!
+              ).seat,
+              mySeat,
+            )}
+            yakuLabel={state.pendingScore.yaku.label}
+            totalScore={state.pendingScore.yaku.totalScore}
+            isRon={state.pendingScore.source === 'ron'}
+            payerName={state.players.find((p) => p.id === state.pendingScore?.fromPlayerId)?.name}
+            stage={announcementStage}
+            comboCount={state.comboCount}
+          />
+        )}
+
+      {((state.phase === 'review' && announcementStage === 'settlement') ||
+        (state.phase === 'gameOver' && (!state.pendingScore || announcementStage === 'settlement'))) && (
         <ScoreReview
           state={state}
           settings={settings}
           mySeat={mySeat}
-          onFinish={() => {
-            dispatch({ type: 'FINISH_REVIEW' })
-          }}
-        />
-      )}
-
-      {state.phase === 'gameOver' && (
-        <GameOverModal
-          state={state}
+          isGameOver={state.phase === 'gameOver'}
           onRestart={restartSame}
           onLobby={toLobby}
+          onFinish={() => {
+            if (state.phase === 'review') {
+              dispatch({ type: 'FINISH_REVIEW' })
+            }
+          }}
         />
       )}
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_BONUS } from '../data/bonuses'
 import { getCardById, type KanaCard } from '../data/cards'
-import { decideAi } from './ai'
+import { decideAi, needsHumanInput } from './ai'
 import { drainAuto, reduce, startGame } from './game'
 import { createRng } from './rng'
 
@@ -93,3 +93,46 @@ describe('電腦決策', () => {
     }
   })
 })
+
+describe('真人操作需求判定 (needsHumanInput)', () => {
+  it('remote 與 human 玩家在 playerAction / discard 階段均需真人輸入', () => {
+    const baseState = startGame({
+      playerConfigs: [
+        { id: 'p0', name: '房主', kind: 'human', seat: 0 },
+        { id: 'p1', name: '朋友', kind: 'remote', seat: 1 },
+        { id: 'p2', name: '電腦1', kind: 'ai', seat: 2 },
+        { id: 'p3', name: '電腦2', kind: 'ai', seat: 3 },
+      ],
+      skipPreview: true,
+      startPlayerIndex: 1,
+    })
+
+    const stateAtDraw = play(baseState, { type: 'DEAL_DONE' })
+    const stateAtAction = play(stateAtDraw, { type: 'DRAW' })
+    expect(stateAtAction.phase).toBe('playerAction')
+    expect(needsHumanInput(stateAtAction)).toBe(true)
+
+    const stateAtDiscard = play(stateAtAction, { type: 'SKIP_YAKU' })
+    expect(stateAtDiscard.phase).toBe('discard')
+    expect(needsHumanInput(stateAtDiscard)).toBe(true)
+  })
+
+  it('AI 玩家在 discard 階段不需真人輸入', () => {
+    const baseState = startGame({
+      playerConfigs: [
+        { id: 'p0', name: '房主', kind: 'human', seat: 0 },
+        { id: 'p1', name: '朋友', kind: 'remote', seat: 1 },
+        { id: 'p2', name: '電腦1', kind: 'ai', seat: 2 },
+        { id: 'p3', name: '電腦2', kind: 'ai', seat: 3 },
+      ],
+      skipPreview: true,
+      startPlayerIndex: 2,
+    })
+
+    const stateAtDraw = play(baseState, { type: 'DEAL_DONE' })
+    const stateAtAction = play(stateAtDraw, { type: 'DRAW' })
+    const stateAtDiscard = play(stateAtAction, { type: 'SKIP_YAKU' })
+    expect(needsHumanInput(stateAtDiscard)).toBe(false)
+  })
+})
+

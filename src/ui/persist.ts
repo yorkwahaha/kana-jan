@@ -25,7 +25,14 @@ export function loadGame(): GameState | null {
     if (parsed.phase === 'lobby') return null
     if (!Array.isArray(parsed.activeRows) || !parsed.lessonId || !parsed.bonus?.sound) return null
     if (parsed.lastDiscardPlayerId === undefined) parsed.lastDiscardPlayerId = null
-    parsed.players = parsed.players.map((p) => ({ ...p, discards: p.discards ?? [] }))
+    // 舊版 20/25 點制舊檔過濾，避免污染 1000 點新制
+    if (parsed.players.some((p) => p.gold < 100)) return null
+    // 自動消除存檔中歷史殘留的個位數零頭（如 857 -> 860, 1994 -> 1990, 1349 -> 1350），確保十位數起跳
+    parsed.players = parsed.players.map((p) => ({
+      ...p,
+      gold: Math.max(0, Math.round(p.gold / 10) * 10),
+      discards: p.discards ?? [],
+    }))
     return parsed
   } catch {
     return null

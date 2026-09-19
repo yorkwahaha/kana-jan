@@ -60,6 +60,7 @@ describe('回合：抽牌、棄牌、補牌', () => {
     const discardId = state.players[0]!.hand[0]!.id
     state = play(state, { type: 'DISCARD', cardId: discardId })
     expect(state.players[0]?.hand).toHaveLength(HAND_SIZE)
+    expect(state.lastFx).toBe('discard')
   })
 
   it('抽牌後新牌置於最右端不立即重排，棄牌後才整理手牌並自動排序', () => {
@@ -108,7 +109,7 @@ describe('回合：抽牌、棄牌、補牌', () => {
 describe('完成牌型流程', () => {
   it('自摸完成後卡片移出並補到 7 張，對手付款', () => {
     const yakuCards = cards('ka-hiragana', 'ka-katakana', 'ka-vocabulary')
-    const rest = cards('a-hiragana', 'i-hiragana', 'u-hiragana', 'e-hiragana')
+    const rest = cards('sa-hiragana', 'ta-hiragana', 'na-hiragana', 'ha-hiragana')
     let state = startGame({
       seed: 3,
       startPlayerIndex: 0,
@@ -130,7 +131,7 @@ describe('完成牌型流程', () => {
     expect(state.phase).toBe('review')
     const p0mid = state.players[0]!
     expect(p0mid.score).toBe(480)
-    expect(p0mid.gold).toBe(INITIAL_GOLD + 480 * 3)
+    expect(p0mid.gold).toBe(INITIAL_GOLD + 480)
     state = play(state, { type: 'FINISH_REVIEW' })
     expect(state.phase).toBe('playerDraw')
     const p0 = state.players[0]!
@@ -138,8 +139,8 @@ describe('完成牌型流程', () => {
     expect(p0.hand.some((c) => c.sound === 'ka')).toBe(false)
     expect(p0.completed).toHaveLength(1)
     expect(p0.score).toBe(480)
-    expect(p0.gold).toBe(INITIAL_GOLD + 480 * 3)
-    expect(state.players.slice(1).every((p) => p.gold === INITIAL_GOLD - 480)).toBe(true)
+    expect(p0.gold).toBe(INITIAL_GOLD + 480)
+    expect(state.players.slice(1).every((p) => p.gold === INITIAL_GOLD - 160)).toBe(true)
   })
 })
 
@@ -216,7 +217,7 @@ describe('棄牌河', () => {
 describe('牌庫不足與耗盡', () => {
   it('補牌時牌庫不足則補到可補的數量，耗盡後結束', () => {
     const yakuCards = cards('ka-hiragana', 'ka-katakana', 'ka-vocabulary')
-    const rest = cards('a-hiragana', 'i-hiragana', 'u-hiragana', 'e-hiragana')
+    const rest = cards('sa-hiragana', 'ta-hiragana', 'na-hiragana', 'ha-hiragana')
     let state = startGame({
       seed: 6,
       startPlayerIndex: 0,
@@ -331,8 +332,8 @@ describe('再玩一次', () => {
     expect(restarted.phase).toBe('dealing')
     const ready = play(restarted, { type: 'DEAL_DONE' })
     expect(ready.phase).toBe('playerDraw')
-    expect(INITIAL_GOLD).toBe(2000)
-    expect(ready.players.every((p) => p.gold === 2000 && p.score === 0 && p.completed.length === 0)).toBe(true)
+    expect(INITIAL_GOLD).toBe(1000)
+    expect(ready.players.every((p) => p.gold === 1000 && p.score === 0 && p.completed.length === 0)).toBe(true)
     expect(ready.events.some((e) => e.text.includes('遊戲開始'))).toBe(true)
   })
 })
@@ -372,3 +373,322 @@ describe('連線玩家設定 (playerConfigs)', () => {
     expect(state.players.every((p) => p.hand.length === HAND_SIZE)).toBe(true)
   })
 })
+
+describe('金幣總額與讓渡 (4000 點制)', () => {
+  it('自摸牌型後四名玩家金幣合計依然為 4000 且無個位數', () => {
+    let state = startGame({
+      seed: 77,
+      startPlayerIndex: 0,
+      skipPreview: true,
+      bonus,
+      hands: [
+        [getCardById('ka-hiragana'), getCardById('ka-katakana'), getCardById('ka-vocabulary'), getCardById('a-hiragana'), getCardById('i-hiragana'), getCardById('u-hiragana'), getCardById('e-hiragana')],
+        fillHand([], ['sa-hiragana', 'shi-hiragana', 'su-hiragana', 'se-hiragana', 'so-hiragana', 'ta-hiragana', 'chi-hiragana']),
+        fillHand([], ['na-hiragana', 'ni-hiragana', 'nu-hiragana', 'ne-hiragana', 'no-hiragana', 'ki-katakana', 'ku-katakana']),
+        fillHand([], ['ke-katakana', 'ko-katakana', 'sa-katakana', 'shi-katakana', 'su-katakana', 'se-katakana', 'so-katakana']),
+      ],
+      deck: cards('o-hiragana'),
+    })
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    const yaku = findYaku(state.players[0]!.hand, state.bonus, { activeRows: state.activeRows })[0]!
+    state = play(state, { type: 'CHOOSE_YAKU', yakuId: yaku.id })
+    const totalGold = state.players.reduce((sum, p) => sum + p.gold, 0)
+    expect(totalGold).toBe(4000)
+    expect(state.players.every((p) => p.gold % 10 === 0)).toBe(true)
+  })
+
+  it('放槍者金幣不足以支付時歸零，和牌者仍拿到全部分數，使得總額大於 4000', () => {
+    let state = startGame({
+      seed: 88,
+      startPlayerIndex: 1,
+      skipPreview: true,
+      bonus,
+      hands: [
+        [getCardById('ka-hiragana'), getCardById('ka-katakana'), getCardById('a-hiragana'), getCardById('i-hiragana'), getCardById('u-hiragana'), getCardById('e-hiragana'), getCardById('o-hiragana')],
+        fillHand([getCardById('ka-vocabulary')], ['sa-hiragana', 'shi-hiragana', 'su-hiragana', 'se-hiragana', 'so-hiragana', 'ta-hiragana', 'chi-hiragana']),
+        fillHand([], ['na-hiragana', 'ni-hiragana', 'nu-hiragana', 'ne-hiragana', 'no-hiragana', 'ki-katakana', 'ku-katakana']),
+        fillHand([], ['ke-katakana', 'ko-katakana', 'sa-katakana', 'shi-katakana', 'su-katakana', 'se-katakana', 'so-katakana']),
+      ],
+      deck: cards('to-vocabulary'),
+    })
+    // 將玩家 1（即將放槍者）的金幣手動設定為 80
+    state = {
+      ...state,
+      players: state.players.map((p, idx) => (idx === 1 ? { ...p, gold: 80 } : p)),
+    }
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    state = play(state, { type: 'SKIP_YAKU' })
+    state = play(state, { type: 'DISCARD', cardId: 'ka-vocabulary' })
+    expect(state.phase).toBe('reaction')
+    // 玩家 0 抄牌（ron，同音三張三位相和 480 分）
+    const yaku = findYaku([...state.players[0]!.hand, state.currentDiscard!], state.bonus, {
+      mustIncludeCardId: 'ka-vocabulary',
+      activeRows: state.activeRows,
+    })[0]!
+    state = play(state, { type: 'CLAIM_YAKU', yakuId: yaku.id })
+    // 放槍者金幣歸零
+    expect(state.players[1]!.gold).toBe(0)
+    // 贏家依然全拿 480 分 (1000 + 480 = 1480)
+    expect(state.players[0]!.gold).toBe(1480)
+    // 總金幣超出 4000 (1480 + 0 + 1000 + 1000 = 3480，原本總數為 1000*3 + 80 = 3080)
+    const totalGold = state.players.reduce((sum, p) => sum + p.gold, 0)
+    expect(totalGold).toBe(3480)
+    expect(state.phase).toBe('gameOver')
+    expect(state.gameOverReason).toBe('gold')
+  })
+})
+
+describe('連鎖和牌 (Combo 機制)', () => {
+  it('自摸後手牌補滿 7 張，若剛好有另一組牌型，進入 playerAction 允許連鎖宣告 (Combo)', () => {
+    let state = startGame({
+      seed: 123,
+      startPlayerIndex: 0,
+      skipPreview: true,
+      bonus,
+      hands: [
+        // 7 張：ka-hiragana, ka-katakana + a-row 5 張
+        [
+          getCardById('ka-hiragana'),
+          getCardById('ka-katakana'),
+          getCardById('a-hiragana'),
+          getCardById('i-hiragana'),
+          getCardById('u-hiragana'),
+          getCardById('e-hiragana'),
+          getCardById('o-hiragana'),
+        ],
+        fillHand([], ['sa-hiragana', 'shi-hiragana', 'su-hiragana', 'se-hiragana', 'so-hiragana', 'ta-hiragana', 'chi-hiragana']),
+        fillHand([], ['na-hiragana', 'ni-hiragana', 'nu-hiragana', 'ne-hiragana', 'no-hiragana', 'ki-katakana', 'ku-katakana']),
+        fillHand([], ['ke-katakana', 'ko-katakana', 'sa-katakana', 'shi-katakana', 'su-katakana', 'se-katakana', 'so-katakana']),
+      ],
+      deck: [
+        getCardById('ka-vocabulary'), // 摸牌：湊成 ka 同音三張
+        getCardById('ta-vocabulary'), // 補牌 1
+        getCardById('chi-vocabulary'), // 補牌 2
+      ],
+    })
+
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    expect(state.currentPlayerIndex).toBe(0)
+    // 第一次和牌：打出 ka 同音三張
+    const kaYaku = findYaku(state.players[0]!.hand, state.bonus, { activeRows: state.activeRows }).find(
+      (y) => y.sound === 'ka',
+    )!
+    state = play(state, { type: 'CHOOSE_YAKU', yakuId: kaYaku.id })
+    expect(state.phase).toBe('review')
+    expect(state.comboCount).toBe(1)
+
+    // 完成審查並進入補牌：手牌剩 a-row 5 張，補進 2 張卡片
+    state = play(state, { type: 'FINISH_REVIEW' })
+
+    // 因為補滿 7 張手牌中依然存在 a-row 5 張同一行牌型，應進入 playerAction 允許連鎖！
+    expect(state.phase).toBe('playerAction')
+    expect(state.currentPlayerIndex).toBe(0)
+    expect(state.players[0]!.hand).toHaveLength(7)
+    expect(state.events.some((e) => e.text.includes('連鎖'))).toBe(true)
+
+    // 第二次連鎖和牌：打出 a-row 同一行
+    const aRowYaku = findYaku(state.players[0]!.hand, state.bonus, { activeRows: state.activeRows }).find(
+      (y) => y.row === 'a',
+    )!
+    state = play(state, { type: 'CHOOSE_YAKU', yakuId: aRowYaku.id })
+    expect(state.phase).toBe('review')
+    expect(state.comboCount).toBe(2)
+    expect(state.events.some((e) => e.text.includes('Combo 2'))).toBe(true)
+  })
+
+  it('在連鎖 playerAction 階段主動跳過 (SKIP_YAKU)，不進入棄牌階段，直接推進至 nextTurn', () => {
+    let state = startGame({
+      seed: 124,
+      startPlayerIndex: 0,
+      skipPreview: true,
+      bonus,
+      hands: [
+        [
+          getCardById('ka-hiragana'),
+          getCardById('ka-katakana'),
+          getCardById('a-hiragana'),
+          getCardById('i-hiragana'),
+          getCardById('u-hiragana'),
+          getCardById('e-hiragana'),
+          getCardById('o-hiragana'),
+        ],
+        fillHand([], ['sa-hiragana', 'shi-hiragana', 'su-hiragana', 'se-hiragana', 'so-hiragana', 'ta-hiragana', 'chi-hiragana']),
+        fillHand([], ['na-hiragana', 'ni-hiragana', 'nu-hiragana', 'ne-hiragana', 'no-hiragana', 'ki-katakana', 'ku-katakana']),
+        fillHand([], ['ke-katakana', 'ko-katakana', 'sa-katakana', 'shi-katakana', 'su-katakana', 'se-katakana', 'so-katakana']),
+      ],
+      deck: [
+        getCardById('ka-vocabulary'),
+        getCardById('ta-vocabulary'),
+        getCardById('chi-vocabulary'),
+        getCardById('tsu-vocabulary'),
+        getCardById('te-vocabulary'),
+      ],
+    })
+
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    const kaYaku = findYaku(state.players[0]!.hand, state.bonus, { activeRows: state.activeRows }).find(
+      (y) => y.sound === 'ka',
+    )!
+    state = play(state, { type: 'CHOOSE_YAKU', yakuId: kaYaku.id })
+    state = play(state, { type: 'FINISH_REVIEW' })
+    expect(state.phase).toBe('playerAction')
+
+    // 玩家主動跳過連鎖和牌
+    state = play(state, { type: 'SKIP_YAKU' })
+    // 手牌剛好為 7 張，不棄牌，直接輪到玩家 1 抽牌
+    expect(state.phase).toBe('playerDraw')
+    expect(state.currentPlayerIndex).toBe(1)
+    expect(state.players[0]!.hand).toHaveLength(7)
+  })
+
+  it('補牌後手牌無任何合法牌型時，自動結束連鎖並換下一家', () => {
+    let state = startGame({
+      seed: 125,
+      startPlayerIndex: 0,
+      skipPreview: true,
+      bonus,
+      hands: [
+        // 手牌：同音三張 ka，其餘 4 張無法成牌
+        [
+          getCardById('ka-hiragana'),
+          getCardById('ka-katakana'),
+          getCardById('sa-hiragana'),
+          getCardById('ta-hiragana'),
+          getCardById('na-hiragana'),
+          getCardById('ha-hiragana'),
+          getCardById('ma-hiragana'),
+        ],
+        fillHand([], ['sa-katakana', 'shi-katakana', 'su-katakana', 'se-katakana', 'so-katakana', 'ta-katakana', 'chi-katakana']),
+        fillHand([], ['na-katakana', 'ni-katakana', 'nu-katakana', 'ne-katakana', 'no-katakana', 'ki-katakana', 'ku-katakana']),
+        fillHand([], ['ke-katakana', 'ko-katakana', 'sa-vocabulary', 'shi-vocabulary', 'su-vocabulary', 'se-vocabulary', 'so-vocabulary']),
+      ],
+      deck: [
+        getCardById('ka-vocabulary'), // 摸進第 3 張 ka
+        getCardById('ra-hiragana'), // 補牌 1（無法成牌）
+        getCardById('ri-hiragana'), // 補牌 2
+        getCardById('ru-hiragana'), // 補牌 3
+      ],
+    })
+
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    const kaYaku = findYaku(state.players[0]!.hand, state.bonus, { activeRows: state.activeRows })[0]!
+    state = play(state, { type: 'CHOOSE_YAKU', yakuId: kaYaku.id })
+    state = play(state, { type: 'FINISH_REVIEW' })
+
+    // 補牌後無牌型，自動推進至下一位玩家抽牌
+    expect(state.phase).toBe('playerDraw')
+    expect(state.currentPlayerIndex).toBe(1)
+    expect(state.comboCount).toBe(0)
+  })
+
+  it('牌庫耗盡時若補牌剛好湊齊牌型，仍可連鎖出牌；無牌型後才判定牌庫耗盡結束遊戲', () => {
+    let state = startGame({
+      seed: 126,
+      startPlayerIndex: 0,
+      skipPreview: true,
+      bonus,
+      hands: [
+        [
+          getCardById('ka-hiragana'),
+          getCardById('ka-katakana'),
+          getCardById('a-hiragana'),
+          getCardById('i-hiragana'),
+          getCardById('u-hiragana'),
+          getCardById('e-hiragana'),
+          getCardById('o-hiragana'),
+        ],
+        fillHand([], ['sa-hiragana', 'shi-hiragana', 'su-hiragana', 'se-hiragana', 'so-hiragana', 'ta-hiragana', 'chi-hiragana']),
+        fillHand([], ['na-hiragana', 'ni-hiragana', 'nu-hiragana', 'ne-hiragana', 'no-hiragana', 'ki-katakana', 'ku-katakana']),
+        fillHand([], ['ke-katakana', 'ko-katakana', 'sa-katakana', 'shi-katakana', 'su-katakana', 'se-katakana', 'so-katakana']),
+      ],
+      // 牌庫只有 1 張摸牌和 2 張補牌，補完後牌庫恰好為 0
+      deck: [
+        getCardById('ka-vocabulary'),
+        getCardById('ta-vocabulary'),
+        getCardById('chi-vocabulary'),
+      ],
+    })
+
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    const kaYaku = findYaku(state.players[0]!.hand, state.bonus, { activeRows: state.activeRows }).find(
+      (y) => y.sound === 'ka',
+    )!
+    state = play(state, { type: 'CHOOSE_YAKU', yakuId: kaYaku.id })
+    state = play(state, { type: 'FINISH_REVIEW' })
+
+    // 此時牌庫長度為 0，但手牌依然有 a-row 牌型，依然允許連鎖！
+    expect(state.deck).toHaveLength(0)
+    expect(state.phase).toBe('playerAction')
+
+    // 若玩家跳過，才因牌庫耗盡而結束遊戲
+    state = play(state, { type: 'SKIP_YAKU' })
+    expect(state.phase).toBe('gameOver')
+    expect(state.gameOverReason).toBe('deck')
+  })
+
+  it('抄牌 (Ron) 補牌後若手牌湊齊合法牌型，亦能無縫觸發 Combo 連鎖', () => {
+    const discardCard = getCardById('ka-vocabulary')
+    let state = startGame({
+      seed: 999,
+      startPlayerIndex: 1, // 由玩家 1 起手
+      skipPreview: true,
+      bonus,
+      hands: [
+        // 玩家 0 手牌：ka-hiragana, ka-katakana + a-hiragana, a-katakana + 3 張雜牌
+        [
+          getCardById('ka-hiragana'),
+          getCardById('ka-katakana'),
+          getCardById('a-hiragana'),
+          getCardById('a-katakana'),
+          getCardById('sa-hiragana'),
+          getCardById('ta-hiragana'),
+          getCardById('na-hiragana'),
+        ],
+        fillHand([discardCard], ['sa-hiragana', 'shi-hiragana', 'su-hiragana', 'se-hiragana', 'so-hiragana', 'ta-hiragana', 'chi-hiragana']),
+        fillHand([], ['na-hiragana', 'ni-hiragana', 'nu-hiragana', 'ne-hiragana', 'no-hiragana', 'ki-katakana', 'ku-katakana']),
+        fillHand([], ['ke-katakana', 'ko-katakana', 'sa-katakana', 'shi-katakana', 'su-katakana', 'se-katakana', 'so-katakana']),
+      ],
+      deck: [
+        getCardById('sa-vocabulary'), // 玩家 1 抽這張
+        getCardById('a-vocabulary'), // 補牌 1：剛好與 a-hiragana、a-katakana 湊成同音三張！
+        getCardById('chi-vocabulary'), // 補牌 2
+      ],
+    })
+
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    state = play(state, { type: 'SKIP_YAKU' })
+    state = play(state, { type: 'DISCARD', cardId: discardCard.id })
+    expect(state.phase).toBe('reaction')
+
+    // 玩家 0 抄牌（もらった）
+    const yaku = findYaku([...state.players[0]!.hand, state.currentDiscard!], state.bonus, {
+      mustIncludeCardId: discardCard.id,
+      activeRows: state.activeRows,
+    })[0]!
+    state = play(state, { type: 'CLAIM_YAKU', yakuId: yaku.id })
+    expect(state.phase).toBe('review')
+    expect(state.comboCount).toBe(1)
+
+    // 結算審查完畢，進行補牌
+    state = play(state, { type: 'FINISH_REVIEW' })
+    // 補牌進 a-vocabulary 後，手牌有 a 同音三張，玩家 0 成為當前回合者並進入 playerAction！
+    expect(state.phase).toBe('playerAction')
+    expect(state.currentPlayerIndex).toBe(0)
+
+    // 玩家 0 連鎖宣告第二組牌型（a 同音三張）
+    const aYaku = findYaku(state.players[0]!.hand, state.bonus, { activeRows: state.activeRows }).find(
+      (y) => y.sound === 'a',
+    )!
+    state = play(state, { type: 'CHOOSE_YAKU', yakuId: aYaku.id })
+    expect(state.phase).toBe('review')
+    expect(state.comboCount).toBe(2)
+  })
+})
+

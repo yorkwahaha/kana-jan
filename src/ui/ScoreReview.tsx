@@ -1,19 +1,23 @@
-import { useEffect, useMemo } from 'react'
-import { speechText } from '../data/cards'
+import { useEffect, useMemo, useState } from 'react'
+import { speechText, type KanaCard } from '../data/cards'
 import { speakJapanese } from '../audio/speech'
 import { playSfx } from '../audio/sfx'
-import type { GameState } from '../engine/types'
+import type { GameState, PlayerState } from '../engine/types'
 import { computeRankings } from '../engine/scoring'
 import { CardView } from './CardView'
 import { tablePosition } from './seats'
 import { SettlementArrows } from './SettlementArrows'
 import type { Settings } from './settings'
+import { settleMatch, loadProfile } from './profile'
 
 interface Props {
   state: GameState
   settings: Settings
   mySeat?: number
-  onFinish: () => void
+  isGameOver?: boolean
+  onFinish?: () => void
+  onRestart?: () => void
+  onLobby?: () => void
 }
 
 const RANK_LABELS: Record<number, string> = {
@@ -23,9 +27,175 @@ const RANK_LABELS: Record<number, string> = {
   4: '4th',
 }
 
-export function ScoreReview({ state, settings, mySeat = 0, onFinish }: Props) {
+/** 1st 名次專屬煙火慶祝特效 (參照截圖右方煙火粒子與星芒) */
+function Fireworks() {
+  return (
+    <div className="settlement-fireworks" aria-hidden="true">
+      <svg viewBox="0 0 140 140" className="fireworks-svg">
+        {/* 中心光暈 */}
+        <circle cx="70" cy="70" r="18" fill="url(#firework-glow)" opacity="0.6" className="fw-center-glow" />
+
+        {/* 放射狀白色火花線條 */}
+        <g className="fw-rays" stroke="rgba(255,255,255,0.9)" strokeWidth="2.5" strokeLinecap="round">
+          <line x1="70" y1="46" x2="70" y2="28" />
+          <line x1="87" y1="53" x2="100" y2="40" />
+          <line x1="94" y1="70" x2="112" y2="70" />
+          <line x1="87" y1="87" x2="100" y2="100" />
+          <line x1="70" y1="94" x2="70" y2="112" />
+          <line x1="53" y1="87" x2="40" y2="100" />
+          <line x1="46" y1="70" x2="28" y2="70" />
+          <line x1="53" y1="53" x2="40" y2="40" />
+        </g>
+
+        {/* 次級青藍放射線 */}
+        <g className="fw-sub-rays" stroke="#67e8f9" strokeWidth="1.8" strokeLinecap="round">
+          <line x1="79" y1="48" x2="88" y2="36" />
+          <line x1="92" y1="61" x2="104" y2="55" />
+          <line x1="92" y1="79" x2="104" y2="85" />
+          <line x1="79" y1="92" x2="88" y2="104" />
+          <line x1="61" y1="92" x2="52" y2="104" />
+          <line x1="48" y1="79" x2="36" y2="85" />
+          <line x1="48" y1="61" x2="36" y2="55" />
+          <line x1="61" y1="48" x2="52" y2="36" />
+        </g>
+
+        {/* 閃爍四角星芒 (✨) */}
+        <path
+          d="M 70,55 Q 70,70 55,70 Q 70,70 70,85 Q 70,70 85,70 Q 70,70 70,55 Z"
+          fill="#ffffff"
+          className="fw-sparkle-main"
+        />
+        <path
+          d="M 108,35 Q 108,44 99,44 Q 108,44 108,53 Q 108,44 117,44 Q 108,44 108,35 Z"
+          fill="#a5f3fc"
+          className="fw-sparkle-sub1"
+        />
+        <path
+          d="M 104,95 Q 104,102 97,102 Q 104,102 104,109 Q 104,102 111,102 Q 104,102 104,95 Z"
+          fill="#fef08a"
+          className="fw-sparkle-sub2"
+        />
+        <path
+          d="M 32,32 Q 32,38 26,38 Q 32,38 32,44 Q 32,38 38,38 Q 32,38 32,32 Z"
+          fill="#ffffff"
+          className="fw-sparkle-sub3"
+        />
+
+        <defs>
+          <radialGradient id="firework-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#a5f3fc" stopOpacity="0.95" />
+            <stop offset="60%" stopColor="#38bdf8" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#0284c7" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+      </svg>
+    </div>
+  )
+}
+
+interface RollingGoldItem {
+  current: number
+  isRolling: boolean
+  justFinished: boolean
+}
+
+const PAYER_START_MS = 350
+const PAYER_DURATION_MS = 650
+const WINNER_START_MS = 1050
+const WINNER_DURATION_MS = 750
+
+function easeOutQuad(x: number): number {
+  return 1 - (1 - x) * (1 - x)
+}
+
+function useRollingGold(players: PlayerState[], deltas: Record<string, number>) {
+  const hasTransfers = useMemo(() => Object.values(deltas).some((d) => d !== 0), [deltas])
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    if (!hasTransfers) return
+    let animId: number
+    const startTime = performance.now()
+    const maxDuration = 2200
+
+    const step = (now: number) => {
+      const diff = now - startTime
+      setElapsed(diff)
+      if (diff < maxDuration) {
+        animId = requestAnimationFrame(step)
+      }
+    }
+
+    animId = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(animId)
+  }, [hasTransfers, players, deltas])
+
+  return useMemo(() => {
+    const map: Record<string, RollingGoldItem> = {}
+    for (const p of players) {
+      const delta = deltas[p.id] ?? 0
+      const target = p.gold
+      const start = target - delta
+
+      if (!hasTransfers || delta === 0) {
+        map[p.id] = { current: target, isRolling: false, justFinished: false }
+        continue
+      }
+
+      if (delta < 0) {
+        // 失分方遞減滾動
+        if (elapsed < PAYER_START_MS) {
+          map[p.id] = { current: start, isRolling: false, justFinished: false }
+        } else if (elapsed < PAYER_START_MS + PAYER_DURATION_MS) {
+          const progress = easeOutQuad((elapsed - PAYER_START_MS) / PAYER_DURATION_MS)
+          map[p.id] = {
+            current: Math.round(start + delta * progress),
+            isRolling: true,
+            justFinished: false,
+          }
+        } else {
+          map[p.id] = {
+            current: target,
+            isRolling: false,
+            justFinished: elapsed < PAYER_START_MS + PAYER_DURATION_MS + 350,
+          }
+        }
+      } else {
+        // 得分贏家遞增滾動
+        if (elapsed < WINNER_START_MS) {
+          map[p.id] = { current: start, isRolling: false, justFinished: false }
+        } else if (elapsed < WINNER_START_MS + WINNER_DURATION_MS) {
+          const progress = easeOutQuad((elapsed - WINNER_START_MS) / WINNER_DURATION_MS)
+          map[p.id] = {
+            current: Math.round(start + delta * progress),
+            isRolling: true,
+            justFinished: false,
+          }
+        } else {
+          map[p.id] = {
+            current: target,
+            isRolling: false,
+            justFinished: elapsed < WINNER_START_MS + WINNER_DURATION_MS + 400,
+          }
+        }
+      }
+    }
+    return map
+  }, [hasTransfers, players, deltas, elapsed])
+}
+
+export function ScoreReview({
+  state,
+  settings,
+  mySeat = 0,
+  isGameOver = false,
+  onFinish,
+  onRestart,
+  onLobby,
+}: Props) {
   const pending = state.pendingScore
-  const rankings = useMemo(() => computeRankings(state.players), [state.players])
+  const rankings = useMemo(() => state.rankings ?? computeRankings(state.players), [state.rankings, state.players])
+  const [showVocabModal, setShowVocabModal] = useState(false)
 
   const deltas = useMemo(() => {
     const map: Record<string, number> = {}
@@ -36,157 +206,268 @@ export function ScoreReview({ state, settings, mySeat = 0, onFinish }: Props) {
     return map
   }, [state.lastTransfers])
 
+  const rollingGold = useRollingGold(state.players, deltas)
+
+  // 對局結束時結算個人存檔資產
   useEffect(() => {
-    if (!pending) return
-    if (settings.speech) {
+    if (!isGameOver) return
+    const human = state.players.find((p) => p.kind === 'human') ?? state.players[0]
+    const humanRank = rankings.find((r) => r.playerId === human?.id)
+    if (humanRank) {
+      settleMatch(humanRank.place)
+      loadProfile()
+    }
+  }, [isGameOver, rankings, state.players])
+
+  // 音效播放（配合金幣飛行與籌碼滾動節奏）
+  useEffect(() => {
+    if (!pending && !isGameOver) return
+    if (pending && settings.speech) {
       const first = pending.yaku.cards[0]
       if (first) void speakJapanese(speechText(first), true)
     }
-    if (settings.sfx) {
-      playSfx('coin', true)
-      const t1 = setTimeout(() => playSfx('coin', true), 300)
-      const t2 = setTimeout(() => playSfx('coin', true), 600)
+    if (settings.sfx && (pending || state.lastTransfers.length > 0)) {
+      const timers: number[] = []
+      // 1. 失分方金幣出發
+      timers.push(window.setTimeout(() => playSfx('coin', true), 250))
+
+      // 2. 金幣抵達贏家，籌碼密集跳動
+      timers.push(window.setTimeout(() => playSfx('coin', true), 1100))
+
       return () => {
-        clearTimeout(t1)
-        clearTimeout(t2)
+        for (const t of timers) window.clearTimeout(t)
       }
     }
-  }, [pending, settings.speech, settings.sfx])
+  }, [pending, isGameOver, state.lastTransfers.length, settings.speech, settings.sfx])
 
-  // 金幣畫面結束後約 2 秒自動繼續對局，無需手動點擊
+  // 非對局結束時，金幣畫面約 3.2 秒自動推進；對局結束時停在畫面不自動跳過
   useEffect(() => {
+    if (isGameOver) return
     if (!pending) return
     const autoTimer = window.setTimeout(() => {
-      onFinish()
-    }, 2800)
+      onFinish?.()
+    }, 3200)
     return () => window.clearTimeout(autoTimer)
-  }, [pending, onFinish])
-
-  if (!pending) return null
+  }, [isGameOver, pending, onFinish])
 
   const placeOf = (id: string) => rankings.find((r) => r.playerId === id)?.place ?? 4
+  const bankruptPlayer = state.players.find((p) => p.gold === 0)
 
-  const singleTransfer = state.lastTransfers.length === 1 ? state.lastTransfers[0] : null
+  // 收集本局所有玩家完成牌型中的詞彙卡牌
+  const vocabCards = useMemo(() => {
+    const map = new Map<string, KanaCard>()
+    for (const p of state.players) {
+      for (const c of p.completed) {
+        for (const card of c.yaku.cards) {
+          if (card.cardType === 'vocabulary' && !map.has(card.vocabulary)) {
+            map.set(card.vocabulary, card)
+          }
+        }
+      }
+    }
+    return Array.from(map.values())
+  }, [state.players])
+
+  if (!pending && !isGameOver) return null
 
   return (
-    <div className="settlement-overlay" onClick={onFinish} aria-live="polite">
-      {/* 1. 桌面 4 方結算銘牌 (參照圖二、圖三：上下左右四方位) */}
+    <div
+      className={`settlement-overlay ${isGameOver ? 'is-game-over' : ''}`}
+      onClick={isGameOver ? undefined : onFinish}
+      aria-live="polite"
+    >
+      {/* 1. 桌面 4 方結算銘牌 (參照截圖：第一名右邊放煙火、失分方旁附帶短箭頭) */}
       <div className="settlement-badges-layer" onClick={(e) => e.stopPropagation()}>
         {state.players.map((player) => {
           const pos = tablePosition(player.seat, mySeat)
           const delta = deltas[player.id] ?? 0
-          const isWinner = player.id === pending.playerId
+          const isWinner = pending ? player.id === pending.playerId : placeOf(player.id) === 1
           const isPayer = delta < 0
           const place = placeOf(player.id)
+          const isRank1 = place === 1
+          const isBankrupt = player.gold === 0
+          const isHighlightWinner = isGameOver ? isRank1 : isWinner
           const initial = player.name.slice(0, 1)
 
           const badgeClass = [
             'settlement-badge',
             `pos-${pos}`,
-            isWinner ? 'is-winner' : '',
-            isPayer ? 'is-payer' : '',
-            !isWinner && !isPayer ? 'is-neutral' : '',
+            `rank-${place}-badge`,
+            isHighlightWinner ? 'is-winner' : '',
+            isBankrupt || isPayer ? 'is-payer' : '',
+            !isHighlightWinner && !isBankrupt && !isPayer ? 'is-neutral' : '',
           ]
             .filter(Boolean)
             .join(' ')
 
           return (
             <div key={player.id} className={badgeClass}>
-              <div className="settlement-badge-avatar" aria-hidden>
-                {initial}
-              </div>
+              {/* 第一名旁邊放煙火 */}
+              {isRank1 && <Fireworks />}
+
+              {/* 頂部名稱與右上角頭像 */}
               <div className="settlement-badge-header">
-                <span className="settlement-player-name">{player.name}</span>
+                <span className="settlement-player-name" title={player.name}>
+                  {player.name}
+                </span>
                 {pos === 'human' && <span className="settlement-human-tag">你</span>}
+                <div className="settlement-badge-avatar" aria-hidden>
+                  {initial}
+                </div>
               </div>
 
+              {/* 名次與分數 */}
               <div className="settlement-badge-body">
-                {isWinner && delta > 0 && (
-                  <div className="settlement-delta delta-win">＋{delta}</div>
-                )}
-                {isPayer && (
-                  <div className="settlement-delta delta-loss">{delta}</div>
-                )}
-                {!isWinner && !isPayer && (
-                  <div className="settlement-delta delta-neutral" />
-                )}
-              </div>
-
-              <div className="settlement-badge-footer">
                 <span className={`settlement-rank rank-${place}`}>
                   {RANK_LABELS[place] ?? `${place}th`}
                 </span>
-                <span className="settlement-coins">🟡 {player.gold}</span>
+
+                <div className="settlement-badge-values">
+                  {delta !== 0 && (
+                    <div className={`settlement-delta ${delta > 0 ? 'delta-win' : 'delta-loss'}`}>
+                      {delta > 0 ? `+${delta}` : delta}
+                    </div>
+                  )}
+                  {(() => {
+                    const roll = rollingGold[player.id] ?? {
+                      current: player.gold,
+                      isRolling: false,
+                      justFinished: false,
+                    }
+                    const coinClass = [
+                      'settlement-coins',
+                      roll.isRolling ? 'is-rolling' : '',
+                      roll.isRolling && delta > 0 ? 'rolling-win' : '',
+                      roll.isRolling && delta < 0 ? 'rolling-loss' : '',
+                      roll.justFinished && delta > 0 ? 'just-finished' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')
+
+                    return (
+                      <div className={coinClass}>
+                        <span className="coin-icon">🪙</span>
+                        <span className="coin-amount">{roll.current}</span>
+                      </div>
+                    )
+                  })()}
+                </div>
               </div>
             </div>
           )
         })}
       </div>
 
-      {/* 2. 指向性立體粗紅箭頭 (付款方 -> 贏家，放槍單條、自摸三條匯聚) */}
+      {/* 2. 參照圖三：立體帶狀指向箭頭與外圍金幣串（絕對不遮擋中央視窗，一目了然） */}
       <SettlementArrows transfers={state.lastTransfers} players={state.players} mySeat={mySeat} />
 
-      {/* 3. 中央焦點成牌區 (役種名 + 分數 + 卡牌一字排開 + 繼續對局按鈕) */}
+      {/* 3. 中央區 (對局結束提示 與/或 成牌焦點區) */}
       <div className="settlement-center" onClick={(e) => e.stopPropagation()}>
-        {/* 放槍 / 自摸 狀態橫幅提示 */}
-        {singleTransfer && (
-          <div className="settlement-deal-banner deal-ron">
-            <span className="deal-tag ron">⚡ 放槍</span>
-            <span className="deal-payer">
-              {state.players.find((p) => p.id === singleTransfer.fromId)?.name}
-            </span>
-            <span className="deal-arrow">➔</span>
-            <span className="deal-winner">
-              {state.players.find((p) => p.id === singleTransfer.toId)?.name}
-            </span>
-            <span className="deal-action">和牌</span>
+        {/* 對局結束時：停留在金幣讓渡畫面，顯示歸零提示與名次重開按鈕 */}
+        {isGameOver ? (
+          <div className="game-over-center-banner">
+            <h3 className="game-over-banner-text">
+              {bankruptPlayer
+                ? `${bankruptPlayer.name} 的分數已歸零，遊戲結束`
+                : '牌庫已耗盡，遊戲結束'}
+            </h3>
+
+            {/* 若當次有和牌牌型，精簡標記 */}
+            {pending && (
+              <div className="game-over-winning-yaku">
+                <span className="yaku-tag">和牌：{pending.yaku.label}</span>
+                <span className="yaku-score">+{pending.yaku.totalScore} 分</span>
+              </div>
+            )}
+
+            {/* 操作按鈕：再玩一次 與 回到大廳 */}
+            <div className="game-over-actions">
+              <button
+                type="button"
+                className="btn primary lg game-over-btn-restart"
+                onClick={onRestart}
+              >
+                🔄 再玩一次
+              </button>
+              <button
+                type="button"
+                className="btn lg game-over-btn-lobby"
+                onClick={onLobby}
+              >
+                🏠 回到大廳
+              </button>
+              {vocabCards.length > 0 && (
+                <button
+                  type="button"
+                  className="btn sm game-over-btn-vocab"
+                  onClick={() => setShowVocabModal((v) => !v)}
+                >
+                  📖 本局單字 ({vocabCards.length})
+                </button>
+              )}
+            </div>
           </div>
+        ) : (
+          /* 一般回合結算：顯示和牌牌面，移除橫幅與按鈕以達最精簡視覺 */
+          pending && (
+            <>
+              <div className="settlement-cards-row">
+                {pending.yaku.cards.map((card) => (
+                  <CardView
+                    key={card.id}
+                    card={card}
+                    size="md"
+                    revealMeaning
+                    showHints={{ ...settings, showRomaji: true }}
+                  />
+                ))}
+              </div>
+
+              {pending.yaku.cards.some((c) => c.cardType === 'vocabulary') && (
+                <p className="settlement-meaning">
+                  {pending.yaku.cards
+                    .filter((c) => c.cardType === 'vocabulary')
+                    .map((c) => `${c.vocabulary}（${c.meaning}）`)
+                    .join(' · ')}
+                </p>
+              )}
+            </>
+          )
         )}
-        {state.lastTransfers.length > 1 && (
-          <div className="settlement-deal-banner deal-tsumo">
-            <span className="deal-tag tsumo">🌟 自摸</span>
-            <span className="deal-winner">
-              {state.players.find((p) => p.id === pending.playerId)?.name}
-            </span>
-            <span className="deal-action">和牌（三家支付）</span>
-          </div>
-        )}
-
-        <div className="settlement-yaku-header">
-          <span className="settlement-yaku-title">{pending.yaku.label}</span>
-          <span className="settlement-yaku-score">+{pending.yaku.totalScore}</span>
-        </div>
-
-        <div className="settlement-cards-row">
-          {pending.yaku.cards.map((card) => (
-            <CardView
-              key={card.id}
-              card={card}
-              size="md"
-              revealMeaning
-              showHints={{ ...settings, showRomaji: true }}
-            />
-          ))}
-        </div>
-
-        {pending.yaku.cards.some((c) => c.cardType === 'vocabulary') && (
-          <p className="settlement-meaning">
-            {pending.yaku.cards
-              .filter((c) => c.cardType === 'vocabulary')
-              .map((c) => `${c.vocabulary}（${c.meaning}）`)
-              .join(' · ')}
-          </p>
-        )}
-
-        <button
-          className="btn primary lg settlement-continue-btn"
-          onClick={onFinish}
-          autoFocus
-        >
-          繼續對局
-        </button>
-        <span className="settlement-auto-timer">約 2 秒後自動進入下一回合</span>
       </div>
+
+      {/* 學習單字檢視彈窗 (可選) */}
+      {showVocabModal && vocabCards.length > 0 && (
+        <div
+          className="vocab-review-modal"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-label="本局學會單字"
+        >
+          <div className="vocab-review-header">
+            <h4>📖 本局學會單字（點擊聆聽發音）</h4>
+            <button
+              type="button"
+              className="btn sm"
+              onClick={() => setShowVocabModal(false)}
+            >
+              關閉
+            </button>
+          </div>
+          <div className="vocab-review-grid">
+            {vocabCards.map((card) => (
+              <div
+                key={card.id}
+                className="vocab-card-item"
+                onClick={() => void speakJapanese(speechText(card), true)}
+                title={`點擊發音：${card.vocabulary}`}
+              >
+                <CardView card={card} size="md" revealMeaning showHints={{ showRomaji: true }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

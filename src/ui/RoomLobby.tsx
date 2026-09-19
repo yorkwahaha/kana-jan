@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { getLesson, LESSONS } from '../data/lessons'
 import { copyToClipboard, makeRoomUrl } from '../network/roomCode'
 import type { RoomState } from '../network/types'
-import { Mascot } from './Mascot'
 
 interface Props {
   roomState: RoomState
@@ -21,10 +19,8 @@ export function RoomLobby({
   onStartGame,
   onLeaveRoom,
   onToggleSlotAi,
-  onLessonChange,
 }: Props) {
   const [copied, setCopied] = useState(false)
-  const currentLesson = getLesson(roomState.lessonId)
 
   const handleCopy = async () => {
     const shareUrl = makeRoomUrl(window.location.href, roomState.roomId)
@@ -42,7 +38,6 @@ export function RoomLobby({
     <div className="room-lobby">
       <section className="room-lobby-sheet">
         <header className="room-header">
-          <Mascot mood="idle" />
           <h2>🌸 連線對戰室 🌸</h2>
           <div className="room-code-badge-wrap">
             <span className="room-code-label">房間號碼</span>
@@ -53,23 +48,6 @@ export function RoomLobby({
           </div>
           <p className="room-subtext">將連結分享給好友，朋友點開即可直接加入！</p>
         </header>
-
-        {isHost && onLessonChange && (
-          <div className="room-lesson-picker">
-            <label className="field-label">登場行課程：</label>
-            <select
-              className="lesson-select"
-              value={roomState.lessonId}
-              onChange={(e) => onLessonChange(e.target.value)}
-            >
-              {LESSONS.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.label}（{l.detail}）
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
 
         <div className="slots-grid">
           {roomState.slots.map((slot) => {
@@ -150,10 +128,6 @@ export function RoomLobby({
             </>
           )}
         </div>
-
-        <p className="room-tip-note">
-          目前設定：{currentLesson.label}。支援 2～4 人對戰，空缺座位可隨時點擊「由 AI 補位」直接開打！
-        </p>
       </section>
     </div>
   )

@@ -108,7 +108,7 @@ function finishYaku(
     baseScore,
     typeBonus,
     missionBonus,
-    totalScore: baseScore + typeBonus + missionBonus,
+    totalScore: Math.max(10, Math.round((baseScore + typeBonus + missionBonus) / 10) * 10),
   }
 }
 

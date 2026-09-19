@@ -101,7 +101,7 @@ function decideAction(state: GameState, rng: Rng): GameAction {
   }
 
   const best = yakus[0]!
-  if (shouldDelayLowYaku(best, player.hand, rng) && yakus.every((y) => y.totalScore <= 180)) {
+  if (state.comboCount === 0 && shouldDelayLowYaku(best, player.hand, rng) && yakus.every((y) => y.totalScore <= 180)) {
     return { type: 'SKIP_YAKU' }
   }
   return { type: 'CHOOSE_YAKU', yakuId: best.id }
@@ -142,13 +142,15 @@ export function decideAi(state: GameState, rng: Rng): GameAction | null {
 
 export function needsHumanInput(state: GameState): boolean {
   if (state.phase === 'playerDraw' || state.phase === 'playerAction' || state.phase === 'discard') {
-    return currentPlayer(state).kind === 'human'
+    const p = currentPlayer(state)
+    return p.kind === 'human' || p.kind === 'remote'
   }
   if (state.phase === 'reaction') {
-    return reactionActor(state)?.kind === 'human'
+    const actor = reactionActor(state)
+    return actor?.kind === 'human' || actor?.kind === 'remote'
   }
   if (state.phase === 'review' || state.phase === 'preview') {
-    return state.players.some((p) => p.kind === 'human')
+    return state.players.some((p) => p.kind === 'human' || p.kind === 'remote')
   }
   return false
 }

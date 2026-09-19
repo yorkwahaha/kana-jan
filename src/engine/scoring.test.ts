@@ -8,7 +8,7 @@ function player(partial: Partial<PlayerState> & Pick<PlayerState, 'id' | 'name'>
     kind: 'ai',
     seat: 0,
     aiDifficulty: 'normal',
-    gold: 2000,
+    gold: 1000,
     score: 0,
     hand: [],
     discards: [],
@@ -18,60 +18,106 @@ function player(partial: Partial<PlayerState> & Pick<PlayerState, 'id' | 'name'>
 }
 
 describe('金幣結算', () => {
-  it('自己抽牌完成時由所有對手付款', () => {
+  it('自摸時由其他三方平分牌型分數，而非三方各付全額', () => {
     const players = [
-      player({ id: 'a', name: 'A', gold: 2000, seat: 0 }),
-      player({ id: 'b', name: 'B', gold: 2000, seat: 1 }),
-      player({ id: 'c', name: 'C', gold: 2000, seat: 2 }),
-      player({ id: 'd', name: 'D', gold: 2000, seat: 3 }),
+      player({ id: 'a', name: 'A', gold: 1000, seat: 0 }),
+      player({ id: 'b', name: 'B', gold: 1000, seat: 1 }),
+      player({ id: 'c', name: 'C', gold: 1000, seat: 2 }),
+      player({ id: 'd', name: 'D', gold: 1000, seat: 3 }),
     ]
+    // 480 分自摸：由其他三家各付 160 分（480 / 3）
     const result = settleGold(players, 'a', 480, 'tsumo')
-    expect(result.players.find((p) => p.id === 'a')?.gold).toBe(2000 + 480 * 3)
+    expect(result.players.find((p) => p.id === 'a')?.gold).toBe(1000 + 480)
     expect(result.players.find((p) => p.id === 'a')?.score).toBe(480)
-    expect(result.players.filter((p) => p.id !== 'a').every((p) => p.gold === 2000 - 480)).toBe(true)
+    expect(result.players.filter((p) => p.id !== 'a').every((p) => p.gold === 1000 - 160)).toBe(true)
     expect(result.transfers).toHaveLength(3)
+    expect(result.transfers.every((t) => t.amount === 160)).toBe(true)
     expect(result.bankrupt).toBe(false)
   })
 
-  it('使用棄牌完成時只有棄牌者付款', () => {
+  it('840 分自摸時三方各付出 280 分給自摸玩家', () => {
     const players = [
-      player({ id: 'a', name: 'A', gold: 2000 }),
-      player({ id: 'b', name: 'B', gold: 2000 }),
-      player({ id: 'c', name: 'C', gold: 2000 }),
-      player({ id: 'd', name: 'D', gold: 2000 }),
+      player({ id: 'a', name: 'A', gold: 1000, seat: 0 }),
+      player({ id: 'b', name: 'B', gold: 1000, seat: 1 }),
+      player({ id: 'c', name: 'C', gold: 1000, seat: 2 }),
+      player({ id: 'd', name: 'D', gold: 1000, seat: 3 }),
+    ]
+    const result = settleGold(players, 'a', 840, 'tsumo')
+    expect(result.players.find((p) => p.id === 'a')?.gold).toBe(1000 + 840)
+    expect(result.players.filter((p) => p.id !== 'a').every((p) => p.gold === 1000 - 280)).toBe(true)
+    expect(result.transfers.every((t) => t.amount === 280)).toBe(true)
+  })
+
+  it('使用棄牌完成（放銃）時只有棄牌放槍者全額付款', () => {
+    const players = [
+      player({ id: 'a', name: 'A', gold: 1000 }),
+      player({ id: 'b', name: 'B', gold: 1000 }),
+      player({ id: 'c', name: 'C', gold: 1000 }),
+      player({ id: 'd', name: 'D', gold: 1000 }),
     ]
     const result = settleGold(players, 'a', 120, 'ron', 'b')
-    expect(result.players.find((p) => p.id === 'a')?.gold).toBe(2120)
-    expect(result.players.find((p) => p.id === 'b')?.gold).toBe(1880)
-    expect(result.players.find((p) => p.id === 'c')?.gold).toBe(2000)
-    expect(result.players.find((p) => p.id === 'd')?.gold).toBe(2000)
+    expect(result.players.find((p) => p.id === 'a')?.gold).toBe(1120)
+    expect(result.players.find((p) => p.id === 'b')?.gold).toBe(880)
+    expect(result.players.find((p) => p.id === 'c')?.gold).toBe(1000)
+    expect(result.players.find((p) => p.id === 'd')?.gold).toBe(1000)
     expect(result.transfers).toHaveLength(1)
   })
 
-  it('金幣不可低於 0，不足則全額支付', () => {
+  it('金幣不可低於 0，放槍者金幣不足時歸零，完成者依然獲得完整牌型分數', () => {
     const players = [
-      player({ id: 'a', name: 'A', gold: 2000 }),
-      player({ id: 'b', name: 'B', gold: 50 }),
-      player({ id: 'c', name: 'C', gold: 2000 }),
-      player({ id: 'd', name: 'D', gold: 2000 }),
+      player({ id: 'a', name: 'A', gold: 1000 }),
+      player({ id: 'b', name: 'B', gold: 80 }),
+      player({ id: 'c', name: 'C', gold: 1000 }),
+      player({ id: 'd', name: 'D', gold: 1000 }),
     ]
     const result = settleGold(players, 'a', 120, 'ron', 'b')
     expect(result.players.find((p) => p.id === 'b')?.gold).toBe(0)
-    expect(result.players.find((p) => p.id === 'a')?.gold).toBe(2050)
+    expect(result.players.find((p) => p.id === 'a')?.gold).toBe(1120)
     expect(result.bankrupt).toBe(true)
+    const totalGold = result.players.reduce((sum, p) => sum + p.gold, 0)
+    expect(totalGold).toBe(3120)
   })
 
-  it('自摸時其中一人金幣不足，該人歸零且完成者只拿到實際支付額', () => {
+  it('自摸時其中一人金幣不足，該人歸零，完成者依然獲得完整牌型分數', () => {
     const players = [
-      player({ id: 'a', name: 'A', gold: 2000 }),
-      player({ id: 'b', name: 'B', gold: 50 }),
-      player({ id: 'c', name: 'C', gold: 2000 }),
-      player({ id: 'd', name: 'D', gold: 2000 }),
+      player({ id: 'a', name: 'A', gold: 1000 }),
+      player({ id: 'b', name: 'B', gold: 80 }),
+      player({ id: 'c', name: 'C', gold: 1000 }),
+      player({ id: 'd', name: 'D', gold: 1000 }),
     ]
     const result = settleGold(players, 'a', 480, 'tsumo')
     expect(result.players.find((p) => p.id === 'b')?.gold).toBe(0)
-    expect(result.players.find((p) => p.id === 'a')?.gold).toBe(2000 + 50 + 480 + 480)
+    expect(result.players.find((p) => p.id === 'c')?.gold).toBe(840)
+    expect(result.players.find((p) => p.id === 'd')?.gold).toBe(840)
+    expect(result.players.find((p) => p.id === 'a')?.gold).toBe(1000 + 480)
     expect(result.bankrupt).toBe(true)
+  })
+
+  it('正常未破產時，4位玩家金幣總額維持 4000 且無個位數', () => {
+    const players = [
+      player({ id: 'a', name: 'A', gold: 1000 }),
+      player({ id: 'b', name: 'B', gold: 1000 }),
+      player({ id: 'c', name: 'C', gold: 1000 }),
+      player({ id: 'd', name: 'D', gold: 1000 }),
+    ]
+    const result = settleGold(players, 'a', 480, 'tsumo')
+    const totalGold = result.players.reduce((sum, p) => sum + p.gold, 0)
+    expect(totalGold).toBe(4000)
+    expect(result.players.every((p) => p.gold % 10 === 0)).toBe(true)
+  })
+
+  it('若玩家初始資料存在個位數歷史髒數據（如 857、1994、1349），結算時自動對齊為整十數且讓渡金額永遠為整十數', () => {
+    const players = [
+      player({ id: 'a', name: 'さくら', gold: 3800 }),
+      player({ id: 'b', name: 'あおい', gold: 1994 }),
+      player({ id: 'c', name: '小春', gold: 1349 }),
+      player({ id: 'd', name: 'ひなた', gold: 857 }),
+    ]
+    const result = settleGold(players, 'c', 120, 'ron', 'a')
+    // 結算後所有玩家 gold 均無個位數
+    expect(result.players.every((p) => p.gold % 10 === 0)).toBe(true)
+    // 讓渡金額為整十數
+    expect(result.transfers.every((t) => t.amount % 10 === 0 && t.amount >= 10)).toBe(true)
   })
 })
 
@@ -96,22 +142,22 @@ describe('勝負判定', () => {
     expect(ranking[0]?.place).toBe(1)
   })
 
-  it('開場時所有人持有硬幣相同（2000點），四個人均為第 1 名', () => {
+  it('開場時所有人持有硬幣相同（1000點），四個人均為第 1 名', () => {
     const ranking = computeRankings([
-      player({ id: 'p0', name: '玩家', gold: 2000, seat: 0 }),
-      player({ id: 'p1', name: '電腦 1', gold: 2000, seat: 1 }),
-      player({ id: 'p2', name: '電腦 2', gold: 2000, seat: 2 }),
-      player({ id: 'p3', name: '電腦 3', gold: 2000, seat: 3 }),
+      player({ id: 'p0', name: '玩家', gold: 1000, seat: 0 }),
+      player({ id: 'p1', name: '電腦 1', gold: 1000, seat: 1 }),
+      player({ id: 'p2', name: '電腦 2', gold: 1000, seat: 2 }),
+      player({ id: 'p3', name: '電腦 3', gold: 1000, seat: 3 }),
     ])
     expect(ranking.map((r) => r.place)).toEqual([1, 1, 1, 1])
   })
 
   it('同分（持有硬幣相同）時獲得同樣數字的順位', () => {
     const ranking = computeRankings([
-      player({ id: 'a', name: 'A', gold: 2480, score: 480, seat: 0 }),
-      player({ id: 'b', name: 'B', gold: 2000, score: 300, seat: 1 }),
-      player({ id: 'c', name: 'C', gold: 2000, score: 300, seat: 2 }),
-      player({ id: 'd', name: 'D', gold: 1520, score: 0, seat: 3 }),
+      player({ id: 'a', name: 'A', gold: 1480, score: 480, seat: 0 }),
+      player({ id: 'b', name: 'B', gold: 1000, score: 300, seat: 1 }),
+      player({ id: 'c', name: 'C', gold: 1000, score: 300, seat: 2 }),
+      player({ id: 'd', name: 'D', gold: 520, score: 0, seat: 3 }),
     ])
     expect(ranking.find((r) => r.playerId === 'a')?.place).toBe(1)
     expect(ranking.find((r) => r.playerId === 'b')?.place).toBe(2)
@@ -121,8 +167,8 @@ describe('勝負判定', () => {
 
   it('持有硬幣相同時，以累計牌型得分為第一平手決勝', () => {
     const ranking = computeRankings([
-      player({ id: 'a', name: 'A', gold: 2000, score: 840, seat: 1 }),
-      player({ id: 'b', name: 'B', gold: 2000, score: 480, seat: 0 }),
+      player({ id: 'a', name: 'A', gold: 1000, score: 840, seat: 1 }),
+      player({ id: 'b', name: 'B', gold: 1000, score: 480, seat: 0 }),
     ])
     expect(ranking[0]?.playerId).toBe('a')
     expect(ranking[0]?.place).toBe(1)

@@ -18,6 +18,11 @@ export interface ScoreResult {
  * 放銃：只有棄牌者支付。
  * 金幣不可低於 0。
  */
+/**
+ * 自摸：由其他三方分攤牌型分數（每方分攤 safeAmount / 3，向上取整至整十數）。
+ * 放銃：由單家放槍者全額支付該牌型分數。
+ * 金幣不可低於 0，且任何讓渡皆至少十位數起跳，個位數永遠為 0。
+ */
 export function settleGold(
   players: PlayerState[],
   winnerId: string,
@@ -25,8 +30,12 @@ export function settleGold(
   source: ScoreSource,
   fromPlayerId?: string,
 ): ScoreResult {
+  // 強制讓渡點數至少十位數起跳，且個位數永遠為 0
+  const safeAmount = Math.max(10, Math.round(amount / 10) * 10)
+
   const next = players.map((p) => ({
     ...p,
+    gold: Math.max(0, Math.round(p.gold / 10) * 10),
     hand: [...p.hand],
     discards: [...(p.discards ?? [])],
     completed: [...p.completed],
@@ -34,7 +43,7 @@ export function settleGold(
   const winner = next.find((p) => p.id === winnerId)
   if (!winner) throw new Error(`Winner not found: ${winnerId}`)
 
-  winner.score += amount
+  winner.score += safeAmount
   const transfers: GoldTransfer[] = []
 
   const payers: PlayerState[] =
@@ -42,12 +51,17 @@ export function settleGold(
       ? next.filter((p) => p.id !== winnerId)
       : next.filter((p) => p.id === fromPlayerId)
 
+  // 自摸時由其餘三方平分分攤；放槍時由單家全數支付
+  const payerCount = Math.max(1, payers.length)
+  const eachAmount =
+    source === 'tsumo'
+      ? Math.max(10, Math.ceil(safeAmount / payerCount / 10) * 10)
+      : safeAmount
+
   for (const payer of payers) {
-    const pay = Math.min(payer.gold, amount)
-    if (pay <= 0) continue
-    payer.gold -= pay
-    winner.gold += pay
-    transfers.push({ fromId: payer.id, toId: winnerId, amount: pay })
+    payer.gold = Math.max(0, payer.gold - eachAmount)
+    winner.gold += eachAmount
+    transfers.push({ fromId: payer.id, toId: winnerId, amount: eachAmount })
   }
 
   const bankrupt = next.some((p) => p.gold <= 0)

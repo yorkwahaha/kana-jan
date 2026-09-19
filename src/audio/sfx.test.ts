@@ -76,4 +76,34 @@ describe('audio/sfx', () => {
     // 全員平手第 1 名
     expect(getGameOverSfxKind(1, 1)).toBe('win')
   })
+
+  it('does not permanently blacklist audio on NotAllowedError (autoplay policy)', async () => {
+    let playCount = 0
+    const mockAudio = {
+      play: () => {
+        playCount++
+        const err = new Error('Autoplay blocked')
+        err.name = 'NotAllowedError'
+        return Promise.reject(err)
+      },
+      addEventListener: () => {},
+      volume: 1,
+      currentTime: 0,
+      paused: true,
+      ended: false,
+    }
+    const originalAudio = globalThis.Audio
+    // @ts-expect-error mock audio
+    globalThis.Audio = function () {
+      return mockAudio
+    }
+
+    try {
+      playSfx('draw', true)
+      playSfx('draw', true)
+      expect(playCount).toBe(2)
+    } finally {
+      globalThis.Audio = originalAudio
+    }
+  })
 })

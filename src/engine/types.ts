@@ -66,6 +66,7 @@ export interface PendingScore {
   yaku: YakuCandidate
   source: ScoreSource
   fromPlayerId?: string
+  claimedCard?: KanaCard
 }
 
 export interface ReactionOption {
@@ -100,6 +101,7 @@ export interface GameState {
   lastFx: 'dekita' | 'moratta' | 'draw' | 'discard' | 'coin' | null
   lastTransfers: { fromId: string; toId: string; amount: number }[]
   lastDiscardPlayerId: string | null
+  comboCount: number
 }
 
 export interface Ranking {
@@ -143,5 +145,5 @@ export interface StartConfig {
 
 export const HAND_SIZE = 7
 export const PLAYER_COUNT = 4
-export const INITIAL_GOLD = 2000
+export const INITIAL_GOLD = 1000
 export const DEFAULT_AI_NAMES = ['さくら', 'ひなた', 'あおい']

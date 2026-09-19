@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { displayGlyph } from '../data/cards'
 import {
   availableYakuFor,
   currentPlayer,
@@ -16,10 +15,9 @@ import { CardView } from './CardView'
 import { CenterBoard } from './CenterBoard'
 import { DiscardRiver } from './DiscardRiver'
 import { EventLog } from './EventLog'
-import { MeldArea } from './MeldArea'
 import { ReferenceDrawer } from './ReferenceDrawer'
 import { SeatHud } from './SeatHud'
-import { TurnTimer } from './TurnTimer'
+import { CompactTurnTimer, TurnTimer } from './TurnTimer'
 
 interface Props {
   state: GameState
@@ -28,6 +26,7 @@ interface Props {
   selectedCardId: string | null
   hoverYaku: YakuCandidate | null
   locked: boolean
+  isRonHighlight?: boolean
   turnTimer?: {
     active: boolean
     seconds: number
@@ -56,6 +55,7 @@ export function GameTable({
   selectedCardId,
   hoverYaku,
   locked,
+  isRonHighlight = false,
   turnTimer,
   onSelectCard,
   onChooseYaku,
@@ -85,7 +85,9 @@ export function GameTable({
       ? findNearYaku(human.hand, state.activeRows).flatMap((n) => n.cardIds)
       : [],
   )
-  const yakuHighlight = new Set((hoverYaku?.cards ?? []).map((c) => c.id))
+  const availableClaimYakus = yakus.length > 0 ? yakus : reactionYakus
+  const targetClaimYaku = hoverYaku ?? availableClaimYakus[0] ?? null
+  const yakuHighlight = new Set((targetClaimYaku?.cards ?? []).map((c) => c.id))
   const canDiscard = state.phase === 'discard' && humanTurn && !locked
   const thinking =
     actor.kind === 'ai' && ['playerAction', 'discard', 'playerDraw', 'reaction'].includes(state.phase)
@@ -177,15 +179,50 @@ export function GameTable({
           ))}
         </div>
 
-        <MeldArea player={top} position="top" />
-        <MeldArea player={left} position="left" />
-        <MeldArea player={right} position="right" />
-        <MeldArea player={human} position="human" />
+        {/* 湊到的牌組不在牌桌常駐，僅在結算時展示 */}
 
-        <DiscardRiver player={top} position="top" liveCardId={state.currentDiscard?.id} settings={settings} />
-        <DiscardRiver player={left} position="left" liveCardId={state.currentDiscard?.id} settings={settings} />
-        <DiscardRiver player={right} position="right" liveCardId={state.currentDiscard?.id} settings={settings} />
-        <DiscardRiver player={human} position="human" liveCardId={state.currentDiscard?.id} settings={settings} />
+        {(() => {
+          const pending = state.pendingScore
+          const isRon = pending?.source === 'ron'
+          const ronGunCard = isRon ? (pending?.claimedCard ?? null) : null
+          const ronPayerId = isRon ? (pending?.fromPlayerId ?? null) : null
+          return (
+            <>
+              <DiscardRiver
+                player={top}
+                position="top"
+                liveCardId={state.currentDiscard?.id}
+                settings={settings}
+                ronGunCard={top.id === ronPayerId ? ronGunCard : null}
+                isRonHighlight={top.id === ronPayerId ? isRonHighlight : false}
+              />
+              <DiscardRiver
+                player={left}
+                position="left"
+                liveCardId={state.currentDiscard?.id}
+                settings={settings}
+                ronGunCard={left.id === ronPayerId ? ronGunCard : null}
+                isRonHighlight={left.id === ronPayerId ? isRonHighlight : false}
+              />
+              <DiscardRiver
+                player={right}
+                position="right"
+                liveCardId={state.currentDiscard?.id}
+                settings={settings}
+                ronGunCard={right.id === ronPayerId ? ronGunCard : null}
+                isRonHighlight={right.id === ronPayerId ? isRonHighlight : false}
+              />
+              <DiscardRiver
+                player={human}
+                position="human"
+                liveCardId={state.currentDiscard?.id}
+                settings={settings}
+                ronGunCard={human.id === ronPayerId ? ronGunCard : null}
+                isRonHighlight={human.id === ronPayerId ? isRonHighlight : false}
+              />
+            </>
+          )
+        })()}
 
         <CenterBoard state={state} settings={settings} actingPos={actingPos} />
         <CardDrawFlight state={state} settings={settings} mySeat={mySeat} />
@@ -197,70 +234,81 @@ export function GameTable({
 
         {/* 自家手牌區 (Bottom Center: Action Bar + Responsive Hand Row) - 參照圖一水平置中自適應 */}
         <div className="human-hand-area">
+          {/* 自摸和牌快捷按鈕區 (參照圖三：右側精簡按鈕組) */}
           {yakus.length > 0 && (
-            <div className="action-bar">
-              <p>有可完成的牌型。選一組結算，或暫不結算繼續收集。</p>
-              {yakus.map((y) => (
-                <button
-                  key={y.id}
-                  className="btn yaku"
-                  disabled={locked}
-                  onMouseEnter={() => onHoverYaku(y)}
-                  onMouseLeave={() => onHoverYaku(null)}
-                  onFocus={() => onHoverYaku(y)}
-                  onBlur={() => onHoverYaku(null)}
-                  onClick={() => onChooseYaku(y.id)}
-                >
-                  できた！{y.label}（{y.totalScore} 分）
-                </button>
-              ))}
-              <button className="btn" disabled={locked} onClick={onSkipYaku}>
-                暫不結算
-              </button>
-            </div>
-          )}
-          {reactionYakus.length > 0 && (
-            <div className="action-bar">
-              <p>
-                {discarder ? `${discarder.name} 丟出了「${state.currentDiscard ? displayGlyph(state.currentDiscard) : ''}」。` : ''}
-                你要抄走這張牌來完成牌型嗎？
-              </p>
+            <div className="compact-claim-dock" role="region" aria-label="自摸和牌決策">
               {turnTimer && turnTimer.active && (
-                <TurnTimer
+                <CompactTurnTimer
                   seconds={turnTimer.seconds}
                   turnKey={turnTimer.turnKey}
                   active={turnTimer.active}
                   onTimeout={turnTimer.onTimeout}
-                  className="timer-in-action-bar"
                 />
               )}
-              {reactionYakus.map((y) => (
+              <div className="compact-claim-buttons">
                 <button
-                  key={y.id}
-                  className="btn yaku"
+                  type="button"
+                  className="btn-compact-skip"
                   disabled={locked}
-                  onMouseEnter={() => onHoverYaku(y)}
-                  onMouseLeave={() => onHoverYaku(null)}
-                  onClick={() => onClaim(y.id)}
+                  onClick={onSkipYaku}
                 >
-                  もらった！{y.label}（{y.totalScore} 分）
+                  <span className="btn-skip-icon">🔄</span> 跳過
                 </button>
-              ))}
-              <button className="btn" disabled={locked} onClick={onPassClaim}>
-                讓過
-              </button>
+                {yakus.map((y) => (
+                  <button
+                    key={y.id}
+                    type="button"
+                    className="btn-compact-claim"
+                    disabled={locked}
+                    onMouseEnter={() => onHoverYaku(y)}
+                    onMouseLeave={() => onHoverYaku(null)}
+                    onFocus={() => onHoverYaku(y)}
+                    onBlur={() => onHoverYaku(null)}
+                    onClick={() => onChooseYaku(y.id)}
+                  >
+                    <span className="compact-claim-badge">🪙 {y.totalScore}</span>
+                    <span className="compact-claim-title">和牌</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
-          {canDiscard && selectedCardId && human.hand.find((c) => c.id === selectedCardId) && (
-            <div className="action-bar discard-confirm-bar">
-              <button
-                className="btn primary discard-btn"
-                disabled={locked}
-                onClick={() => onSelectCard(selectedCardId)}
-              >
-                打出「{displayGlyph(human.hand.find((c) => c.id === selectedCardId)!)}」
-              </button>
-              <span className="hint-text">（或再按一次該牌打出）</span>
+
+          {/* 抄牌／放槍胡牌快捷按鈕區 (參照圖三：右側精簡按鈕組) */}
+          {reactionYakus.length > 0 && (
+            <div className="compact-claim-dock" role="region" aria-label="和牌決策">
+              {turnTimer && turnTimer.active && (
+                <CompactTurnTimer
+                  seconds={turnTimer.seconds}
+                  turnKey={turnTimer.turnKey}
+                  active={turnTimer.active}
+                  onTimeout={turnTimer.onTimeout}
+                />
+              )}
+              <div className="compact-claim-buttons">
+                <button
+                  type="button"
+                  className="btn-compact-skip"
+                  disabled={locked}
+                  onClick={onPassClaim}
+                >
+                  <span className="btn-skip-icon">🔄</span> 跳過
+                </button>
+                {reactionYakus.map((y) => (
+                  <button
+                    key={y.id}
+                    type="button"
+                    className="btn-compact-claim"
+                    disabled={locked}
+                    onMouseEnter={() => onHoverYaku(y)}
+                    onMouseLeave={() => onHoverYaku(null)}
+                    onClick={() => onClaim(y.id)}
+                  >
+                    <span className="compact-claim-badge">🪙 {y.totalScore}</span>
+                    <span className="compact-claim-title">和牌</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <div className="hand-row" data-hand-origin="human">

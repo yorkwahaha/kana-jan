@@ -56,8 +56,8 @@ export function settleMatch(place: number): MatchSettlementResult {
 
   if (place === 1) {
     baseGold = 50
-    // 每連勝 1 場額外 +15 金幣，最高採計 5 場 (+75)
-    streakBonus = Math.min(prevStreak, 5) * 15
+    // 每連勝 1 場額外 +20 金幣，最高採計 5 場 (+100)
+    streakBonus = Math.min(prevStreak, 5) * 20
     nextStreak = prevStreak + 1
     profile.wins += 1
   } else if (place === 2) {

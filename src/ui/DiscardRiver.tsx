@@ -3,12 +3,16 @@ import type { PlayerState } from '../engine/types'
 import type { TablePosition } from './seats'
 import { CardView } from './CardView'
 import { delayFor, type Settings } from './settings'
+import { SparkleCluster } from './Sparkles'
+import type { KanaCard } from '../data/cards'
 
 interface Props {
   player: PlayerState
   position: TablePosition
   liveCardId?: string | null
   settings: Settings
+  ronGunCard?: KanaCard | null
+  isRonHighlight?: boolean
 }
 
 const FALLBACK_FROM: Record<TablePosition, { x: number; y: number }> = {
@@ -18,7 +22,14 @@ const FALLBACK_FROM: Record<TablePosition, { x: number; y: number }> = {
   right: { x: 90, y: 0 },
 }
 
-export function DiscardRiver({ player, position, liveCardId, settings }: Props) {
+export function DiscardRiver({
+  player,
+  position,
+  liveCardId,
+  settings,
+  ronGunCard,
+  isRonHighlight = false,
+}: Props) {
   const riverRef = useRef<HTMLDivElement>(null)
   const liveRef = useRef<HTMLSpanElement>(null)
   const flightMs = delayFor(settings, 'discardFlight')
@@ -63,7 +74,12 @@ export function DiscardRiver({ player, position, liveCardId, settings }: Props) 
     }
   }, [liveCardId, position, settings.animation, flightMs])
 
-  if (player.discards.length === 0) return null
+  const discards = [...player.discards]
+  if (ronGunCard && !discards.some((c) => c.id === ronGunCard.id)) {
+    discards.push(ronGunCard)
+  }
+
+  if (discards.length === 0) return null
 
   return (
     <div
@@ -71,11 +87,27 @@ export function DiscardRiver({ player, position, liveCardId, settings }: Props) 
       className={`discard-river pos-${position}`}
       aria-label={`${player.name} 的棄牌`}
     >
-      {player.discards.map((card) => {
+      {discards.map((card) => {
         const live = card.id === liveCardId
+        const isGun = ronGunCard?.id === card.id
+        const slotClass = [
+          'river-slot',
+          live ? 'is-live' : '',
+          isGun ? 'is-ron-gun' : '',
+          isGun && isRonHighlight ? 'is-ron-active' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')
+
         return (
-          <span key={card.id} ref={live ? liveRef : undefined} className={`river-slot${live ? ' is-live' : ''}`}>
-            <CardView card={card} size="river" showHints={settings} yakuPart={live} />
+          <span key={card.id} ref={live ? liveRef : undefined} className={slotClass}>
+            <CardView card={card} size="river" showHints={settings} yakuPart={live || isGun} />
+            {isGun && (
+              <>
+                <SparkleCluster className="river-ron-sparkles" scale={0.75} />
+                <span className="ron-gun-badge">⚡ 放槍！</span>
+              </>
+            )}
           </span>
         )
       })}

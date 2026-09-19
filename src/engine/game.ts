@@ -61,6 +61,7 @@ export function createLobbyState(): GameState {
     lastFx: null,
     lastTransfers: [],
     lastDiscardPlayerId: null,
+    comboCount: 0,
   }
 }
 
@@ -146,7 +147,7 @@ function goGameOver(state: GameState, reason: 'gold' | 'deck'): GameState {
     phase: 'gameOver',
     gameOverReason: reason,
     rankings: ranked,
-    pendingScore: null,
+    pendingScore: state.pendingScore ?? null,
   }
   const winner = ranked[0]
   const reasonText = reason === 'gold' ? '有人金幣歸零' : '牌庫耗盡'
@@ -295,9 +296,10 @@ function applyScoring(state: GameState): GameState {
       `${player.name} 抄了 ${from?.name ?? '對手'} 的棄牌，完成「${pending.yaku.label}」（${pending.yaku.totalScore} 分）`,
     )
   } else {
+    const comboPrefix = state.comboCount > 1 ? `連鎖達成！Combo ${state.comboCount}！` : ''
     next = pushEvent(
       next,
-      `${player.name} できた！自己湊成了「${pending.yaku.label}」（${pending.yaku.totalScore} 分）`,
+      `${player.name} できた！${comboPrefix}自己湊成了「${pending.yaku.label}」（${pending.yaku.totalScore} 分）`,
     )
   }
   next = {
@@ -338,7 +340,7 @@ function applyScoring(state: GameState): GameState {
 function applyRefill(state: GameState): GameState {
   const targetId = state.pendingScore?.playerId ?? currentPlayer(state).id
   const player = state.players.find((p) => p.id === targetId)
-  if (!player) return { ...state, phase: 'nextTurn', pendingScore: null }
+  if (!player) return { ...state, phase: 'nextTurn', pendingScore: null, comboCount: 0 }
 
   const filled = refillHand(player.hand, state.deck, HAND_SIZE)
   let next: GameState = replacePlayer(state, { ...player, hand: filled.hand })
@@ -350,22 +352,39 @@ function applyRefill(state: GameState): GameState {
     reactionIndex: 0,
     declaredThisTurn: false,
     lastTransfers: [],
-    lastFx: null,
+    lastFx: state.lastFx ?? null,
   }
   next = syncDiscardPile(next)
 
+  // 檢查補牌後是否仍有合法牌型可達成連鎖
+  const availableYakus = findYaku(filled.hand, state.bonus, { activeRows: state.activeRows })
+  if (availableYakus.length > 0) {
+    const targetIndex = state.players.findIndex((p) => p.id === targetId)
+    const nextCurrentIndex = targetIndex !== -1 ? targetIndex : state.currentPlayerIndex
+    next = {
+      ...next,
+      phase: 'playerAction',
+      currentPlayerIndex: nextCurrentIndex,
+    }
+    const nextComboNum = next.comboCount + 1
+    next = pushEvent(next, `${player.name} 補牌達成連鎖，可繼續宣告（Combo ${nextComboNum}）！`)
+    return next
+  }
+
+  // 無法連鎖且牌庫已空，則結束遊戲
   if (next.deck.length === 0) {
     return goGameOver(next, 'deck')
   }
-  return { ...next, phase: 'nextTurn' }
+
+  return { ...next, phase: 'nextTurn', comboCount: 0 }
 }
 
 /**
  * 規則決定（記錄於 README）：
- * - 未結算時必須棄 1 張。
- * - 結算後手牌 ≤ 7，不棄牌，直接補到 7 張。
- * - 每回合最多結算一個牌型。
- * - 牌庫在補牌後為空則結束。
+ * - 未結算時必須棄 1 自抽牌。
+ * - 結算後手牌 ≤ 7，直接補到 7 張；若補牌後仍有合法牌型，可持續連鎖宣告自摸（Combo）。
+ * - 當補滿 7 張無牌型或主動放棄時，不棄牌直接換下一家。
+ * - 牌庫耗盡且無連鎖可打時結束。
  * - 棄牌宣告由回合順序最近者優先，可放棄後交給下一位。
  */
 export function reduce(state: GameState, action: GameAction): GameState {
@@ -419,13 +438,16 @@ export function reduce(state: GameState, action: GameAction): GameState {
       const yakus = findYaku(player.hand, state.bonus, { activeRows: state.activeRows })
       const yaku = yakus.find((y) => y.id === action.yakuId)
       if (!yaku) return state
+      const comboCount = state.comboCount + 1
       const next: GameState = {
         ...state,
+        comboCount,
         declaredThisTurn: true,
         pendingScore: {
           playerId: player.id,
           yaku,
           source: 'tsumo',
+          claimedCard: player.hand[player.hand.length - 1] ?? yaku.cards[0],
         },
       }
       return afterDeclare(next)
@@ -434,8 +456,12 @@ export function reduce(state: GameState, action: GameAction): GameState {
     case 'SKIP_YAKU': {
       if (state.phase !== 'playerAction') return state
       const player = currentPlayer(state)
-      if (player.hand.length === 0) {
-        return { ...state, phase: 'refill' }
+      // 若手牌長度未超過手牌上限（如連鎖補牌後的 7 張手牌狀態），跳過時不棄牌直接結束該回合
+      if (player.hand.length <= HAND_SIZE) {
+        if (state.deck.length === 0) {
+          return goGameOver(state, 'deck')
+        }
+        return { ...state, phase: 'nextTurn', comboCount: 0 }
       }
       return { ...state, phase: 'discard' }
     }
@@ -479,13 +505,16 @@ export function reduce(state: GameState, action: GameAction): GameState {
       if (!yaku) return state
       const discarder =
         state.players.find((p) => p.id === state.lastDiscardPlayerId) ?? currentPlayer(state)
+      const comboCount = state.comboCount + 1
       let next: GameState = {
         ...state,
+        comboCount,
         pendingScore: {
           playerId: actor.id,
           yaku,
           source: 'ron',
           fromPlayerId: discarder.id,
+          claimedCard: discarded,
         },
       }
       next = pushEvent(
@@ -503,12 +532,12 @@ export function reduce(state: GameState, action: GameAction): GameState {
       if (nextIndex < state.reactionOptions.length) {
         return { ...next, reactionIndex: nextIndex }
       }
-      return { ...next, phase: 'refill', reactionIndex: nextIndex }
+      return { ...next, phase: 'refill', reactionIndex: nextIndex, lastFx: null }
     }
 
     case 'FINISH_REVIEW': {
       if (state.phase !== 'review') return state
-      return { ...state, phase: 'refill' }
+      return { ...state, phase: 'refill', lastFx: null }
     }
 
     case 'APPLY_SCORING': {
@@ -536,8 +565,9 @@ export function reduce(state: GameState, action: GameAction): GameState {
         pendingScore: null,
         reactionOptions: [],
         reactionIndex: 0,
-        lastFx: null,
+        lastFx: state.lastFx ?? null,
         lastTransfers: [],
+        comboCount: 0,
       }
       next = pushEvent(next, `下一回合：${nextPlayer?.name ?? ''}`)
       return next

@@ -72,14 +72,21 @@ async function playAudioUrl(url: string): Promise<boolean> {
         if (settled) return
         settled = true
         if (currentAudio === audio) currentAudio = null
-        if (!success) failedUrls.add(url)
         resolve(success)
       }
       audio.onended = () => done(true)
-      audio.onerror = () => done(false)
+      audio.onerror = () => {
+        failedUrls.add(url)
+        done(false)
+      }
       const p = audio.play()
       if (p !== undefined) {
-        p.catch(() => done(false))
+        p.catch((err) => {
+          if (err && err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
+            failedUrls.add(url)
+          }
+          done(false)
+        })
       }
     } catch {
       failedUrls.add(url)
