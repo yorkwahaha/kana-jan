@@ -2,6 +2,7 @@ import { Peer, type DataConnection } from 'peerjs'
 import type { GameAction } from '../engine/game'
 import type { GameState } from '../engine/types'
 import { maskStateForPlayer } from './mask'
+import { findFreeGuestSlotIndex } from './playerKind'
 import { parseRoomCode } from './roomCode'
 import type { ClientMessage, HostMessage, RoomSlot, RoomState } from './types'
 
@@ -141,8 +142,9 @@ export class HostManager {
         return
       }
 
-      // 尋找可用的空位（優先找尚未連線的 slot）
-      const freeSlotIndex = this.roomState.slots.findIndex((s, idx) => idx > 0 && !s.connected)
+      // 尋找可供真人加入的空位（不可搶走已標 AI 或已有連線的座位）
+      const connectedSeats = new Set(this.connections.keys())
+      const freeSlotIndex = findFreeGuestSlotIndex(this.roomState.slots, connectedSeats)
       if (freeSlotIndex === -1) {
         conn.send({ type: 'ERROR', message: '房間已滿員！' } satisfies HostMessage)
         conn.close()
@@ -288,6 +290,10 @@ export class HostManager {
 
   public getRoomState(): RoomState {
     return this.roomState
+  }
+
+  public getConnectedSeats(): number[] {
+    return [...this.connections.keys()]
   }
 
   public getCurrentGameState(): GameState | null {

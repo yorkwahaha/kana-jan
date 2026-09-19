@@ -107,6 +107,21 @@ function decideAction(state: GameState, rng: Rng): GameAction {
   return { type: 'CHOOSE_YAKU', yakuId: best.id }
 }
 
+/** 需要真人決策的座位（本地玩家、連線玩家、本機熱座），AI 不得代打 */
+export function isHumanControlled(kind: PlayerState['kind'] | undefined): boolean {
+  return kind === 'human' || kind === 'remote' || kind === 'local'
+}
+
+/** Host 是否應等待該玩家自行操作（含「有真人連線但 kind 誤標為 ai」） */
+export function shouldWaitForPlayer(
+  player: PlayerState | null | undefined,
+  connectedSeats: ReadonlySet<number> = new Set(),
+): boolean {
+  if (!player) return false
+  if (connectedSeats.has(player.seat)) return true
+  return isHumanControlled(player.kind)
+}
+
 export function decideAi(state: GameState, rng: Rng): GameAction | null {
   switch (state.phase) {
     case 'playerDraw': {
@@ -133,6 +148,9 @@ export function decideAi(state: GameState, rng: Rng): GameAction | null {
       return { type: 'CLAIM_YAKU', yakuId: yakus[0]!.id }
     }
     case 'review': {
+      const reviewer =
+        state.players.find((p) => p.id === state.pendingScore?.playerId) ?? currentPlayer(state)
+      if (isHumanControlled(reviewer.kind)) return null
       return { type: 'FINISH_REVIEW' }
     }
     default:
@@ -142,13 +160,13 @@ export function decideAi(state: GameState, rng: Rng): GameAction | null {
 
 export function needsHumanInput(state: GameState): boolean {
   if (state.phase === 'playerDraw' || state.phase === 'playerAction' || state.phase === 'discard') {
-    return currentPlayer(state).kind === 'human'
+    return isHumanControlled(currentPlayer(state).kind)
   }
   if (state.phase === 'reaction') {
-    return reactionActor(state)?.kind === 'human'
+    return isHumanControlled(reactionActor(state)?.kind)
   }
   if (state.phase === 'review' || state.phase === 'preview') {
-    return state.players.some((p) => p.kind === 'human')
+    return state.players.some((p) => isHumanControlled(p.kind))
   }
   return false
 }
