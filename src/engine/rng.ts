@@ -48,12 +48,6 @@ export function createRng(seed: number): Rng {
   }
 }
 
-export function rngFromState(state: number): Rng {
-  const rng = createRng(1)
-  // Recreate with exact state by wrapping
-  return createRngFromExactState(state >>> 0) ?? rng
-}
-
 function createRngFromExactState(state: number): Rng {
   let s = state >>> 0
   const next = () => {

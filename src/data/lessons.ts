@@ -1,4 +1,4 @@
-import { DAKUON_ROWS, ROW_LABEL, ROW_ORDER, SEION_ROWS, YOON_ROWS, type RowId } from './kana'
+import { DAKUON_ROWS, ROW_ORDER, SEION_ROWS, YOON_ROWS, type RowId } from './kana'
 
 export interface Lesson {
   id: string
@@ -25,11 +25,6 @@ export const DEFAULT_LESSON_ID = 'random-4'
 
 export function getLesson(id: string | undefined): Lesson {
   return LESSONS.find((l) => l.id === id) ?? LESSONS[0]!
-}
-
-export function lessonTitle(lesson: Lesson): string {
-  if (lesson.rows.length === 0) return lesson.label
-  return lesson.rows.map((row) => ROW_LABEL[row]).join('・')
 }
 
 export function pickLessonRows(

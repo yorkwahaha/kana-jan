@@ -601,7 +601,3 @@ export function drainAuto(state: GameState): GameState {
   }
   return current
 }
-
-export function reduceMany(state: GameState, actions: GameAction[]): GameState {
-  return actions.reduce((s, a) => drainAuto(reduce(s, a)), state)
-}
