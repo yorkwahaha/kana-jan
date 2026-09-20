@@ -1,5 +1,5 @@
 import type { KanaCard } from '../data/cards'
-import type { GameState, PlayerState, ScoreSource } from './types'
+import type { PlayerState, ScoreSource } from './types'
 
 export interface GoldTransfer {
   fromId: string
@@ -13,11 +13,6 @@ export interface ScoreResult {
   bankrupt: boolean
 }
 
-/**
- * 自摸：其他三名玩家各支付牌型分數（金幣不足則全付）。
- * 放銃：只有棄牌者支付。
- * 金幣不可低於 0。
- */
 /**
  * 自摸：由其他三方分攤牌型分數（每方分攤 safeAmount / 3，向上取整至整十數）。
  * 放銃：由單家放槍者全額支付該牌型分數。
@@ -109,10 +104,4 @@ export function computeRankings(players: PlayerState[]) {
   }
 
   return results
-}
-
-export function playerById(state: GameState, id: string): PlayerState {
-  const p = state.players.find((x) => x.id === id)
-  if (!p) throw new Error(`Player not found: ${id}`)
-  return p
 }

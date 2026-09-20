@@ -94,7 +94,6 @@ export interface GameState {
   eventSeq: number
   turnNumber: number
   drewThisTurn: boolean
-  declaredThisTurn: boolean
   lastDrawnCardId: string | null
   gameOverReason: 'gold' | 'deck' | null
   rankings: Ranking[] | null
@@ -102,6 +101,8 @@ export interface GameState {
   lastTransfers: { fromId: string; toId: string; amount: number }[]
   lastDiscardPlayerId: string | null
   comboCount: number
+  /** 本回合擁有者（棄牌者）。抄牌連鎖時 currentPlayerIndex 會暫時換成抄牌者，換人時仍從這裡往下一家。 */
+  turnOwnerIndex: number
 }
 
 export interface Ranking {

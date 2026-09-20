@@ -21,14 +21,14 @@ export interface RoomState {
 }
 
 export type ClientMessage =
-  | { type: 'JOIN'; name: string; peerId: string }
+  | { type: 'JOIN'; name: string; peerId: string; resumePlayerId?: string; resumeToken?: string }
   | { type: 'LEAVE' }
   | { type: 'ACTION'; action: GameAction }
   | { type: 'CHAT'; text: string }
 
 export type HostMessage =
-  | { type: 'ROOM_UPDATE'; roomState: RoomState; yourSeat: number }
-  | { type: 'GAME_START'; state: GameState; yourSeat: number }
-  | { type: 'GAME_SYNC'; state: GameState }
+  | { type: 'ROOM_UPDATE'; roomState: RoomState; yourSeat: number; spectating?: boolean; resumeToken?: string }
+  | { type: 'GAME_START'; state: GameState; yourSeat: number; spectating?: boolean; resumeToken?: string }
+  | { type: 'GAME_SYNC'; state: GameState; spectating?: boolean }
   | { type: 'ERROR'; message: string }
   | { type: 'CHAT'; senderName: string; text: string }

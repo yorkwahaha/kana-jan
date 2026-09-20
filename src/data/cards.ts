@@ -47,7 +47,7 @@ export function buildCard(sound: KanaSound, cardType: CardType): KanaCard {
   }
 }
 
-/** 完整牌庫：89 讀音 × 3 類型 = 267 張（不含課程複本） */
+/** 完整牌庫：95 讀音 × 3 類型 = 285 張（不含課程複本） */
 export function createCardCatalog(): KanaCard[] {
   const cards: KanaCard[] = []
   for (const kana of KANA_SOUNDS) {

@@ -36,4 +36,10 @@ describe('maskStateForPlayer 防窺牌遮罩', () => {
     expect(maskedForSeat1.players[3]!.hand).toHaveLength(7)
     expect(maskedForSeat1.players[3]!.hand.every((c) => c.hiragana === '？')).toBe(true)
   })
+
+  it('觀戰座位（seat < 0）遮蔽所有手牌', () => {
+    const state = startGame({ seed: 42, skipPreview: true })
+    const masked = maskStateForPlayer(state, -1)
+    expect(masked.players.every((p) => p.hand.every((c) => c.hiragana === '？'))).toBe(true)
+  })
 })

@@ -45,7 +45,21 @@ export interface MatchSettlementResult {
   nextStreak: number
 }
 
-export function settleMatch(place: number): MatchSettlementResult {
+const LAST_SETTLED_KEY = 'kana-jan-last-settled-v1'
+
+export function settleMatch(place: number, matchId?: string): MatchSettlementResult {
+  if (matchId) {
+    try {
+      const raw = localStorage.getItem(LAST_SETTLED_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw) as { id?: string; result?: MatchSettlementResult }
+        if (parsed.id === matchId && parsed.result) return parsed.result
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   const profile = loadProfile()
   const prevGold = profile.gold
   const prevStreak = profile.streak
@@ -85,7 +99,7 @@ export function settleMatch(place: number): MatchSettlementResult {
 
   saveProfile(profile)
 
-  return {
+  const result: MatchSettlementResult = {
     place,
     baseGold,
     streakBonus,
@@ -95,6 +109,16 @@ export function settleMatch(place: number): MatchSettlementResult {
     prevStreak,
     nextStreak,
   }
+
+  if (matchId) {
+    try {
+      localStorage.setItem(LAST_SETTLED_KEY, JSON.stringify({ id: matchId, result }))
+    } catch {
+      // ignore
+    }
+  }
+
+  return result
 }
 
 export function replenishGold(): UserProfile {

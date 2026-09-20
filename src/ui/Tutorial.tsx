@@ -27,7 +27,7 @@ export function Tutorial({ onClose }: Props) {
           </section>
           <section>
             <h3>2. 拗音揃い · 180 / 480 點</h3>
-            <p>同一拗音行的 3 個不同讀音（如 きゃ・きゅ・きょ，180 點）。三張全同類型享 <strong>480 點純色加成</strong>。</p>
+            <p>同一拗音行的 3 個不同讀音（如 きゃ・きゅ・きょ，180 點）。<strong>や行（やゆよ）與 わ行（わをん）</strong>同樣是三音揃い。三張全同類型享 <strong>480 點純色加成</strong>。</p>
             <div className="tutorial-cards">
               <CardView card={getCardById('kya-hiragana')} size="sm" />
               <CardView card={getCardById('kyu-katakana')} size="sm" />
@@ -48,6 +48,10 @@ export function Tutorial({ onClose }: Props) {
           <section>
             <h3>4. 組字 · 240～360 點 ＋ Bonus</h3>
             <p>用手牌拼出桌上 BONUS 單字的讀音，例如 ね＋こ → ねこ，享單字基礎分與 +90 點 Bonus 加成。</p>
+          </section>
+          <section>
+            <h3>5. 連鎖（Combo）</h3>
+            <p>完成牌型並補滿 7 張後，若手牌仍有合法牌型，可繼續宣告自摸直到無法成牌或主動略過。抄牌後同樣可以連鎖。連鎖結束後輪到原回合玩家的下一家，不會跳過中間的人。</p>
           </section>
           <section>
             <h3>6. 自己抽到 vs 使用別人的棄牌</h3>

@@ -12,14 +12,16 @@ export interface BonusMission {
   points: number
 }
 
-export function makeTargetBonus(kana: KanaSound, points = 90): BonusMission {
+export const DEFAULT_MISSION_POINTS = 90
+
+export function makeTargetBonus(kana: KanaSound, points = DEFAULT_MISSION_POINTS): BonusMission {
   const cardId = `${kana.sound}-vocabulary`
   return {
     kind: 'targetSound',
     sound: kana.sound,
     cardId,
     label: kana.vocabulary,
-    detail: `包含「${kana.hiragana}」之同音組、行揃い、段揃い，或拼出「${kana.vocabulary}」時額外 +${points} 分`,
+    detail: `包含「${kana.hiragana}」之同音組、行揃い，或拼出「${kana.vocabulary}」時額外 +${points} 分`,
     points,
   }
 }

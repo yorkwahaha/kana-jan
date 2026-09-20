@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_BONUS } from '../data/bonuses'
 import { CARD_CATALOG, getCardById, type KanaCard } from '../data/cards'
 import { createRng } from './rng'
-import { drainAuto, reduce, startGame } from './game'
+import { drainAuto, isClientAction, reduce, startGame } from './game'
 import { reactionOrder } from './game'
 import { HAND_SIZE, INITIAL_GOLD } from './types'
 import { findYaku } from './yaku'
@@ -22,6 +22,26 @@ function fillHand(base: KanaCard[], extras: string[]): KanaCard[] {
   const rest = extras.map(getCardById).filter((c) => !used.has(c.id))
   return [...base, ...rest].slice(0, HAND_SIZE)
 }
+
+describe('Bonus 任務分數', () => {
+  it('開局 Bonus 使用 +90 而非舊 3 點制', () => {
+    const state = startGame({ seed: 42, skipPreview: true })
+    expect(state.bonus.points).toBe(90)
+    expect(state.turnOwnerIndex).toBe(state.currentPlayerIndex)
+  })
+})
+
+describe('客端動作白名單', () => {
+  it('允許出牌／宣告，拒絕重開牌局與同步亂數', () => {
+    expect(isClientAction({ type: 'DISCARD', cardId: 'x' })).toBe(true)
+    expect(isClientAction({ type: 'CHOOSE_YAKU', yakuId: 'y' })).toBe(true)
+    expect(isClientAction({ type: 'CLAIM_YAKU', yakuId: 'y' })).toBe(true)
+    expect(isClientAction({ type: 'START' })).toBe(false)
+    expect(isClientAction({ type: 'RESTART' })).toBe(false)
+    expect(isClientAction({ type: 'SYNC_RNG', rngState: 1 })).toBe(false)
+    expect(isClientAction({ type: 'DRAW' })).toBe(false)
+  })
+})
 
 describe('seed 可重現', () => {
   it('相同 seed 產生相同起始玩家、Bonus 與牌庫', () => {
@@ -658,6 +678,11 @@ describe('連鎖和牌 (Combo 機制)', () => {
         getCardById('sa-vocabulary'), // 玩家 1 抽這張
         getCardById('a-vocabulary'), // 補牌 1：剛好與 a-hiragana、a-katakana 湊成同音三張！
         getCardById('chi-vocabulary'), // 補牌 2
+        getCardById('ma-hiragana'),
+        getCardById('mi-hiragana'),
+        getCardById('mu-hiragana'),
+        getCardById('me-hiragana'),
+        getCardById('mo-hiragana'),
       ],
     })
 
@@ -689,6 +714,39 @@ describe('連鎖和牌 (Combo 機制)', () => {
     state = play(state, { type: 'CHOOSE_YAKU', yakuId: aYaku.id })
     expect(state.phase).toBe('review')
     expect(state.comboCount).toBe(2)
+
+    // 抄牌連鎖結束後，應輪到原棄牌者（p1）的下一家 p2，而不是抄牌者 p0 的下一家 p1
+    state = play(state, { type: 'FINISH_REVIEW' })
+    expect(state.phase).toBe('playerDraw')
+    expect(state.currentPlayerIndex).toBe(2)
+    expect(state.turnOwnerIndex).toBe(2)
+  })
+
+  it('略過可成的牌型並棄牌後，即使手牌仍有役也不再強行進入連鎖宣告', () => {
+    const yakuCards = cards('ka-hiragana', 'ka-katakana', 'ka-vocabulary')
+    const rest = cards('sa-hiragana', 'ta-hiragana', 'na-hiragana', 'ha-hiragana')
+    let state = startGame({
+      seed: 321,
+      startPlayerIndex: 0,
+      skipPreview: true,
+      bonus,
+      hands: [
+        [...yakuCards, ...rest],
+        fillHand([], ['sa-katakana', 'shi-katakana', 'su-katakana', 'se-katakana', 'so-katakana', 'ta-katakana', 'chi-katakana']),
+        fillHand([], ['na-katakana', 'ni-katakana', 'nu-katakana', 'ne-katakana', 'no-katakana', 'ki-katakana', 'ku-katakana']),
+        fillHand([], ['ke-katakana', 'ko-katakana', 'sa-vocabulary', 'shi-vocabulary', 'su-vocabulary', 'se-vocabulary', 'so-vocabulary']),
+      ],
+      deck: cards('ra-hiragana', 'ri-hiragana', 'ru-hiragana'),
+    })
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    expect(findYaku(state.players[0]!.hand, state.bonus, { activeRows: state.activeRows }).length).toBeGreaterThan(0)
+    state = play(state, { type: 'SKIP_YAKU' })
+    expect(state.phase).toBe('discard')
+    state = play(state, { type: 'DISCARD', cardId: 'ha-hiragana' })
+    expect(state.phase).toBe('playerDraw')
+    expect(state.currentPlayerIndex).toBe(1)
+    expect(findYaku(state.players[0]!.hand, state.bonus, { activeRows: state.activeRows }).some((y) => y.kind === 'sameSound')).toBe(true)
   })
 })
 

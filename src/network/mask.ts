@@ -34,7 +34,8 @@ export function maskStateForPlayer(state: GameState, seat: number): GameState {
     ...state,
     deck: state.deck.map((_, idx) => makeHiddenCard(`deck-hidden-${idx}`)),
     players: state.players.map((p) => {
-      if (p.seat === seat) return p
+      // seat < 0：觀戰，所有手牌都遮罩
+      if (seat >= 0 && p.seat === seat) return p
       return {
         ...p,
         hand: p.hand.map((_, idx) => makeHiddenCard(`hidden-${p.seat}-${idx}`)),

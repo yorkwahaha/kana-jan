@@ -12,7 +12,7 @@ interface Props {
   position: TablePosition
 }
 
-const PLACE_BADGES = ['', '🥇 1st', '🥈 2nd', '🥉 3rd', '4th']
+const PLACE_LABELS = ['', '1st', '2nd', '3rd', '4th']
 
 export function SeatHud({
   player,
@@ -32,17 +32,21 @@ export function SeatHud({
   ]
     .filter(Boolean)
     .join(' ')
+  const initial = player.name.trim().slice(0, 1) || '?'
 
   return (
     <section className={className}>
-      <div className="seat-hud-row seat-hud-row-top">
-        <strong className="seat-name">{player.name}</strong>
-        {position === 'human' ? <span className="kind">你</span> : null}
-        {active && position !== 'human' ? <span className="active-turn-tag">思考中</span> : null}
-        <span className={`seat-place place-${place}`}>{PLACE_BADGES[place] ?? `${place}th`}</span>
+      <div className="seat-avatar" aria-hidden>
+        {initial}
       </div>
-      <div className="seat-hud-row seat-hud-row-bottom">
-        <span className="chip-badge">點數 {player.gold}</span>
+      <div className="seat-hud-body">
+        <div className="seat-hud-head">
+          <span className={`seat-place place-${place}`}>{PLACE_LABELS[place] ?? `${place}th`}</span>
+          {position === 'human' ? <span className="kind">你</span> : null}
+          {active && position !== 'human' ? <span className="active-turn-tag">思考中</span> : null}
+        </div>
+        <strong className="seat-name">{player.name}</strong>
+        <span className="chip-badge">{player.gold}</span>
         {goldDelta !== undefined && goldDelta !== 0 && (
           <em className={goldDelta > 0 ? 'delta-up' : 'delta-down'}>
             {goldDelta > 0 ? `＋${goldDelta}` : goldDelta}

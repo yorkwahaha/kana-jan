@@ -5,7 +5,7 @@ import {
   ROW_LABEL,
   ROW_ORDER,
   getSound,
-  isYoonRow,
+  isThreeSoundRow,
   type RowId,
 } from '../data/kana'
 import type { YakuCandidate, YakuKind } from './types'
@@ -15,12 +15,6 @@ export const BASE_SCORE: Record<YakuKind, number> = {
   sameRow: 480,
   sameYoon: 180,
   word: 240,
-}
-
-export const TYPE_BONUS: Record<CardType, number> = {
-  hiragana: 720,
-  katakana: 720,
-  vocabulary: 720,
 }
 
 export interface FindYakuOptions {
@@ -308,8 +302,8 @@ export function findYaku(
     if (mustId && !group.some((c) => c.id === mustId)) continue
     const rowId = row as RowId
 
-    if (isYoonRow(rowId)) {
-      // 拗音行：3 個音 (a, u, o 段) 湊齊即成牌型
+    if (isThreeSoundRow(rowId)) {
+      // 三音行（拗音／や行／わ行）：3 個不同讀音湊齊即成牌型
       const soundsInRow = groupBy(group, (c) => c.sound)
       if (soundsInRow.size === 3) {
         const picked = pickBestSetForSounds(soundsInRow, [...soundsInRow.keys()], mustId)
@@ -404,7 +398,7 @@ export function findNearYaku(cards: KanaCard[], _activeRows: readonly RowId[] = 
   for (const [row, group] of byRow) {
     const rowId = row as RowId
     const sounds = new Set(group.map((c) => c.sound))
-    if (isYoonRow(rowId)) {
+    if (isThreeSoundRow(rowId)) {
       if (sounds.size === 2) {
         hints.push({
           kind: 'sameYoon',
@@ -428,9 +422,5 @@ export function findNearYaku(cards: KanaCard[], _activeRows: readonly RowId[] = 
   }
 
   return hints
-}
-
-export function yakuUsesCard(yaku: YakuCandidate, cardId: string): boolean {
-  return yaku.cards.some((c) => c.id === cardId)
 }
 

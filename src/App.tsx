@@ -17,7 +17,9 @@ import {
 import { createRngFromExactState } from './engine/rng'
 import { INITIAL_GOLD, type AiDifficulty, type GameState, type PlayerConfig, type YakuCandidate } from './engine/types'
 import { DEFAULT_LESSON_ID } from './data/lessons'
+import { authorizeClientAction, restoreDisconnectedPlayer } from './network/authorize'
 import { GuestManager, HostManager } from './network/peerManager'
+import { clearResume, loadResume } from './network/resume'
 import { generateRoomCode, getRoomFromUrl, parseRoomCode } from './network/roomCode'
 import type { RoomState } from './network/types'
 import { CatalogModal } from './ui/CatalogModal'
@@ -54,6 +56,7 @@ export function App() {
   const [roomState, setRoomState] = useState<RoomState | null>(null)
   const [mySeat, setMySeat] = useState<number>(0)
   const [netError, setNetError] = useState<string | null>(null)
+  const [spectating, setSpectating] = useState(false)
   const hostManagerRef = useRef<HostManager | null>(null)
   const guestManagerRef = useRef<GuestManager | null>(null)
 
@@ -76,6 +79,7 @@ export function App() {
     setNetworkMode('none')
     setRoomState(null)
     setMySeat(0)
+    setSpectating(false)
     // 移除網址中的 room 參數
     if (typeof window !== 'undefined') {
       window.history.replaceState({}, '', window.location.pathname)
@@ -340,27 +344,24 @@ export function App() {
           let updated = s
           const player = s.players.find((p) => p.seat === seat)
           if (player && player.kind === 'ai') {
-            const cleanName = player.name.replace(/\s*\(AI\)$/, '')
-            const restoredPlayers = s.players.map((p) =>
-              p.seat === seat ? { ...p, kind: 'remote' as const, name: cleanName } : p,
-            )
-            updated = pushEvent(
-              { ...s, players: restoredPlayers },
-              `玩家 ${cleanName} 已重新連線接管操作`,
-            )
+            updated = pushEvent(restoreDisconnectedPlayer(s, seat), `玩家 ${player.name.replace(/\s*\(AI\)$/, '')} 已重新連線接管操作`)
           }
-
-          if (action.type === 'FINISH_REVIEW') {
-            const scoringPlayer = updated.players.find((p) => p.id === updated.pendingScore?.playerId)
-            if (scoringPlayer?.seat === seat || currentPlayer(updated).seat === seat) {
-              return drainAuto(reduce(updated, action))
-            }
-            return updated
-          }
-          const current = updated.phase === 'reaction' ? reactionActor(updated) : currentPlayer(updated)
-          if (current?.seat !== seat) return updated
+          if (!authorizeClientAction(updated, seat, action)) return updated
           return drainAuto(reduce(updated, action))
         })
+      },
+      onGuestReconnect: (seat) => {
+        let restored: GameState | undefined
+        apply((s) => {
+          const player = s.players.find((p) => p.seat === seat)
+          const next = pushEvent(
+            restoreDisconnectedPlayer(s, seat),
+            `玩家 ${(player?.name ?? '').replace(/\s*\(AI\)$/, '')} 已重新連線接管操作`,
+          )
+          restored = next
+          return next
+        })
+        return restored
       },
       onGuestDisconnect: (seat) => {
         apply((s) => {
@@ -404,21 +405,30 @@ export function App() {
         window.history.replaceState({}, '', `?room=${normalized}`)
       }
 
-      const guest = new GuestManager(normalized, playerName, {
-        onRoomUpdate: (room, seat) => {
-          setRoomState({ ...room })
-          setMySeat(seat)
+      const resume = loadResume(normalized)
+      const guest = new GuestManager(
+        normalized,
+        playerName,
+        {
+          onRoomUpdate: (room, seat, isSpectating) => {
+            setRoomState({ ...room })
+            setSpectating(Boolean(isSpectating) || seat < 0)
+            setMySeat(seat >= 0 ? seat : 0)
+          },
+          onGameStart: (startState, seat, isSpectating) => {
+            setState(startState)
+            setSpectating(Boolean(isSpectating) || seat < 0)
+            setMySeat(seat >= 0 ? seat : 0)
+            setNetworkMode('guest')
+          },
+          onGameSync: (syncedState, isSpectating) => {
+            setState(syncedState)
+            if (isSpectating !== undefined) setSpectating(isSpectating)
+          },
+          onError: (err) => setNetError(err),
         },
-        onGameStart: (startState, seat) => {
-          setState(startState)
-          setMySeat(seat)
-          setNetworkMode('guest')
-        },
-        onGameSync: (syncedState) => {
-          setState(syncedState)
-        },
-        onError: (err) => setNetError(err),
-      })
+        resume ? { playerId: resume.playerId, token: resume.token } : undefined,
+      )
 
       guestManagerRef.current = guest
       setNetworkMode('guest')
@@ -463,9 +473,10 @@ export function App() {
 
   const toLobby = () => {
     playSfx('click', settings.sfx)
-    if (state.phase !== 'lobby' && state.phase !== 'gameOver') {
+    if (state.phase !== 'lobby' && state.phase !== 'gameOver' && !spectating) {
       forfeitGame()
     }
+    if (roomState) clearResume(roomState.roomId)
     clearGame()
     cleanupNetwork()
     setState(createLobbyState())
@@ -491,9 +502,10 @@ export function App() {
       : state.phase === 'reaction'
         ? (reactionActor(state) ?? state.players[state.currentPlayerIndex] ?? null)
         : (state.players[state.currentPlayerIndex] ?? null)
-  const isMyTurn = currentActor ? currentActor.seat === mySeat : false
+  const isMyTurn = !spectating && currentActor ? currentActor.seat === mySeat : false
   const isTurnActive =
-    state.phase === 'playerAction' || state.phase === 'discard' || state.phase === 'reaction'
+    !spectating &&
+    (state.phase === 'playerAction' || state.phase === 'discard' || state.phase === 'reaction')
 
   // 回合思考超時自動託管
   const handleTurnTimeout = useCallback(() => {
@@ -617,6 +629,11 @@ export function App() {
           <button onClick={() => setNetError(null)}>確定</button>
         </div>
       )}
+      {spectating && (
+        <div className="net-error-banner">
+          <span>👁 觀戰中：看不到任何人的手牌，也無法操作</span>
+        </div>
+      )}
 
       <GameTable
         state={state}
@@ -631,7 +648,7 @@ export function App() {
         }}
         selectedCardId={selectedCardId}
         hoverYaku={hoverYaku}
-        locked={locked || !isMyTurn}
+        locked={locked || !isMyTurn || spectating}
         onSelectCard={(id) => {
           if (locked || !isMyTurn) return
           playSfx('click', settings.sfx)

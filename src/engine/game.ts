@@ -1,4 +1,4 @@
-import { DEFAULT_BONUS, makeTargetBonus } from '../data/bonuses'
+import { DEFAULT_BONUS, DEFAULT_MISSION_POINTS, makeTargetBonus } from '../data/bonuses'
 import { displayGlyph, type KanaCard } from '../data/cards'
 import { soundsForRows } from '../data/kana'
 import { DEFAULT_LESSON_ID, getLesson, pickLessonRows } from '../data/lessons'
@@ -54,7 +54,6 @@ export function createLobbyState(): GameState {
     eventSeq: 0,
     turnNumber: 0,
     drewThisTurn: false,
-    declaredThisTurn: false,
     lastDrawnCardId: null,
     gameOverReason: null,
     rankings: null,
@@ -62,6 +61,7 @@ export function createLobbyState(): GameState {
     lastTransfers: [],
     lastDiscardPlayerId: null,
     comboCount: 0,
+    turnOwnerIndex: 0,
   }
 }
 
@@ -170,7 +170,7 @@ export function startGame(config: StartConfig = {}): GameState {
     config.activeRows ??
     (lesson.rows.length > 0 ? lesson.rows : pickLessonRows(lesson.id, (arr) => rng.shuffle(arr)))
   const lessonSounds = soundsForRows(activeRows)
-  const bonus = config.bonus ?? makeTargetBonus(rng.pick(lessonSounds), 3)
+  const bonus = config.bonus ?? makeTargetBonus(rng.pick(lessonSounds), DEFAULT_MISSION_POINTS)
   const aiNames = config.aiNames ?? DEFAULT_AI_NAMES
   const difficulty = config.aiDifficulty ?? 'normal'
   const gold = config.initialGold ?? INITIAL_GOLD
@@ -243,6 +243,7 @@ export function startGame(config: StartConfig = {}): GameState {
     activeRows: [...activeRows],
     currentPlayerIndex: startPlayerIndex,
     startPlayerIndex,
+    turnOwnerIndex: startPlayerIndex,
     turnNumber: 1,
   }
   state = pushEvent(state, `遊戲開始！課程：${lesson.label}／Bonus：${bonus.label}`)
@@ -338,6 +339,7 @@ function applyScoring(state: GameState): GameState {
 }
 
 function applyRefill(state: GameState): GameState {
+  const scoredThisRefill = Boolean(state.pendingScore)
   const targetId = state.pendingScore?.playerId ?? currentPlayer(state).id
   const player = state.players.find((p) => p.id === targetId)
   if (!player) return { ...state, phase: 'nextTurn', pendingScore: null, comboCount: 0 }
@@ -350,25 +352,26 @@ function applyRefill(state: GameState): GameState {
     pendingScore: null,
     reactionOptions: [],
     reactionIndex: 0,
-    declaredThisTurn: false,
     lastTransfers: [],
     lastFx: state.lastFx ?? null,
   }
   next = syncDiscardPile(next)
 
-  // 檢查補牌後是否仍有合法牌型可達成連鎖
-  const availableYakus = findYaku(filled.hand, state.bonus, { activeRows: state.activeRows })
-  if (availableYakus.length > 0) {
-    const targetIndex = state.players.findIndex((p) => p.id === targetId)
-    const nextCurrentIndex = targetIndex !== -1 ? targetIndex : state.currentPlayerIndex
-    next = {
-      ...next,
-      phase: 'playerAction',
-      currentPlayerIndex: nextCurrentIndex,
+  // 只有剛完成牌型後的補牌才檢查連鎖；略過＋棄牌後即使手牌仍有役也不再強行進入宣告
+  if (scoredThisRefill) {
+    const availableYakus = findYaku(filled.hand, state.bonus, { activeRows: state.activeRows })
+    if (availableYakus.length > 0) {
+      const targetIndex = state.players.findIndex((p) => p.id === targetId)
+      const nextCurrentIndex = targetIndex !== -1 ? targetIndex : state.currentPlayerIndex
+      next = {
+        ...next,
+        phase: 'playerAction',
+        currentPlayerIndex: nextCurrentIndex,
+      }
+      const nextComboNum = next.comboCount + 1
+      next = pushEvent(next, `${player.name} 補牌達成連鎖，可繼續宣告（Combo ${nextComboNum}）！`)
+      return next
     }
-    const nextComboNum = next.comboCount + 1
-    next = pushEvent(next, `${player.name} 補牌達成連鎖，可繼續宣告（Combo ${nextComboNum}）！`)
-    return next
   }
 
   // 無法連鎖且牌庫已空，則結束遊戲
@@ -439,15 +442,19 @@ export function reduce(state: GameState, action: GameAction): GameState {
       const yaku = yakus.find((y) => y.id === action.yakuId)
       if (!yaku) return state
       const comboCount = state.comboCount + 1
+      const drawn = state.lastDrawnCardId
+        ? player.hand.find((c) => c.id === state.lastDrawnCardId)
+        : undefined
+      const claimedCard =
+        (drawn && yaku.cards.some((c) => c.id === drawn.id) ? drawn : undefined) ?? yaku.cards[0]
       const next: GameState = {
         ...state,
         comboCount,
-        declaredThisTurn: true,
         pendingScore: {
           playerId: player.id,
           yaku,
           source: 'tsumo',
-          claimedCard: player.hand[player.hand.length - 1] ?? yaku.cards[0],
+          claimedCard,
         },
       }
       return afterDeclare(next)
@@ -501,7 +508,7 @@ export function reduce(state: GameState, action: GameAction): GameState {
         mustIncludeCardId: discarded.id,
         activeRows: state.activeRows,
       })
-      const yaku = yakus.find((y) => y.id === action.yakuId) ?? yakus[0]
+      const yaku = yakus.find((y) => y.id === action.yakuId)
       if (!yaku) return state
       const discarder =
         state.players.find((p) => p.id === state.lastDiscardPlayerId) ?? currentPlayer(state)
@@ -552,15 +559,16 @@ export function reduce(state: GameState, action: GameAction): GameState {
 
     case 'NEXT_TURN': {
       if (state.phase !== 'nextTurn') return state
-      const nextIndex = (state.currentPlayerIndex + 1) % state.players.length
+      const ownerIndex = state.turnOwnerIndex ?? state.currentPlayerIndex
+      const nextIndex = (ownerIndex + 1) % state.players.length
       const nextPlayer = state.players[nextIndex]
       let next: GameState = {
         ...state,
         phase: 'playerDraw',
         currentPlayerIndex: nextIndex,
+        turnOwnerIndex: nextIndex,
         turnNumber: state.turnNumber + 1,
         drewThisTurn: false,
-        declaredThisTurn: false,
         lastDrawnCardId: null,
         pendingScore: null,
         reactionOptions: [],
@@ -576,6 +584,21 @@ export function reduce(state: GameState, action: GameAction): GameState {
     default:
       return state
   }
+}
+
+const CLIENT_ACTION_TYPES: ReadonlySet<GameAction['type']> = new Set([
+  'CHOOSE_YAKU',
+  'SKIP_YAKU',
+  'DISCARD',
+  'CLAIM_YAKU',
+  'PASS_CLAIM',
+  'SKIP_PREVIEW',
+  'FINISH_REVIEW',
+])
+
+/** 客端允許送出的動作。START／抽牌／計分等由房主狀態機推進，避免客端重開牌局或竄改亂數。 */
+export function isClientAction(action: GameAction): boolean {
+  return CLIENT_ACTION_TYPES.has(action.type)
 }
 
 /** 自動推進不需玩家決策的階段（發牌結束、計分、補牌、換回合） */
@@ -600,8 +623,4 @@ export function drainAuto(state: GameState): GameState {
     current = next
   }
   return current
-}
-
-export function reduceMany(state: GameState, actions: GameAction[]): GameState {
-  return actions.reduce((s, a) => drainAuto(reduce(s, a)), state)
 }

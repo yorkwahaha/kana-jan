@@ -227,90 +227,54 @@ export function GameTable({
         <CenterBoard state={state} settings={settings} actingPos={actingPos} />
         <CardDrawFlight state={state} settings={settings} mySeat={mySeat} />
 
-        {/* 自家玩家資訊角 (Bottom Left: Seat HUD) - 參照圖一獨立置於角落 */}
         <div className="human-seat-corner">
           <SeatHud {...hudFor(human)} />
         </div>
 
-        {/* 自家手牌區 (Bottom Center: Action Bar + Responsive Hand Row) - 參照圖一水平置中自適應 */}
-        <div className="human-hand-area">
-          {/* 自摸和牌快捷按鈕區 (參照圖三：右側精簡按鈕組) */}
-          {yakus.length > 0 && (
-            <div className="compact-claim-dock" role="region" aria-label="自摸和牌決策">
-              {turnTimer && turnTimer.active && (
-                <CompactTurnTimer
-                  seconds={turnTimer.seconds}
-                  turnKey={turnTimer.turnKey}
-                  active={turnTimer.active}
-                  onTimeout={turnTimer.onTimeout}
-                />
-              )}
-              <div className="compact-claim-buttons">
+        {(yakus.length > 0 || reactionYakus.length > 0) && (
+          <div
+            className="compact-claim-dock"
+            role="region"
+            aria-label={yakus.length > 0 ? '自摸和牌決策' : '和牌決策'}
+          >
+            {turnTimer && turnTimer.active && (
+              <CompactTurnTimer
+                seconds={turnTimer.seconds}
+                turnKey={turnTimer.turnKey}
+                active={turnTimer.active}
+                onTimeout={turnTimer.onTimeout}
+              />
+            )}
+            <div className="compact-claim-buttons">
+              <button
+                type="button"
+                className="btn-compact-skip"
+                disabled={locked}
+                onClick={yakus.length > 0 ? onSkipYaku : onPassClaim}
+              >
+                <span className="btn-skip-icon">🔄</span> 跳過
+              </button>
+              {(yakus.length > 0 ? yakus : reactionYakus).map((y) => (
                 <button
+                  key={y.id}
                   type="button"
-                  className="btn-compact-skip"
+                  className="btn-compact-claim"
                   disabled={locked}
-                  onClick={onSkipYaku}
+                  onMouseEnter={() => onHoverYaku(y)}
+                  onMouseLeave={() => onHoverYaku(null)}
+                  onFocus={() => onHoverYaku(y)}
+                  onBlur={() => onHoverYaku(null)}
+                  onClick={() => (yakus.length > 0 ? onChooseYaku(y.id) : onClaim(y.id))}
                 >
-                  <span className="btn-skip-icon">🔄</span> 跳過
+                  <span className="compact-claim-badge">🪙 {y.totalScore}</span>
+                  <span className="compact-claim-title">和牌</span>
                 </button>
-                {yakus.map((y) => (
-                  <button
-                    key={y.id}
-                    type="button"
-                    className="btn-compact-claim"
-                    disabled={locked}
-                    onMouseEnter={() => onHoverYaku(y)}
-                    onMouseLeave={() => onHoverYaku(null)}
-                    onFocus={() => onHoverYaku(y)}
-                    onBlur={() => onHoverYaku(null)}
-                    onClick={() => onChooseYaku(y.id)}
-                  >
-                    <span className="compact-claim-badge">🪙 {y.totalScore}</span>
-                    <span className="compact-claim-title">和牌</span>
-                  </button>
-                ))}
-              </div>
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* 抄牌／放槍胡牌快捷按鈕區 (參照圖三：右側精簡按鈕組) */}
-          {reactionYakus.length > 0 && (
-            <div className="compact-claim-dock" role="region" aria-label="和牌決策">
-              {turnTimer && turnTimer.active && (
-                <CompactTurnTimer
-                  seconds={turnTimer.seconds}
-                  turnKey={turnTimer.turnKey}
-                  active={turnTimer.active}
-                  onTimeout={turnTimer.onTimeout}
-                />
-              )}
-              <div className="compact-claim-buttons">
-                <button
-                  type="button"
-                  className="btn-compact-skip"
-                  disabled={locked}
-                  onClick={onPassClaim}
-                >
-                  <span className="btn-skip-icon">🔄</span> 跳過
-                </button>
-                {reactionYakus.map((y) => (
-                  <button
-                    key={y.id}
-                    type="button"
-                    className="btn-compact-claim"
-                    disabled={locked}
-                    onMouseEnter={() => onHoverYaku(y)}
-                    onMouseLeave={() => onHoverYaku(null)}
-                    onClick={() => onClaim(y.id)}
-                  >
-                    <span className="compact-claim-badge">🪙 {y.totalScore}</span>
-                    <span className="compact-claim-title">和牌</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+        <div className="human-hand-area">
           <div className="hand-row" data-hand-origin="human">
             {human.hand.map((card, idx) => {
               const isDrawn =

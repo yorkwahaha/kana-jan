@@ -31,7 +31,6 @@ function makeMockState(overrides?: Partial<GameState>): GameState {
     eventSeq: 0,
     turnNumber: 5,
     drewThisTurn: false,
-    declaredThisTurn: false,
     lastDrawnCardId: null,
     gameOverReason: null,
     rankings: null,
@@ -64,6 +63,7 @@ function makeMockState(overrides?: Partial<GameState>): GameState {
       { fromId: 'p3', toId: 'p2', amount: 80 },
     ],
     comboCount: 0,
+    turnOwnerIndex: 0,
     ...overrides,
   }
 }

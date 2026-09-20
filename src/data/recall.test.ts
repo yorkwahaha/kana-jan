@@ -44,4 +44,10 @@ describe('假名資料完整性', () => {
       }
     }
   })
+
+  it('含撥音的單字拼字包含 n（ん）', () => {
+    expect(KANA_SOUNDS.find((k) => k.sound === 'pa')?.spelling).toEqual(['pa', 'n'])
+    expect(KANA_SOUNDS.find((k) => k.sound === 'n')?.hiragana).toBe('ん')
+    expect(KANA_SOUNDS.find((k) => k.sound === 'ya')?.hiragana).toBe('や')
+  })
 })

@@ -1,7 +1,14 @@
 import { Peer, type DataConnection } from 'peerjs'
-import type { GameAction } from '../engine/game'
+import { pushEvent, type GameAction } from '../engine/game'
 import type { GameState } from '../engine/types'
+import {
+  generateResumeToken,
+  restoreDisconnectedPlayer,
+  sanitizeChatText,
+  sanitizePlayerName,
+} from './authorize'
 import { maskStateForPlayer } from './mask'
+import { saveResume } from './resume'
 import { parseRoomCode } from './roomCode'
 import type { ClientMessage, HostMessage, RoomSlot, RoomState } from './types'
 
@@ -26,14 +33,16 @@ export interface HostCallbacks {
   onRoomChange: (room: RoomState) => void
   onClientAction: (seat: number, action: GameAction) => void
   onGuestDisconnect?: (seat: number) => void
+  /** 回傳更新後的對局狀態，供立刻同步給重連玩家 */
+  onGuestReconnect?: (seat: number) => GameState | void
   onError: (err: string) => void
   onChat?: (senderName: string, text: string) => void
 }
 
 export interface GuestCallbacks {
-  onRoomUpdate: (room: RoomState, yourSeat: number) => void
-  onGameStart: (state: GameState, yourSeat: number) => void
-  onGameSync: (state: GameState) => void
+  onRoomUpdate: (room: RoomState, yourSeat: number, spectating?: boolean) => void
+  onGameStart: (state: GameState, yourSeat: number, spectating?: boolean) => void
+  onGameSync: (state: GameState, spectating?: boolean) => void
   onError: (err: string) => void
   onChat?: (senderName: string, text: string) => void
 }
@@ -41,6 +50,8 @@ export interface GuestCallbacks {
 export class HostManager {
   private peer: Peer | null = null
   private connections: Map<number, DataConnection> = new Map() // seat -> connection
+  private spectators: Map<string, { conn: DataConnection; name: string }> = new Map()
+  private resumeTokens = new Map<number, string>()
   private roomState: RoomState
   private callbacks: HostCallbacks
   private currentGameState: GameState | null = null
@@ -136,14 +147,16 @@ export class HostManager {
     if (!msg || typeof msg !== 'object') return
 
     if (msg.type === 'JOIN') {
+      const name = sanitizePlayerName(msg.name, '玩家')
       if (this.roomState.started) {
-        conn.send({ type: 'ERROR', message: '對局已在進行中，無法加入！' } satisfies HostMessage)
-        conn.close()
+        if (this.tryReconnect(conn, msg.resumePlayerId, msg.resumeToken)) return
+        this.addSpectator(conn, name)
         return
       }
 
-      // 尋找可用的空位（優先找尚未連線的 slot）
-      const freeSlotIndex = this.roomState.slots.findIndex((s, idx) => idx > 0 && !s.connected)
+      const freeSlotIndex = this.roomState.slots.findIndex(
+        (s, idx) => idx > 0 && !s.connected && s.kind !== 'ai',
+      )
       if (freeSlotIndex === -1) {
         conn.send({ type: 'ERROR', message: '房間已滿員！' } satisfies HostMessage)
         conn.close()
@@ -153,8 +166,9 @@ export class HostManager {
       const slot = this.roomState.slots[freeSlotIndex]!
       slot.connected = true
       slot.peerId = conn.peer
-      slot.name = msg.name.trim() || `玩家${slot.seat + 1}`
+      slot.name = name
       slot.kind = 'remote'
+      this.resumeTokens.set(slot.seat, generateResumeToken())
 
       this.connections.set(slot.seat, conn)
       this.broadcastRoomUpdate()
@@ -168,7 +182,6 @@ export class HostManager {
     }
 
     if (msg.type === 'ACTION') {
-      // 找出此連線對應的座位
       let senderSeat = -1
       for (const [seat, c] of this.connections.entries()) {
         if (c.peer === conn.peer) {
@@ -183,19 +196,97 @@ export class HostManager {
     }
 
     if (msg.type === 'CHAT') {
+      const text = sanitizeChatText(msg.text)
+      if (!text) return
       let senderName = '玩家'
-      for (const s of this.roomState.slots) {
-        if (s.peerId === conn.peer) {
-          senderName = s.name
-          break
+      const spectator = this.spectators.get(conn.peer)
+      if (spectator) {
+        senderName = `${spectator.name}（觀戰）`
+      } else {
+        for (const s of this.roomState.slots) {
+          if (s.peerId === conn.peer) {
+            senderName = s.name
+            break
+          }
         }
       }
-      this.broadcastMessage({ type: 'CHAT', senderName, text: msg.text })
-      this.callbacks.onChat?.(senderName, msg.text)
+      this.broadcastMessage({ type: 'CHAT', senderName, text })
+      this.callbacks.onChat?.(senderName, text)
+    }
+  }
+
+  private tryReconnect(conn: DataConnection, resumePlayerId?: string, resumeToken?: string): boolean {
+    if (!resumePlayerId || !resumeToken) return false
+    const slot = this.roomState.slots.find(
+      (s) => !s.isHost && s.kind !== 'ai' && s.playerId === resumePlayerId,
+    )
+    if (!slot) return false
+    if (this.resumeTokens.get(slot.seat) !== resumeToken) return false
+
+    const old = this.connections.get(slot.seat)
+    if (old && old !== conn) {
+      this.connections.delete(slot.seat)
+      try {
+        old.close()
+      } catch {
+        // ignore
+      }
+    }
+
+    slot.connected = true
+    slot.peerId = conn.peer
+    slot.kind = 'remote'
+    this.connections.set(slot.seat, conn)
+
+    const restored = this.callbacks.onGuestReconnect?.(slot.seat)
+    if (restored) {
+      this.currentGameState = restored
+    } else if (this.currentGameState) {
+      let next = restoreDisconnectedPlayer(this.currentGameState, slot.seat)
+      next = pushEvent(next, `玩家 ${slot.name} 已重新連線接管操作`)
+      this.currentGameState = next
+    }
+
+    this.broadcastRoomUpdate()
+    const game = this.currentGameState
+    if (game) {
+      conn.send({
+        type: 'GAME_START',
+        state: maskStateForPlayer(game, slot.seat),
+        yourSeat: slot.seat,
+        spectating: false,
+        resumeToken: this.resumeTokens.get(slot.seat),
+      } satisfies HostMessage)
+    }
+    return true
+  }
+
+  private addSpectator(conn: DataConnection, name: string) {
+    this.spectators.set(conn.peer, { conn, name })
+    const game = this.currentGameState
+    if (game) {
+      conn.send({
+        type: 'GAME_START',
+        state: maskStateForPlayer(game, -1),
+        yourSeat: -1,
+        spectating: true,
+      } satisfies HostMessage)
+    } else {
+      conn.send({
+        type: 'ROOM_UPDATE',
+        roomState: this.roomState,
+        yourSeat: -1,
+        spectating: true,
+      } satisfies HostMessage)
     }
   }
 
   private handleGuestDisconnect(conn: DataConnection) {
+    if (this.spectators.has(conn.peer)) {
+      this.spectators.delete(conn.peer)
+      return
+    }
+
     let disconnectedSeat = -1
     for (const [seat, c] of this.connections.entries()) {
       if (c.peer === conn.peer) {
@@ -257,6 +348,7 @@ export class HostManager {
           type: 'ROOM_UPDATE',
           roomState: this.roomState,
           yourSeat: seat,
+          resumeToken: this.resumeTokens.get(seat),
         } satisfies HostMessage)
       }
     }
@@ -271,6 +363,18 @@ export class HostManager {
           type: 'GAME_START',
           state: maskStateForPlayer(initialState, seat),
           yourSeat: seat,
+          spectating: false,
+          resumeToken: this.resumeTokens.get(seat),
+        } satisfies HostMessage)
+      }
+    }
+    for (const spectator of this.spectators.values()) {
+      if (spectator.conn.open) {
+        spectator.conn.send({
+          type: 'GAME_START',
+          state: maskStateForPlayer(initialState, -1),
+          yourSeat: -1,
+          spectating: true,
         } satisfies HostMessage)
       }
     }
@@ -283,6 +387,16 @@ export class HostManager {
         conn.send({
           type: 'GAME_SYNC',
           state: maskStateForPlayer(state, seat),
+          spectating: false,
+        } satisfies HostMessage)
+      }
+    }
+    for (const spectator of this.spectators.values()) {
+      if (spectator.conn.open) {
+        spectator.conn.send({
+          type: 'GAME_SYNC',
+          state: maskStateForPlayer(state, -1),
+          spectating: true,
         } satisfies HostMessage)
       }
     }
@@ -292,6 +406,11 @@ export class HostManager {
     for (const conn of this.connections.values()) {
       if (conn.open) {
         conn.send(msg)
+      }
+    }
+    for (const spectator of this.spectators.values()) {
+      if (spectator.conn.open) {
+        spectator.conn.send(msg)
       }
     }
   }
@@ -313,6 +432,14 @@ export class HostManager {
       }
     }
     this.connections.clear()
+    for (const spectator of this.spectators.values()) {
+      try {
+        spectator.conn.close()
+      } catch {
+        // ignore
+      }
+    }
+    this.spectators.clear()
     if (this.peer) {
       try {
         this.peer.destroy()
@@ -329,11 +456,23 @@ export class GuestManager {
   private hostConn: DataConnection | null = null
   private callbacks: GuestCallbacks
   private guestName: string
+  private roomCode: string
+  private resumePlayerId?: string
+  private resumeToken?: string
+  private spectating = false
   private yourSeat: number = -1
 
-  constructor(roomCode: string, guestName: string, callbacks: GuestCallbacks) {
+  constructor(
+    roomCode: string,
+    guestName: string,
+    callbacks: GuestCallbacks,
+    resume?: { playerId: string; token: string },
+  ) {
     this.callbacks = callbacks
-    this.guestName = guestName.trim() || '訪客'
+    this.guestName = sanitizePlayerName(guestName, '訪客')
+    this.roomCode = parseRoomCode(roomCode)
+    this.resumePlayerId = resume?.playerId
+    this.resumeToken = resume?.token
     const hostPeerId = roomToPeerId(roomCode)
 
     this.initPeer(hostPeerId)
@@ -366,6 +505,8 @@ export class GuestManager {
         type: 'JOIN',
         name: this.guestName,
         peerId: this.peer?.id ?? '',
+        resumePlayerId: this.resumePlayerId,
+        resumeToken: this.resumeToken,
       } satisfies ClientMessage)
     })
 
@@ -392,18 +533,23 @@ export class GuestManager {
 
     if (msg.type === 'ROOM_UPDATE') {
       this.yourSeat = msg.yourSeat
-      this.callbacks.onRoomUpdate(msg.roomState, msg.yourSeat)
+      this.spectating = Boolean(msg.spectating)
+      this.rememberResume(msg.yourSeat, msg.resumeToken, this.spectating)
+      this.callbacks.onRoomUpdate(msg.roomState, msg.yourSeat, this.spectating)
       return
     }
 
     if (msg.type === 'GAME_START') {
       this.yourSeat = msg.yourSeat
-      this.callbacks.onGameStart(msg.state, msg.yourSeat)
+      this.spectating = Boolean(msg.spectating)
+      this.rememberResume(msg.yourSeat, msg.resumeToken, this.spectating)
+      this.callbacks.onGameStart(msg.state, msg.yourSeat, this.spectating)
       return
     }
 
     if (msg.type === 'GAME_SYNC') {
-      this.callbacks.onGameSync(msg.state)
+      if (msg.spectating !== undefined) this.spectating = msg.spectating
+      this.callbacks.onGameSync(msg.state, this.spectating)
       return
     }
 
@@ -413,15 +559,32 @@ export class GuestManager {
   }
 
   public sendAction(action: GameAction) {
+    if (this.spectating) return
     if (this.hostConn?.open) {
       this.hostConn.send({ type: 'ACTION', action } satisfies ClientMessage)
     }
   }
 
   public sendChat(text: string) {
-    if (this.hostConn?.open) {
-      this.hostConn.send({ type: 'CHAT', text } satisfies ClientMessage)
-    }
+    const cleaned = sanitizeChatText(text)
+    if (!cleaned || !this.hostConn?.open) return
+    this.hostConn.send({ type: 'CHAT', text: cleaned } satisfies ClientMessage)
+  }
+
+  public isSpectating(): boolean {
+    return this.spectating
+  }
+
+  private rememberResume(seat: number, token: string | undefined, spectating: boolean) {
+    if (spectating || seat < 0 || !token) return
+    this.resumeToken = token
+    this.resumePlayerId = `p${seat}`
+    saveResume(this.roomCode, {
+      playerId: this.resumePlayerId,
+      name: this.guestName,
+      seat,
+      token,
+    })
   }
 
   public getSeat(): number {

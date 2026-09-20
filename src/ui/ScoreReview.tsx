@@ -8,7 +8,7 @@ import { CardView } from './CardView'
 import { tablePosition } from './seats'
 import { SettlementArrows } from './SettlementArrows'
 import type { Settings } from './settings'
-import { settleMatch, loadProfile } from './profile'
+import { settleMatch } from './profile'
 
 interface Props {
   state: GameState
@@ -208,16 +208,18 @@ export function ScoreReview({
 
   const rollingGold = useRollingGold(state.players, deltas)
 
-  // 對局結束時結算個人存檔資產
+  // 對局結束時結算個人存檔資產（依自己的座位，且同一局只結算一次）
   useEffect(() => {
     if (!isGameOver) return
-    const human = state.players.find((p) => p.kind === 'human') ?? state.players[0]
-    const humanRank = rankings.find((r) => r.playerId === human?.id)
-    if (humanRank) {
-      settleMatch(humanRank.place)
-      loadProfile()
-    }
-  }, [isGameOver, rankings, state.players])
+    const me =
+      state.players.find((p) => p.seat === mySeat) ??
+      state.players.find((p) => p.kind === 'human') ??
+      state.players[0]
+    const myRank = rankings.find((r) => r.playerId === me?.id)
+    if (!myRank || !me) return
+    const matchId = `${state.seed}:${me.id}:${rankings.map((r) => `${r.playerId}=${r.gold}`).join(',')}`
+    settleMatch(myRank.place, matchId)
+  }, [isGameOver, rankings, state.players, state.seed, mySeat])
 
   // 音效播放（配合金幣飛行與籌碼滾動節奏）
   useEffect(() => {

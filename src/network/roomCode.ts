@@ -1,11 +1,21 @@
 export const ROOM_PREFIX = 'KANA-'
 
-/** 產生短房號，如 KANA-7X89 */
+function randomIndex(max: number): number {
+  if (max <= 0) return 0
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const buf = new Uint32Array(1)
+    crypto.getRandomValues(buf)
+    return buf[0]! % max
+  }
+  return Math.floor(Math.random() * max)
+}
+
+/** 產生短房號，如 KANA-7X89（優先使用 CSPRNG） */
 export function generateRoomCode(): string {
   const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ' // 去除易混淆字元 0, 1, I, O
   let code = ''
   for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length))
+    code += chars.charAt(randomIndex(chars.length))
   }
   return `${ROOM_PREFIX}${code}`
 }

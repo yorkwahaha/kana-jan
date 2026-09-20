@@ -578,35 +578,43 @@ body[data-anim='off'] .sakura-container {
 }
 .table-prompt {
   position: absolute;
-  top: 18px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 14px;
+  right: 88px;
+  left: auto;
+  transform: none;
   margin: 0;
-  letter-spacing: 0.42em;
+  letter-spacing: 0.12em;
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: clamp(0.92rem, 1.4vw, 1.15rem);
+  font-weight: 700;
   color: #fff9ee;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-  opacity: 0.85;
+  opacity: 0.92;
   z-index: 3;
+  max-width: 42vw;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* 頂級日式圓角大牌桌 (Luxury Game Table Rim & Felt) */
+/* 橫向競技場橢圓桌：對齊參考圖二的桌面比例 */
 .felt-oval {
   position: relative;
   z-index: 2;
-  width: min(97vw, 1260px);
-  height: min(91dvh, 860px);
+  width: min(98.8vw, 1560px);
+  height: min(94dvh, 900px);
   margin: auto;
+  overflow: visible;
   background:
     radial-gradient(ellipse at 50% 42%, rgba(255, 255, 255, 0.18) 0%, rgba(0, 0, 0, 0.28) 72%, rgba(0, 0, 0, 0.5) 100%),
     url('/textures/table-felt-bright.png') center / cover no-repeat;
   background-color: var(--felt-base);
-  border: 18px solid var(--wood);
-  border-radius: 54px;
+  border: 16px solid var(--wood);
+  border-radius: 46% / 50%;
   box-shadow:
-    inset 0 0 0 2px rgba(245, 215, 127, 0.7), /* 細金嵌線 (Gold Inlay) */
-    inset 0 0 32px rgba(0, 0, 0, 0.5), /* 毛氈內部環境光遮蔽 */
+    inset 0 0 0 2px rgba(245, 215, 127, 0.7),
+    inset 0 0 32px rgba(0, 0, 0, 0.5),
     0 0 0 4px var(--wood-edge),
     0 0 0 10px var(--lacquer-wood),
     0 24px 60px rgba(10, 6, 3, 0.55),
@@ -656,52 +664,74 @@ body[data-anim='off'] .sakura-container {
   display: none;
 }
 
-/* --- 輕量和風玩家銘牌 (Refined Lightweight Seat HUDs - 參照圖一與圖二零重疊) --- */
+/* --- 玩家銘牌：頭像 + 大字名次（對齊圖二，不再用厚黑銘牌） --- */
 .seat-hud {
   position: absolute;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
-  background: linear-gradient(135deg, rgba(32, 22, 14, 0.88) 0%, rgba(18, 12, 8, 0.96) 100%);
-  backdrop-filter: blur(8px);
-  border: 1.5px solid rgba(245, 215, 127, 0.45);
-  border-radius: 10px;
-  padding: 3px 8px 4px;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
   z-index: 4;
   color: #fffdf8;
-  box-shadow:
-    0 4px 14px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(0, 0, 0, 0.25);
-  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: none;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
   white-space: nowrap;
-  min-width: 84px;
+  min-width: 0;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.45));
 }
 
-/* 上家 HUD：置於上家手牌右側頂部，參照圖一絕不遮擋手牌 */
+.seat-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #3a2412;
+  background:
+    radial-gradient(circle at 35% 30%, #fff6e8 0%, #f0d5a8 55%, #c9a066 100%);
+  border: 3px solid #fff8e8;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+
+.seat-hud-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  line-height: 1.15;
+}
+
+.seat-hud-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .seat-hud.pos-top {
-  top: 3.5%;
-  left: calc(50% + 115px);
+  top: 5.5%;
+  left: 61%;
 }
 
-/* 左家 HUD：置於左側手牌上方外側，垂直避開頂部 HUD，參照圖二 */
 .seat-hud.pos-left {
-  left: clamp(12px, 2.5vw, 28px);
-  top: 20%;
+  left: 8%;
+  top: 13%;
 }
 
-/* 右家 HUD：置於右側手牌上方外側，垂直避開頂部 HUD，參照圖二 */
 .seat-hud.pos-right {
-  right: clamp(12px, 2.5vw, 28px);
-  top: 20%;
-  padding: 3px 8px 4px;
+  right: 6.5%;
+  top: 13%;
 }
 
-/* 自家 HUD：置於左下角資訊角內 */
 .seat-hud.pos-human {
   position: static;
-  background: linear-gradient(135deg, rgba(38, 26, 16, 0.88) 0%, rgba(20, 14, 9, 0.96) 100%);
 }
 
 .seat-hud.is-active {
@@ -723,28 +753,13 @@ body[data-anim='off'] .sakura-container {
   transform: scale(1.04);
 }
 
-.seat-hud-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  width: 100%;
-}
-.seat-hud-row-top {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 2px;
-}
-.seat-hud-row-bottom {
-  padding-top: 1px;
-}
-
 .seat-name {
   font-family: var(--font-display);
   letter-spacing: 0.04em;
-  font-size: 0.84rem;
+  font-size: 0.95rem;
   color: #fffdf8;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-  max-width: 80px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  max-width: 110px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -778,34 +793,36 @@ body[data-anim='off'] .sakura-container {
 }
 
 .seat-place {
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  padding: 1px 5px;
-  border-radius: 4px;
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  padding: 0;
+  border-radius: 0;
   color: #fff;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: none;
+  border: none;
   white-space: nowrap;
-  line-height: 1.2;
+  line-height: 1;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
 }
-.seat-place.place-1 { background: linear-gradient(135deg, #f5d77f, #d4a017); color: #432a05; border-color: #ffe699; }
-.seat-place.place-2 { background: linear-gradient(135deg, #f1f5f9, #94a3b8); color: #0f172a; border-color: #ffffff; }
-.seat-place.place-3 { background: linear-gradient(135deg, #fed7aa, #ea580c); color: #431407; border-color: #ffedd5; }
-.seat-place.place-4 { background: rgba(60, 48, 42, 0.85); color: #e2e8f0; border-color: rgba(255, 255, 255, 0.25); }
+.seat-place.place-1 { color: #f5d77f; }
+.seat-place.place-2 { color: #e8eef6; }
+.seat-place.place-3 { color: #fdba74; }
+.seat-place.place-4 { color: #c4b5fd; }
 
 .chip-badge {
-  font-size: 0.74rem;
-  font-weight: 700;
+  font-size: 0.92rem;
+  font-weight: 800;
   color: #f5d77f;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 1px 6px;
-  border-radius: 999px;
-  border: 1px solid rgba(245, 215, 127, 0.25);
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  border: none;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 .chip-badge::before {
   content: '🪙';
@@ -814,95 +831,82 @@ body[data-anim='off'] .sakura-container {
 .delta-up { color: #4ade80; font-style: normal; font-weight: 800; font-size: 0.88rem; }
 .delta-down { color: #f87171; font-style: normal; font-weight: 800; font-size: 0.88rem; }
 
-/* --- 他家手牌 (Opponents Hand Fans & Standing Tiles - 參照圖一) --- */
+/* --- 他家手牌：上家橫扇；左右為「桌內直疊、微向桌心傾」大扇 --- */
 .hand-fan {
   position: absolute;
   display: flex;
   z-index: 2;
+  pointer-events: none;
 }
 
-/* 上家手牌：置中橫向站立，卡背尺寸與角度參照圖一 */
 .hand-fan.pos-top {
-  top: 4.5%;
+  top: 0;
   left: 50%;
   transform: translateX(-50%);
   flex-direction: row;
 }
 .hand-fan.pos-top .mini-back {
-  width: 42px;
-  height: 58px;
-  border-radius: 5px;
-  margin-right: -10px;
+  width: clamp(28px, 3vw, 36px);
+  height: clamp(40px, 4.2vw, 50px);
+  border-radius: 4px;
+  margin-right: clamp(-12px, -1.2vw, -8px);
   margin-bottom: 0;
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.45);
-  transform: perspective(500px) rotateX(-10deg);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.4);
 }
 
-/* 左家手牌：垂直縱向排列，向桌內側立體傾斜 (參照圖一) */
 .hand-fan.pos-left {
-  left: 3%;
-  top: 25%;
+  left: 15%;
+  top: 38%;
+  width: auto;
+  height: auto;
   flex-direction: column;
+  flex-wrap: nowrap;
+  align-content: flex-start;
+  align-items: center;
+  transform: translate(-50%, -50%) rotate(15deg);
 }
 .hand-fan.pos-left .mini-back {
-  width: 44px;
-  height: 60px;
+  width: clamp(58px, 6.2vw, 74px);
+  height: clamp(40px, 4.3vw, 52px);
   border-radius: 5px;
   margin-right: 0;
-  margin-bottom: -32px;
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
-  transform: perspective(600px) rotateY(26deg) rotateZ(3deg);
-  transform-origin: left center;
-  box-shadow: -4px 6px 14px rgba(0, 0, 0, 0.5);
-  transition: transform 0.2s ease;
+  margin-bottom: clamp(-22px, -2.4vw, -16px);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  transform: none;
+  box-shadow: -5px 8px 16px rgba(0, 0, 0, 0.5);
 }
 
-/* 右家手牌：垂直縱向排列，向桌內側立體傾斜 (參照圖一) */
 .hand-fan.pos-right {
-  right: 3%;
-  top: 25%;
+  left: 85%;
+  right: auto;
+  top: 38%;
+  width: auto;
+  height: auto;
   flex-direction: column;
+  flex-wrap: nowrap;
+  align-content: flex-end;
+  align-items: center;
+  transform: translate(-50%, -50%) rotate(-15deg);
 }
 .hand-fan.pos-right .mini-back {
-  width: 44px;
-  height: 60px;
+  width: clamp(58px, 6.2vw, 74px);
+  height: clamp(40px, 4.3vw, 52px);
   border-radius: 5px;
   margin-right: 0;
-  margin-bottom: -32px;
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
-  transform: perspective(600px) rotateY(-26deg) rotateZ(-3deg);
-  transform-origin: right center;
-  box-shadow: 4px 6px 14px rgba(0, 0, 0, 0.5);
-  transition: transform 0.2s ease;
+  margin-bottom: clamp(-22px, -2.4vw, -16px);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  transform: none;
+  box-shadow: 5px 8px 16px rgba(0, 0, 0, 0.5);
+}
+.hand-fan.pos-left .mini-back:last-child,
+.hand-fan.pos-right .mini-back:last-child {
+  margin-bottom: 0;
 }
 
 .mini-back {
   background: url('/textures/card-back.png') center / cover no-repeat;
   flex-shrink: 0;
-}
-
-/* --- 副露區 (Meld Area - 迷你牌組) --- */
-.meld-area {
-  position: absolute;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  max-width: 240px;
-  z-index: 1;
-}
-.meld-area.pos-top { top: 13%; left: 34%; }
-.meld-area.pos-left { left: 8.5%; top: 62%; }
-.meld-area.pos-right { right: 8.5%; top: 62%; }
-.meld-area.pos-human { left: 17%; bottom: 4%; transform: none; }
-.meld-set {
-  display: flex;
-  gap: 2px;
-  background: rgba(255, 253, 248, 0.45);
-  border: 1px solid rgba(212, 160, 23, 0.35);
-  border-radius: 4px;
-  padding: 3px;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* --- 牌河 (Discard River - 參照圖一：四方對稱環繞中央島) --- */
@@ -934,72 +938,91 @@ body[data-anim='off'] .sakura-container {
   will-change: transform;
 }
 
-/* 上家棄牌：置中橫排，緊鄰上家手牌正下方 (參照圖一) */
 .discard-river.pos-top {
-  top: 16.5%;
+  top: 11%;
   left: 50%;
   transform: translateX(-50%);
   flex-direction: row;
   justify-content: center;
-  gap: 4px;
-  max-width: 48%;
+  gap: 6px;
+  max-width: 32%;
   flex-wrap: wrap;
 }
 
-/* 左家棄牌：垂直縱列，緊鄰左家手牌內側 (參照圖一) */
 .discard-river.pos-left {
-  left: 12.5%;
-  top: 25%;
+  left: 16%;
+  top: 32%;
   flex-direction: column;
-  gap: 4px;
-  max-height: 280px;
-  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 260px;
+  flex-wrap: nowrap;
 }
 
-/* 右家棄牌：垂直縱列，緊鄰右家手牌內側 (參照圖一) */
 .discard-river.pos-right {
-  right: 12.5%;
-  top: 25%;
+  right: 16%;
+  top: 32%;
   flex-direction: column;
-  gap: 4px;
-  max-height: 280px;
-  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 260px;
+  flex-wrap: nowrap;
   align-items: flex-end;
 }
 
-/* 自家棄牌：置中橫排，緊鄰自家手牌上方 (參照圖一) */
 .discard-river.pos-human {
-  left: 50%;
-  bottom: 21%;
+  left: 38%;
+  bottom: 26%;
   transform: translateX(-50%);
   flex-direction: row;
   justify-content: center;
-  gap: 4px;
-  max-width: 52%;
+  gap: 8px;
+  max-width: 34%;
   flex-wrap: wrap;
 }
 
 .discard-river .kana-card.size-river {
-  width: 44px;
-  min-width: 44px;
-  height: 60px;
-  font-size: 7.5px;
+  width: 48px;
+  min-width: 48px;
+  height: 66px;
+  font-size: 9px;
+}
+
+.discard-river.pos-top .kana-card.size-river {
+  width: 36px;
+  min-width: 36px;
+  height: 50px;
+  font-size: 7px;
+  transform: rotate(180deg);
+}
+
+.discard-river.pos-left .river-slot,
+.discard-river.pos-right .river-slot {
+  width: 66px;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+.discard-river.pos-left .kana-card.size-river {
+  transform: rotate(90deg);
+}
+.discard-river.pos-right .kana-card.size-river {
+  transform: rotate(-90deg);
 }
 
 /* --- 中心牌山與役札盤 (Center Board - 參照圖一：嵌於四方牌河中央島) --- */
 .center-board {
   position: absolute;
   left: 50%;
-  top: 48%;
+  top: 44%;
   transform: translate(-50%, -50%);
   width: fit-content;
-  max-width: min(520px, 56vw);
+  max-width: min(420px, 40vw);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 10px;
   z-index: 2;
-  padding: 10px 22px;
+  padding: 8px 16px 10px;
   background:
     linear-gradient(180deg, rgba(255, 253, 249, 0.96), rgba(246, 238, 225, 0.94)),
     url('/textures/wood-tray.png') center / cover;
@@ -1082,53 +1105,49 @@ body[data-anim='off'] .sakura-container {
 .bonus-slot .kana-card.size-sm {
   width: 58px;
   min-width: 58px;
-  height: 82px;
+  height: 80px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 
 .deck-badge, .bonus-badge {
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.92rem;
+  font-weight: 800;
   color: var(--ink);
   background: rgba(255, 253, 249, 0.95);
   border: 1px solid rgba(212, 160, 23, 0.5);
   border-radius: 999px;
-  padding: 2px 10px;
+  padding: 2px 12px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   white-space: nowrap;
 }
 
-/* 五十音登場小盤 (放大一號並強化拗音排版) */
 .gojuon-mini {
   display: grid;
-  gap: 4px;
+  gap: 2px;
   align-content: center;
-  padding: 6px 10px;
-  background: rgba(240, 230, 215, 0.45);
+  padding: 3px 5px;
+  background: rgba(240, 230, 215, 0.5);
   border-radius: 8px;
   border: 1px solid rgba(140, 105, 75, 0.25);
+  flex: 0 0 auto;
+  width: max-content;
+  min-width: 0;
 }
 .gojuon-header {
-  font-size: 0.72rem;
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: var(--muted);
-  text-align: center;
-  letter-spacing: 0.12em;
-  margin-bottom: 2px;
+  display: none;
 }
 .gojuon-row {
   display: flex;
-  gap: 5px;
+  gap: 2px;
   align-items: center;
 }
 .gojuon-mark {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
   display: grid;
   place-items: center;
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   font-family: var(--font-display);
   font-weight: 700;
   color: #fff;
@@ -1138,21 +1157,21 @@ body[data-anim='off'] .sakura-container {
   flex-shrink: 0;
 }
 .gojuon-mark.is-yoon {
-  min-width: 34px;
+  min-width: 24px;
   width: auto;
-  padding: 0 4px;
-  font-size: 0.72rem;
+  padding: 0 3px;
+  font-size: 0.6rem;
   letter-spacing: -0.04em;
 }
 .gojuon-dot {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.75);
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.82);
   color: var(--ink-soft);
   display: grid;
   place-items: center;
-  font-size: 0.82rem;
+  font-size: 0.7rem;
   font-style: normal;
   font-family: var(--font-display);
   font-weight: 700;
@@ -1163,10 +1182,10 @@ body[data-anim='off'] .sakura-container {
   flex-shrink: 0;
 }
 .gojuon-dot.is-yoon {
-  min-width: 34px;
+  min-width: 24px;
   width: auto;
-  padding: 0 4px;
-  font-size: 0.74rem;
+  padding: 0 3px;
+  font-size: 0.62rem;
   letter-spacing: -0.06em;
 }
 .gojuon-dot.is-lit {
@@ -1184,8 +1203,8 @@ body[data-anim='off'] .sakura-container {
 /* --- 自家玩家資訊角 (Human Seat Corner - 參照圖一與圖二固定左下角，緊湊無遮擋) --- */
 .human-seat-corner {
   position: absolute;
-  left: clamp(10px, 2.2vw, 24px);
-  bottom: clamp(10px, 2.2vh, 22px);
+  left: clamp(18px, 4.2vw, 48px);
+  bottom: clamp(18px, 4.5vh, 42px);
   display: flex;
   align-items: flex-end;
   gap: 6px;
@@ -1193,18 +1212,17 @@ body[data-anim='off'] .sakura-container {
   pointer-events: auto;
 }
 
-/* --- 自家手牌區 (Human Hand Area - 參照圖二尺寸縮放，與左下名牌保持充裕間距) --- */
 .human-hand-area {
   position: absolute;
   left: 50%;
-  bottom: 1.5%;
+  bottom: 2.2%;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
   z-index: 5;
   width: fit-content;
-  max-width: 72vw;
+  max-width: 64vw;
   pointer-events: none;
 }
 .human-hand-area .action-bar,
@@ -1248,7 +1266,7 @@ body[data-anim='off'] .sakura-container {
 
 .hand-row {
   display: flex;
-  gap: clamp(3px, 0.45vw, 6px);
+  gap: 6px;
   justify-content: center;
   align-items: flex-end;
   overflow: visible;
@@ -1268,13 +1286,14 @@ body[data-anim='off'] .sakura-container {
 }
 
 .human-hand-area .kana-card {
-  width: clamp(46px, 5.0vw, 58px);
-  min-width: clamp(46px, 5.0vw, 58px);
-  height: clamp(66px, 7.2vw, 82px);
-  font-size: clamp(8.5px, 0.95vw, 11px);
+  width: clamp(74px, 7.8vw, 98px);
+  min-width: clamp(74px, 7.8vw, 98px);
+  height: clamp(104px, 11vw, 136px);
+  font-size: clamp(12px, 1.25vw, 16px);
+  margin-right: 0;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 6px 16px rgba(15, 10, 5, 0.35);
+    0 8px 18px rgba(15, 10, 5, 0.38);
 }
 
 /* 摸牌（第 8 張）槽位已有外距，手牌本體不再重複位移 */
@@ -1687,14 +1706,14 @@ body[data-anim='off'] .sakura-container {
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.12));
 }
 .kana-card.size-river.len-1 .card-glyph,
-.kana-card.size-river:not([class*="len-"]) .card-glyph { font-size: 20px; }
+.kana-card.size-river:not([class*="len-"]) .card-glyph { font-size: 24px; }
 .kana-card.size-river.is-youon .card-glyph,
-.kana-card.size-river.len-2:not(.type-vocabulary) .card-glyph { font-size: 14px; letter-spacing: -0.04em; }
-.kana-card.size-river.len-2 .card-word { font-size: 14px; letter-spacing: -0.02em; }
-.kana-card.size-river.len-3 .card-word { font-size: 11px; letter-spacing: -0.02em; }
-.kana-card.size-river.len-4 .card-word { font-size: 8.8px; letter-spacing: -0.04em; }
-.kana-card.size-river.len-5 .card-word { font-size: 7.5px; letter-spacing: -0.04em; }
-.kana-card.size-river.len-6 .card-word { font-size: 6.5px; letter-spacing: -0.04em; }
+.kana-card.size-river.len-2:not(.type-vocabulary) .card-glyph { font-size: 17px; letter-spacing: -0.04em; }
+.kana-card.size-river.len-2 .card-word { font-size: 16px; letter-spacing: -0.02em; }
+.kana-card.size-river.len-3 .card-word { font-size: 13px; letter-spacing: -0.02em; }
+.kana-card.size-river.len-4 .card-word { font-size: 11px; letter-spacing: -0.04em; }
+.kana-card.size-river.len-5 .card-word { font-size: 9.5px; letter-spacing: -0.04em; }
+.kana-card.size-river.len-6 .card-word { font-size: 8.2px; letter-spacing: -0.04em; }
 .kana-card.size-river .card-vocab {
   display: flex;
   align-items: center;
@@ -2274,12 +2293,13 @@ button.kana-card { appearance: none; }
 /* 精簡和牌／跳過按鈕群 (參照圖三：右下角常駐快捷區) */
 .compact-claim-dock {
   position: absolute;
-  right: clamp(16px, 4vw, 56px);
-  bottom: clamp(60px, 12dvh, 95px);
+  right: clamp(22px, 5.5vw, 72px);
+  bottom: clamp(28px, 8dvh, 78px);
   z-index: 15;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 14px;
   animation: claimDockPop 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.28) backwards;
   pointer-events: auto;
 }
@@ -3678,19 +3698,11 @@ button.kana-card { appearance: none; }
 }
 
 @media (max-width: 900px) {
-  .felt-oval { height: min(90dvh, 740px); width: min(98vw, 1220px); margin: 8px auto; border-width: 12px; }
+  .felt-oval { height: min(92dvh, 760px); width: min(99vw, 1280px); margin: 8px auto; border-width: 12px; }
   .human-on-table { grid-template-columns: 1fr; left: 4%; right: 4%; }
   .human-side { display: none; }
-  .table-prompt { display: none; }
   .turn-status { bottom: 25%; font-size: 0.95rem; }
-  .center-board { width: auto; max-width: min(420px, 58vw); }
-  .human-hand-area .kana-card,
-  .human-hand-area .kana-card.size-lg {
-    width: clamp(48px, 8vw, 72px);
-    min-width: clamp(48px, 8vw, 72px);
-    height: clamp(68px, 11.5vw, 100px);
-    font-size: clamp(8.5px, 1.5vw, 12px);
-  }
+  .center-board { width: fit-content; max-width: min(380px, 42vw); }
 }
 
 /* 手機橫向／短視窗：對照參考圖比例（邊角 HUD、重疊牌河、大自家手牌、留出絨面空隙） */
@@ -3700,11 +3712,11 @@ button.kana-card { appearance: none; }
   }
 
   .felt-oval {
-    width: min(99.5vw, 1400px);
-    height: min(98.5dvh, 560px);
+    width: min(99.6vw, 1680px);
+    height: min(98.8dvh, 620px);
     margin: 0 auto;
-    border-width: 9px;
-    border-radius: 28px;
+    border-width: 10px;
+    border-radius: 46% / 50%;
     box-shadow:
       inset 0 0 0 1.5px rgba(245, 215, 127, 0.65),
       inset 0 0 20px rgba(0, 0, 0, 0.45),
@@ -3760,7 +3772,12 @@ button.kana-card { appearance: none; }
       0 8px 22px rgba(10, 6, 3, 0.5);
   }
 
-  .table-prompt { display: none; }
+  .table-prompt {
+    top: 8px;
+    right: 52px;
+    font-size: 0.88rem;
+    max-width: 36vw;
+  }
 
   .chrome-fab {
     height: 30px;
@@ -3794,210 +3811,253 @@ button.kana-card { appearance: none; }
   }
 
   .seat-hud {
-    min-width: 0;
-    padding: 2px 6px 3px;
-    gap: 0;
-    border-radius: 8px;
+    gap: 6px;
   }
   .seat-hud.is-active,
   .seat-hud.is-claiming { transform: none; }
-  .seat-name { font-size: 0.7rem; max-width: 58px; }
-  .chip-badge { font-size: 0.6rem; padding: 0 5px; }
-  .chip-badge::before { font-size: 0.62rem; }
-  .seat-place { font-size: 0.56rem; padding: 0 4px; }
-  .kind { font-size: 0.52rem; padding: 0 4px; }
+  .seat-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 1.05rem;
+    border-width: 2px;
+  }
+  .seat-name { font-size: 0.82rem; max-width: 92px; }
+  .chip-badge { font-size: 0.78rem; }
+  .chip-badge::before { font-size: 0.8rem; }
+  .seat-place { font-size: 1.15rem; }
+  .kind { font-size: 0.58rem; padding: 0 4px; }
 
   .seat-hud.pos-top {
-    top: 2%;
-    left: auto;
-    right: 14%;
+    top: 4.5%;
+    left: 60%;
   }
   .seat-hud.pos-left {
-    left: 1%;
+    left: 7.5%;
     top: 11%;
   }
   .seat-hud.pos-right {
-    right: 1.2%;
-    top: 18%;
+    right: 6%;
+    top: 11%;
   }
   .human-seat-corner {
-    left: 6px;
-    bottom: 34px;
+    left: 22px;
+    bottom: 14px;
   }
 
-  .hand-fan.pos-top { top: 2%; }
+  .hand-fan.pos-top { top: 0; }
   .hand-fan.pos-top .mini-back {
-    width: 24px;
-    height: 34px;
-    margin-right: -11px;
+    width: 26px;
+    height: 36px;
+    margin-right: -8px;
     border-radius: 3px;
-    transform: perspective(400px) rotateX(-8deg);
   }
   .hand-fan.pos-left {
-    left: 1.2%;
-    top: 30%;
+    left: 14%;
+    top: 38%;
+    width: auto;
+    height: auto;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    transform: translate(-50%, -50%) rotate(15deg);
   }
   .hand-fan.pos-left .mini-back {
-    width: 26px;
+    width: 52px;
     height: 36px;
-    margin-bottom: -20px;
-    border-radius: 3px;
+    margin-right: 0;
+    margin-bottom: -16px;
+    border-radius: 4px;
+    transform: none;
   }
   .hand-fan.pos-right {
-    right: 1.2%;
-    top: 30%;
+    left: 86%;
+    right: auto;
+    top: 38%;
+    width: auto;
+    height: auto;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    transform: translate(-50%, -50%) rotate(-15deg);
   }
   .hand-fan.pos-right .mini-back {
-    width: 26px;
+    width: 52px;
     height: 36px;
-    margin-bottom: -20px;
-    border-radius: 3px;
+    margin-right: 0;
+    margin-bottom: -16px;
+    border-radius: 4px;
+    transform: none;
   }
-
-  .meld-area {
-    max-width: 70px;
-    gap: 1px;
+  .hand-fan.pos-left .mini-back:last-child,
+  .hand-fan.pos-right .mini-back:last-child {
+    margin-bottom: 0;
   }
-  .meld-area .meld-set:not(:nth-last-child(-n+2)) { display: none; }
-  .meld-area .kana-card.size-mini {
-    width: 16px;
-    min-width: 16px;
-    height: 22px;
-  }
-  .meld-set { padding: 1px; gap: 1px; }
-  .meld-area.pos-top { top: 11%; left: 22%; }
-  .meld-area.pos-left { left: 1.5%; top: 22%; }
-  .meld-area.pos-right { right: 1.5%; top: 28%; }
-  .meld-area.pos-human { left: 7%; bottom: 28%; }
 
   .discard-river .river-slot { display: none; }
   .discard-river .river-slot:nth-last-child(-n+6) { display: flex; }
   .discard-river .kana-card.size-river {
-    width: 24px;
-    min-width: 24px;
-    height: 34px;
-    font-size: 5px;
-    padding: 0.2em 0.12em;
+    width: 44px;
+    min-width: 44px;
+    height: 62px;
+    font-size: 8px;
+    padding: 0.22em 0.14em;
   }
   .felt-oval .discard-river .kana-card.size-river .card-glyph,
   .felt-oval .discard-river .kana-card.size-river .card-word {
-    font-size: 11px;
+    font-size: 15px;
   }
   .felt-oval .discard-river .kana-card.size-river.len-1 .card-glyph,
   .felt-oval .discard-river .kana-card.size-river:not([class*="len-"]) .card-glyph {
-    font-size: 12px;
+    font-size: 18px;
   }
   .felt-oval .discard-river .kana-card.size-river.is-youon .card-glyph,
   .felt-oval .discard-river .kana-card.size-river.len-2:not(.type-vocabulary) .card-glyph,
-  .felt-oval .discard-river .kana-card.size-river.len-2 .card-word { font-size: 9px; }
+  .felt-oval .discard-river .kana-card.size-river.len-2 .card-word { font-size: 13px; }
   .felt-oval .discard-river .kana-card.size-river .card-row-mark {
     width: 22%;
     height: 16%;
-    font-size: 0.55em;
+    font-size: 0.62em;
     top: 4%;
     left: 5%;
   }
 
   .discard-river.pos-top {
-    top: 13%;
-    max-width: none;
+    top: 9%;
+    max-width: 30%;
     flex-wrap: nowrap;
-    gap: 0;
+    gap: 3px;
   }
-  .discard-river.pos-top .river-slot { margin-right: -11px; }
-
   .discard-river.pos-left {
-    left: 6.5%;
-    top: 30%;
-    max-height: none;
-    flex-wrap: nowrap;
-    gap: 0;
-  }
-  .discard-river.pos-left .river-slot { margin-bottom: -20px; }
-
-  .discard-river.pos-right {
-    right: 6.5%;
+    left: 15%;
     top: 32%;
-    max-height: none;
+    max-height: 200px;
     flex-wrap: nowrap;
-    gap: 0;
+    gap: 3px;
   }
-  .discard-river.pos-right .river-slot { margin-bottom: -20px; }
-
+  .discard-river.pos-right {
+    right: 15%;
+    top: 32%;
+    max-height: 200px;
+    flex-wrap: nowrap;
+    gap: 3px;
+  }
   .discard-river.pos-human {
-    left: 50%;
-    bottom: auto;
-    top: 57%;
+    left: 38%;
+    bottom: 28%;
+    top: auto;
     transform: translateX(-50%);
-    max-width: none;
+    max-width: 32%;
     flex-wrap: nowrap;
-    gap: 0;
+    gap: 4px;
   }
-  .discard-river.pos-human .river-slot { margin-right: -11px; }
+  .discard-river.pos-top .kana-card.size-river {
+    transform: rotate(180deg);
+  }
+  .discard-river.pos-top .kana-card.size-river {
+    width: 30px;
+    min-width: 30px;
+    height: 42px;
+  }
+  .discard-river.pos-left .river-slot,
+  .discard-river.pos-right .river-slot {
+    width: 54px;
+    height: 38px;
+  }
+  .discard-river.pos-left .kana-card.size-river {
+    transform: rotate(90deg);
+  }
+  .discard-river.pos-right .kana-card.size-river {
+    transform: rotate(-90deg);
+  }
 
   .center-board {
-    top: 42%;
+    top: 43%;
+    width: fit-content;
+    min-width: 0;
+    max-width: min(360px, 38vw);
     gap: 8px;
-    padding: 5px 12px;
-    max-width: min(220px, 34vw);
+    padding: 6px 12px 8px;
     border-width: 1.5px;
   }
-  .gojuon-mini { display: none; }
+  .gojuon-mini {
+    display: grid;
+    gap: 1px;
+    padding: 2px 4px;
+    min-width: 0;
+    flex: 0 0 auto;
+    width: max-content;
+  }
+  .gojuon-header { display: none; }
+  .gojuon-mark,
+  .gojuon-dot {
+    width: 16px;
+    height: 16px;
+    font-size: 0.62rem;
+  }
+  .gojuon-mark.is-yoon,
+  .gojuon-dot.is-yoon {
+    min-width: 22px;
+    font-size: 0.55rem;
+  }
   .deck-pile,
   .bonus-slot { gap: 3px; }
   .deck-pile .kana-card.size-sm,
   .bonus-slot .kana-card.size-sm {
-    width: 32px;
-    min-width: 32px;
-    height: 44px;
+    width: 48px;
+    min-width: 48px;
+    height: 66px;
   }
   .deck-badge,
   .bonus-badge {
-    font-size: 0.58rem;
-    padding: 0 6px;
+    font-size: 0.72rem;
+    padding: 0 8px;
   }
   .center-turn-light.pos-top,
   .center-turn-light.pos-bottom {
-    width: 44px;
+    width: 52px;
     height: 4px;
   }
   .center-turn-light.pos-left,
   .center-turn-light.pos-right {
     width: 4px;
-    height: 22px;
+    height: 28px;
   }
 
   .human-hand-area {
-    left: 124px;
-    right: 12px;
-    bottom: 0.6%;
-    transform: none;
-    width: auto;
-    max-width: none;
-    align-items: stretch;
+    left: 50%;
+    right: auto;
+    bottom: 1.4%;
+    transform: translateX(-50%);
+    width: fit-content;
+    max-width: 58vw;
+    align-items: center;
   }
   .human-hand-area .hand-row {
     justify-content: center;
-    width: 100%;
+    width: auto;
+    gap: 5px;
   }
   .human-hand-area .kana-card,
   .human-hand-area .kana-card.size-lg {
-    width: clamp(44px, 6.5vw, 62px);
-    min-width: clamp(44px, 6.5vw, 62px);
-    height: clamp(62px, 21vh, 92px);
-    font-size: clamp(7.5px, 2vh, 10.5px);
+    width: clamp(62px, 7.4vw, 82px);
+    min-width: clamp(62px, 7.4vw, 82px);
+    height: clamp(86px, 24vh, 114px);
+    font-size: clamp(11px, 2.2vh, 14px);
+    margin-right: 0;
     padding: 0.32em 0.22em 0.28em;
   }
   .human-hand-area .card-type-tag {
-    font-size: 0.55em;
+    font-size: 0.62em;
     padding: 0 3px;
-  }
-  .hand-row {
-    gap: clamp(2px, 0.35vw, 4px);
-    padding: 0;
   }
   .hand-card-slot.is-drawn-slot {
     margin-left: clamp(6px, 0.8vw, 10px);
+  }
+
+  .compact-claim-dock {
+    right: 18px;
+    bottom: 18px;
+  }
+  .compact-timer-display {
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
   }
 
   .action-bar {

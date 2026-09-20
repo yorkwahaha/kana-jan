@@ -147,6 +147,14 @@ describe('組字役', () => {
     expect(found[0]?.totalScore).toBe(330)
   })
 
+  it('本局有 ん 時可組字 ぱん', () => {
+    const bonus = makeTargetBonus(getSound('pa'), 90)
+    const hand = cards('pa-hiragana', 'n-hiragana')
+    const found = findYaku(hand, bonus, { activeRows: ['pa', 'wa'] }).filter((y) => y.kind === 'word')
+    expect(found).toHaveLength(1)
+    expect(found[0]?.word).toBe('ぱん')
+  })
+
   it('缺音時不能組字', () => {
     const bonus = makeTargetBonus(getSound('ne'), 90)
     const hand = cards('ne-hiragana', 'a-hiragana')
@@ -247,6 +255,24 @@ describe('拗音牌型', () => {
     expect(same?.baseScore).toBe(120)
     expect(same?.typeBonus).toBe(360) // 三位相和加成
     expect(same?.totalScore).toBe(480)
+  })
+
+  it('や行三音（や／ゆ／よ）判定為三音揃い', () => {
+    const hand = cards('ya-hiragana', 'yu-katakana', 'yo-vocabulary')
+    const found = findYaku(hand, noBonus, { activeRows: ['ya', 'wa'] })
+    const yoon = found.find((y) => y.kind === 'sameYoon' && y.row === 'ya')
+    expect(yoon).toBeTruthy()
+    expect(yoon?.baseScore).toBe(180)
+    expect(yoon?.label).toContain('や行揃い')
+  })
+
+  it('わ行三音（わ／を／ん）判定為三音揃い', () => {
+    const hand = cards('wa-hiragana', 'wo-katakana', 'n-vocabulary')
+    const found = findYaku(hand, noBonus, { activeRows: ['ya', 'wa'] })
+    const yoon = found.find((y) => y.kind === 'sameYoon' && y.row === 'wa')
+    expect(yoon).toBeTruthy()
+    expect(yoon?.baseScore).toBe(180)
+    expect(yoon?.label).toContain('わ行揃い')
   })
 
   it('拗音三張全同類型享 +300 純色加成（共 480 分）', () => {
