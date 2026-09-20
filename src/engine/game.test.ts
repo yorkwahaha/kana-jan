@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_BONUS } from '../data/bonuses'
 import { CARD_CATALOG, getCardById, type KanaCard } from '../data/cards'
 import { createRng } from './rng'
-import { drainAuto, isClientAction, reduce, startGame } from './game'
+import { currentReactionYakus, drainAuto, isClientAction, reduce, startGame } from './game'
 import { reactionOrder } from './game'
 import { HAND_SIZE, INITIAL_GOLD } from './types'
 import { findYaku } from './yaku'
@@ -190,10 +190,11 @@ describe('棄牌優先順序', () => {
     expect(state.lastDiscardPlayerId).toBe('p0')
     expect(state.players[0]?.discards.map((c) => c.id)).toContain(discardId)
     expect(state.reactionOptions.map((o) => o.playerId)).toEqual(['p1', 'p2'])
+    expect(state.reactionOptions).toEqual([{ playerId: 'p1' }, { playerId: 'p2' }])
     expect(reactionOrder(0, 4)).toEqual([1, 2, 3])
 
-    const p1Yaku = state.reactionOptions[0]!
-    state = play(state, { type: 'CLAIM_YAKU', yakuId: p1Yaku.yaku.id })
+    const p1Yaku = currentReactionYakus(state)[0]!
+    state = play(state, { type: 'CLAIM_YAKU', yakuId: p1Yaku.id })
     // p1 is AI; scoring then review, drainAuto stops at review unless FINISH_REVIEW
     expect(state.players[1]?.completed).toHaveLength(1)
     expect(state.players[1]?.completed[0]?.source).toBe('ron')
@@ -279,7 +280,6 @@ describe('牌庫不足與耗盡', () => {
     const before = state.players[0]!.hand.length
     state = play(state, { type: 'DRAW' })
     expect(state.players[0]!.hand.length).toBe(before)
-    expect(state.drewThisTurn).toBe(false)
     expect(state.phase).toBe('playerAction')
   })
 })

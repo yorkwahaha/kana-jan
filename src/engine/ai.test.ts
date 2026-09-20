@@ -92,6 +92,28 @@ describe('電腦決策', () => {
       expect([k1.id, k2.id]).not.toContain(discard.cardId)
     }
   })
+
+  it('普通難度在進度相同時優先棄出牌河已有的安全牌', () => {
+    let state = startGame({
+      seed: 102,
+      startPlayerIndex: 1,
+      aiDifficulty: 'normal',
+      bonus,
+      hands: [
+        cards('i-hiragana', 'ki-hiragana', 'shi-hiragana', 'chi-hiragana', 'ni-hiragana', 'hi-hiragana', 'mi-hiragana'),
+        cards('a-hiragana', 'ka-hiragana', 'sa-hiragana', 'ta-hiragana', 'na-hiragana', 'ha-hiragana', 'ma-hiragana'),
+        cards('u-hiragana', 'ku-hiragana', 'su-hiragana', 'tsu-hiragana', 'nu-hiragana', 'fu-hiragana', 'mu-hiragana'),
+        cards('e-hiragana', 'ke-hiragana', 'se-hiragana', 'te-hiragana', 'ne-hiragana', 'he-hiragana', 'me-hiragana'),
+      ],
+      deck: cards('ra-hiragana'),
+    })
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    state = play(state, { type: 'SKIP_YAKU' })
+    state = { ...state, discardPile: cards('ka-katakana') }
+
+    expect(decideAi(state, createRng(1))).toEqual({ type: 'DISCARD', cardId: 'ka-hiragana' })
+  })
 })
 
 describe('真人操作需求判定 (needsHumanInput)', () => {
@@ -135,4 +157,3 @@ describe('真人操作需求判定 (needsHumanInput)', () => {
     expect(needsHumanInput(stateAtDiscard)).toBe(false)
   })
 })
-

@@ -19,7 +19,7 @@ function minDistance(hand: KanaCard[]): { distance: number; cardIds: Set<string>
     if (distance < best.distance) best = { distance, cardIds: new Set(group.map((c) => c.id)) }
   }
 
-  for (const key of ['row', 'column'] as const) {
+  for (const key of ['row'] as const) {
     const grouped = new Map<string, KanaCard[]>()
     for (const card of hand) {
       const list = grouped.get(card[key]) ?? []
@@ -28,7 +28,7 @@ function minDistance(hand: KanaCard[]): { distance: number; cardIds: Set<string>
     }
     for (const [groupKey, group] of grouped.entries()) {
       const sounds = new Set(group.map((c) => c.sound))
-      const targetSize = key === 'row' && isThreeSoundRow(groupKey as RowId) ? 3 : key === 'column' ? 4 : 5
+      const targetSize = isThreeSoundRow(groupKey as RowId) ? 3 : 5
       const distance = Math.max(0, targetSize - sounds.size)
       const ids = new Set(group.map((c) => c.id))
       if (distance < best.distance) best = { distance, cardIds: ids }
@@ -41,8 +41,7 @@ function minDistance(hand: KanaCard[]): { distance: number; cardIds: Set<string>
 function keepValue(card: KanaCard, hand: KanaCard[]): number {
   const sameSoundCount = hand.filter((c) => c.sound === card.sound).length
   const rowSounds = new Set(hand.filter((c) => c.row === card.row).map((c) => c.sound)).size
-  const colSounds = new Set(hand.filter((c) => c.column === card.column).map((c) => c.sound)).size
-  return sameSoundCount * 4 + rowSounds * 2 + colSounds * 2
+  return sameSoundCount * 4 + rowSounds * 2
 }
 
 function isDangerousDiscard(card: KanaCard, state: GameState, selfId: string): number {
@@ -72,7 +71,7 @@ function pickDiscard(player: PlayerState, state: GameState, rng: Rng): string {
     const inTarget = best.cardIds.has(card.id) ? 6 : 0
     const danger = isDangerousDiscard(card, state, player.id)
     const progressHurt = after.distance - best.distance
-    const score = progressHurt * 8 + inTarget + keep - danger
+    const score = progressHurt * 8 + inTarget + keep + danger
     return { id: card.id, score }
   })
   scored.sort((a, b) => a.score - b.score)

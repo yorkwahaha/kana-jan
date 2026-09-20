@@ -765,7 +765,7 @@ export const KANA_SOUNDS: KanaSound[] = [
 
   // --- 拗音 (每行 3 音: a, u, o) ---
   sound({ sound: 'kya', romaji: 'kya', hiragana: 'きゃ', katakana: 'キャ', row: 'kya', column: 'a', vocabulary: 'きゃく', meaning: '客人', icon: '👥', spelling: ['kya', 'ku'] }),
-  sound({ sound: 'kyu', romaji: 'kyu', hiragana: 'きゅ', katakana: 'キュ', row: 'kya', column: 'u', vocabulary: 'きゅうり', meaning: '小黃瓜', icon: '🥒', spelling: ['kyu', 'ri'] }),
+  sound({ sound: 'kyu', romaji: 'kyu', hiragana: 'きゅ', katakana: 'キュ', row: 'kya', column: 'u', vocabulary: 'きゅうり', meaning: '小黃瓜', icon: '🥒', spelling: ['kyu', 'u', 'ri'] }),
   sound({ sound: 'kyo', romaji: 'kyo', hiragana: 'きょ', katakana: 'キョ', row: 'kya', column: 'o', vocabulary: 'きょう', meaning: '今天', icon: '📅', spelling: ['kyo', 'u'] }),
 
   sound({ sound: 'sha', romaji: 'sha', hiragana: 'しゃ', katakana: 'シャ', row: 'sha', column: 'a', vocabulary: 'しゃしん', meaning: '照片', icon: '📸', spelling: ['sha', 'shi', 'n'] }),
@@ -773,20 +773,20 @@ export const KANA_SOUNDS: KanaSound[] = [
   sound({ sound: 'sho', romaji: 'sho', hiragana: 'しょ', katakana: 'ショ', row: 'sha', column: 'o', vocabulary: 'しょくじ', meaning: '用餐', icon: '🍽️', spelling: ['sho', 'ku', 'ji'] }),
 
   sound({ sound: 'cha', romaji: 'cha', hiragana: 'ちゃ', katakana: 'チャ', row: 'cha', column: 'a', vocabulary: 'おちゃ', meaning: '綠茶', icon: '🍵', spelling: ['o', 'cha'] }),
-  sound({ sound: 'chu', romaji: 'chu', hiragana: 'ちゅ', katakana: 'チュ', row: 'cha', column: 'u', vocabulary: 'ちゅうしゃ', meaning: '打針', icon: '💉', spelling: ['chu', 'sha'] }),
+  sound({ sound: 'chu', romaji: 'chu', hiragana: 'ちゅ', katakana: 'チュ', row: 'cha', column: 'u', vocabulary: 'ちゅうしゃ', meaning: '打針', icon: '💉', spelling: ['chu', 'u', 'sha'] }),
   sound({ sound: 'cho', romaji: 'cho', hiragana: 'ちょ', katakana: 'チョ', row: 'cha', column: 'o', vocabulary: 'ちょこ', meaning: '巧克力', icon: '🍫', spelling: ['cho', 'ko'] }),
 
   sound({ sound: 'nya', romaji: 'nya', hiragana: 'にゃ', katakana: 'ニャ', row: 'nya', column: 'a', vocabulary: 'にゃんこ', meaning: '貓咪', icon: '🐱', spelling: ['nya', 'n', 'ko'] }),
-  sound({ sound: 'nyu', romaji: 'nyu', hiragana: 'にゅ', katakana: 'ニュ', row: 'nya', column: 'u', vocabulary: 'にゅうがく', meaning: '入學', icon: '🎒', spelling: ['nyu', 'ga', 'ku'] }),
-  sound({ sound: 'nyo', romaji: 'nyo', hiragana: 'にょ', katakana: 'ニョ', row: 'nya', column: 'o', vocabulary: 'にょろにょろ', meaning: '扭動', icon: '🐍', spelling: ['nyo', 'ro'] }),
+  sound({ sound: 'nyu', romaji: 'nyu', hiragana: 'にゅ', katakana: 'ニュ', row: 'nya', column: 'u', vocabulary: 'にゅうがく', meaning: '入學', icon: '🎒', spelling: ['nyu', 'u', 'ga', 'ku'] }),
+  sound({ sound: 'nyo', romaji: 'nyo', hiragana: 'にょ', katakana: 'ニョ', row: 'nya', column: 'o', vocabulary: 'にょろにょろ', meaning: '扭動', icon: '🐍', spelling: ['nyo', 'ro', 'nyo', 'ro'] }),
 
   sound({ sound: 'hya', romaji: 'hya', hiragana: 'ひゃ', katakana: 'ヒャ', row: 'hya', column: 'a', vocabulary: 'ひゃく', meaning: '一百', icon: '💯', spelling: ['hya', 'ku'] }),
-  sound({ sound: 'hyu', romaji: 'hyu', hiragana: 'ひゅ', katakana: 'ヒュ', row: 'hya', column: 'u', vocabulary: 'ひゅうが', meaning: '日向', icon: '☀️', spelling: ['hyu', 'ga'] }),
+  sound({ sound: 'hyu', romaji: 'hyu', hiragana: 'ひゅ', katakana: 'ヒュ', row: 'hya', column: 'u', vocabulary: 'ひゅうが', meaning: '日向', icon: '☀️', spelling: ['hyu', 'u', 'ga'] }),
   sound({ sound: 'hyo', romaji: 'hyo', hiragana: 'ひょ', katakana: 'ヒョ', row: 'hya', column: 'o', vocabulary: 'ひょう', meaning: '豹', icon: '🐆', spelling: ['hyo', 'u'] }),
 
   sound({ sound: 'mya', romaji: 'mya', hiragana: 'みゃ', katakana: 'ミャ', row: 'mya', column: 'a', vocabulary: 'みゃく', meaning: '脈搏', icon: '💓', spelling: ['mya', 'ku'] }),
-  sound({ sound: 'myu', romaji: 'myu', hiragana: 'みゅ', katakana: 'ミュ', row: 'mya', column: 'u', vocabulary: 'みゅーじっく', meaning: '音樂', icon: '🎵', spelling: ['myu', 'ji'] }),
-  sound({ sound: 'myo', romaji: 'myo', hiragana: 'みょ', katakana: 'ミョ', row: 'mya', column: 'o', vocabulary: 'みょうじ', meaning: '姓氏', icon: '🏷️', spelling: ['myo', 'ji'] }),
+  sound({ sound: 'myu', romaji: 'myu', hiragana: 'みゅ', katakana: 'ミュ', row: 'mya', column: 'u', vocabulary: 'みゅーじっく', meaning: '音樂', icon: '🎵', spelling: ['myu', 'ji', 'ku'] }),
+  sound({ sound: 'myo', romaji: 'myo', hiragana: 'みょ', katakana: 'ミョ', row: 'mya', column: 'o', vocabulary: 'みょうじ', meaning: '姓氏', icon: '🏷️', spelling: ['myo', 'u', 'ji'] }),
 
   sound({ sound: 'rya', romaji: 'rya', hiragana: 'りゃ', katakana: 'リャ', row: 'rya', column: 'a', vocabulary: 'りゃく', meaning: '省略', icon: '✂️', spelling: ['rya', 'ku'] }),
   sound({ sound: 'ryu', romaji: 'ryu', hiragana: 'りゅ', katakana: 'リュ', row: 'rya', column: 'u', vocabulary: 'りゅう', meaning: '龍', icon: '🐉', spelling: ['ryu', 'u'] }),

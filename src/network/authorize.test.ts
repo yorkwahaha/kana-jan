@@ -11,6 +11,12 @@ describe('authorizeClientAction', () => {
     expect(authorizeClientAction(state, 0, { type: 'SYNC_RNG', rngState: 1 })).toBe(false)
   })
 
+  it('拒絕 Guest 跳過房主控制的開局預覽', () => {
+    const state = startGame({ seed: 1 })
+    expect(state.phase).toBe('preview')
+    expect(authorizeClientAction(state, 1, { type: 'SKIP_PREVIEW' })).toBe(false)
+  })
+
   it('棄牌必須是自己的手牌且處於 discard 階段', () => {
     let state = startGame({
       seed: 2,

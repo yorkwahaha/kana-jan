@@ -34,7 +34,7 @@ export interface HostCallbacks {
   onClientAction: (seat: number, action: GameAction) => void
   onGuestDisconnect?: (seat: number) => void
   /** 回傳更新後的對局狀態，供立刻同步給重連玩家 */
-  onGuestReconnect?: (seat: number) => GameState | void
+  onGuestReconnect?: (seat: number, authoritativeState: GameState) => GameState | void
   onError: (err: string) => void
   onChat?: (senderName: string, text: string) => void
 }
@@ -238,12 +238,12 @@ export class HostManager {
     slot.kind = 'remote'
     this.connections.set(slot.seat, conn)
 
-    const restored = this.callbacks.onGuestReconnect?.(slot.seat)
-    if (restored) {
-      this.currentGameState = restored
-    } else if (this.currentGameState) {
-      let next = restoreDisconnectedPlayer(this.currentGameState, slot.seat)
-      next = pushEvent(next, `玩家 ${slot.name} 已重新連線接管操作`)
+    if (this.currentGameState) {
+      const restored = this.callbacks.onGuestReconnect?.(slot.seat, this.currentGameState)
+      let next = restored ?? restoreDisconnectedPlayer(this.currentGameState, slot.seat)
+      if (!restored) {
+        next = pushEvent(next, `玩家 ${slot.name} 已重新連線接管操作`)
+      }
       this.currentGameState = next
     }
 
@@ -332,11 +332,6 @@ export class HostManager {
       slot.connected = false
       slot.peerId = undefined
     }
-    this.broadcastRoomUpdate()
-  }
-
-  public setLessonId(id: string) {
-    this.roomState.lessonId = id
     this.broadcastRoomUpdate()
   }
 

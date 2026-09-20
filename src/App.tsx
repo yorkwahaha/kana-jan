@@ -91,16 +91,14 @@ export function App() {
     (updater: (s: GameState) => GameState) => {
       setState((prev) => {
         const next = updater(prev)
-        if (networkMode === 'none') {
-          saveGame(next)
-        }
-        if (networkMode === 'host' && hostManagerRef.current) {
-          hostManagerRef.current.syncGameState(next)
-        }
+        const host = hostManagerRef.current
+        const guest = guestManagerRef.current
+        if (host) host.syncGameState(next)
+        else if (!guest) saveGame(next)
         return next
       })
     },
-    [networkMode],
+    [],
   )
 
   const dispatch = useCallback(
@@ -350,17 +348,13 @@ export function App() {
           return drainAuto(reduce(updated, action))
         })
       },
-      onGuestReconnect: (seat) => {
-        let restored: GameState | undefined
-        apply((s) => {
-          const player = s.players.find((p) => p.seat === seat)
-          const next = pushEvent(
-            restoreDisconnectedPlayer(s, seat),
-            `玩家 ${(player?.name ?? '').replace(/\s*\(AI\)$/, '')} 已重新連線接管操作`,
-          )
-          restored = next
-          return next
-        })
+      onGuestReconnect: (seat, authoritativeState) => {
+        const player = authoritativeState.players.find((p) => p.seat === seat)
+        const restored = pushEvent(
+          restoreDisconnectedPlayer(authoritativeState, seat),
+          `玩家 ${(player?.name ?? '').replace(/\s*\(AI\)$/, '')} 已重新連線接管操作`,
+        )
+        setState(restored)
         return restored
       },
       onGuestDisconnect: (seat) => {
@@ -564,11 +558,6 @@ export function App() {
               const currentSlot = roomState.slots[seat]
               const nextType = currentSlot?.kind === 'ai' ? 'remote' : 'ai'
               hostManagerRef.current.setSlotType(seat, nextType)
-            }
-          }}
-          onLessonChange={(id) => {
-            if (hostManagerRef.current) {
-              hostManagerRef.current.setLessonId(id)
             }
           }}
         />

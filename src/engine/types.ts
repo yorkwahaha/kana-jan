@@ -71,7 +71,6 @@ export interface PendingScore {
 
 export interface ReactionOption {
   playerId: string
-  yaku: YakuCandidate
 }
 
 export interface GameState {
@@ -93,7 +92,6 @@ export interface GameState {
   events: GameEvent[]
   eventSeq: number
   turnNumber: number
-  drewThisTurn: boolean
   lastDrawnCardId: string | null
   gameOverReason: 'gold' | 'deck' | null
   rankings: Ranking[] | null

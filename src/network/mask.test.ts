@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { startGame } from '../engine/game'
+import { drainAuto, reduce, startGame } from '../engine/game'
 import { maskStateForPlayer } from './mask'
 
 describe('maskStateForPlayer 防窺牌遮罩', () => {
@@ -41,5 +41,17 @@ describe('maskStateForPlayer 防窺牌遮罩', () => {
     const state = startGame({ seed: 42, skipPreview: true })
     const masked = maskStateForPlayer(state, -1)
     expect(masked.players.every((p) => p.hand.every((c) => c.hiragana === '？'))).toBe(true)
+  })
+
+  it('只讓目前抽牌者看到 lastDrawnCardId，且 reactionOptions 不攜帶手牌組合', () => {
+    let state = startGame({ seed: 42, skipPreview: true, startPlayerIndex: 1 })
+    state = drainAuto(reduce(state, { type: 'DEAL_DONE' }))
+    state = drainAuto(reduce(state, { type: 'DRAW' }))
+    expect(state.lastDrawnCardId).not.toBeNull()
+
+    expect(maskStateForPlayer(state, 1).lastDrawnCardId).toBe(state.lastDrawnCardId)
+    expect(maskStateForPlayer(state, 0).lastDrawnCardId).toBeNull()
+    expect(maskStateForPlayer(state, -1).lastDrawnCardId).toBeNull()
+    expect(state.reactionOptions.every((option) => !('yaku' in option))).toBe(true)
   })
 })

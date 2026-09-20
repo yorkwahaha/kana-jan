@@ -177,7 +177,7 @@ export function Lobby({
                 <div className="multi-section join-section">
                   <div className="multi-section-body">
                     <h3>🚪 加入好友房間</h3>
-                    <p className="section-desc">輸入好友分享的 6 碼房號加入牌局：</p>
+                    <p className="section-desc">輸入好友分享的 4 碼房號加入牌局：</p>
                   </div>
                   <div className="join-input-group">
                     <input

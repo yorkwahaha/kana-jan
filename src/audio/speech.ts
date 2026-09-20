@@ -3,7 +3,7 @@
  *
  * 採用三層高音質語音策略：
  * 1. 本地實體音檔優先（/audio/words/{sound}.mp3 與 /audio/kana/{sound}.mp3）：
- *    零延遲、高音質（Google Cloud TTS Neural2 錄製）、完全離線可用。
+ *    零延遲、高音質（Google Cloud TTS Neural2 錄製）；已備妥的音檔可完全離線播放。
  * 2. 雲端 Google Cloud TTS Proxy（ja-JP-Neural2-B，連線至 JPAPP 專屬 Worker）：
  *    若本地未命中則動態請求 Google Neural2 自然高傳真日語語音，並進行記憶體 Blob 快取。
  * 3. 系統 Web Speech API 保底：
@@ -38,7 +38,21 @@ let sessionExp = 0
 let sessionPromise: Promise<string | null> | null = null
 
 const cloudAudioCache = new Map<string, string>()
+const MAX_CLOUD_AUDIO_CACHE = 32
 const failedUrls = new Set<string>()
+
+function cacheCloudAudio(text: string, url: string): void {
+  const previous = cloudAudioCache.get(text)
+  if (previous && previous !== url) URL.revokeObjectURL(previous)
+  cloudAudioCache.delete(text)
+  cloudAudioCache.set(text, url)
+  while (cloudAudioCache.size > MAX_CLOUD_AUDIO_CACHE) {
+    const oldest = cloudAudioCache.entries().next().value as [string, string] | undefined
+    if (!oldest) break
+    cloudAudioCache.delete(oldest[0])
+    URL.revokeObjectURL(oldest[1])
+  }
+}
 
 export function stopSpeech(): void {
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -145,7 +159,7 @@ async function speakCloudTts(text: string): Promise<boolean> {
     if (!res.ok) return false
     const blob = await res.blob()
     const blobUrl = URL.createObjectURL(blob)
-    cloudAudioCache.set(text, blobUrl)
+    cacheCloudAudio(text, blobUrl)
     return playAudioUrl(blobUrl)
   } catch {
     return false
@@ -207,8 +221,4 @@ export async function speakJapanese(text: string, enabled: boolean): Promise<voi
 
   // 3. 系統 Web Speech 語音合成保底
   await speakWebSpeech(clean)
-}
-
-export async function recognizeSpeech(_expected: string): Promise<{ ok: boolean; transcript: string }> {
-  return { ok: true, transcript: '' }
 }

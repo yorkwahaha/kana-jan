@@ -18,7 +18,7 @@ export function Tutorial({ onClose }: Props) {
         <div className="tutorial-body">
           <section>
             <h3>1. 同音三張 · 120 / 840 點</h3>
-            <p>收集同一讀音的任意三張卡即可成牌（120 點）。若湊齊平假名＋片假名＋單字圖像（三位相和）享 <strong>480 點全彩加成</strong>！三張全同類型享 <strong>840 點純色加成</strong>。</p>
+            <p>收集同一讀音的任意三張卡即可成牌（120 點）。若湊齊平假名＋片假名＋單字圖像（三位相和），總計 <strong>480 點（+360）</strong>！三張全同類型則總計 <strong>840 點（+720）</strong>。</p>
             <div className="tutorial-cards">
               <CardView card={getCardById('ka-hiragana')} size="sm" />
               <CardView card={getCardById('ka-katakana')} size="sm" />
@@ -27,7 +27,7 @@ export function Tutorial({ onClose }: Props) {
           </section>
           <section>
             <h3>2. 拗音揃い · 180 / 480 點</h3>
-            <p>同一拗音行的 3 個不同讀音（如 きゃ・きゅ・きょ，180 點）。<strong>や行（やゆよ）與 わ行（わをん）</strong>同樣是三音揃い。三張全同類型享 <strong>480 點純色加成</strong>。</p>
+            <p>同一拗音行的 3 個不同讀音（如 きゃ・きゅ・きょ，180 點）。<strong>や行（やゆよ）與 わ行（わをん）</strong>同樣是三音揃い。三張全同類型總計 <strong>480 點（+300）</strong>。</p>
             <div className="tutorial-cards">
               <CardView card={getCardById('kya-hiragana')} size="sm" />
               <CardView card={getCardById('kyu-katakana')} size="sm" />
@@ -58,7 +58,7 @@ export function Tutorial({ onClose }: Props) {
             <p>
               自己抽牌完成（自摸／できた）：由其他三位玩家共同分攤該牌型點數（例如 480 點每人分攤 160 點、840 點每人分攤 280 點）。
               <br />
-              使用別人剛丟出的牌完成（もらった／放銃）：由棄牌放槍者單獨全額支付該牌型分數。
+              使用別人剛丟出的牌完成（もらった／抄牌）：由棄牌放銃者單獨全額支付該牌型分數。
             </p>
           </section>
           <section>

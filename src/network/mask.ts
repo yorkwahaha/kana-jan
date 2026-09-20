@@ -30,9 +30,12 @@ export function makeHiddenCard(id: string): KanaCard {
  * 3. 自己的手牌、所有人的棄牌河與已露出的和牌（副露）完全保留。
  */
 export function maskStateForPlayer(state: GameState, seat: number): GameState {
+  const currentPlayer = state.players[state.currentPlayerIndex]
+  const canSeeDrawnCard = seat >= 0 && currentPlayer?.seat === seat
   return {
     ...state,
     deck: state.deck.map((_, idx) => makeHiddenCard(`deck-hidden-${idx}`)),
+    lastDrawnCardId: canSeeDrawnCard ? state.lastDrawnCardId : null,
     players: state.players.map((p) => {
       // seat < 0：觀戰，所有手牌都遮罩
       if (seat >= 0 && p.seat === seat) return p

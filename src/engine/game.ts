@@ -53,7 +53,6 @@ export function createLobbyState(): GameState {
     events: [],
     eventSeq: 0,
     turnNumber: 0,
-    drewThisTurn: false,
     lastDrawnCardId: null,
     gameOverReason: null,
     rankings: null,
@@ -134,7 +133,7 @@ function buildReactionOptions(state: GameState): GameState {
       activeRows: state.activeRows,
     })
     if (yakus.length > 0) {
-      options.push({ playerId: player.id, yaku: yakus[0]! })
+      options.push({ playerId: player.id })
     }
   }
   return { ...state, reactionOptions: options, reactionIndex: 0 }
@@ -414,19 +413,18 @@ export function reduce(state: GameState, action: GameAction): GameState {
       const player = currentPlayer(state)
       if (state.deck.length === 0) {
         let next = pushEvent(state, `${player.name} 無法抽牌（牌庫已空）`)
-        next = { ...next, drewThisTurn: false, lastDrawnCardId: null, phase: 'playerAction' }
+        next = { ...next, lastDrawnCardId: null, phase: 'playerAction' }
         return next
       }
       const { card, remaining } = drawOne(state.deck)
       if (!card) {
-        return { ...state, phase: 'playerAction', drewThisTurn: false }
+        return { ...state, phase: 'playerAction' }
       }
       const updated: PlayerState = { ...player, hand: [...player.hand, card] }
       let next = replacePlayer(state, updated)
       next = {
         ...next,
         deck: remaining,
-        drewThisTurn: true,
         lastDrawnCardId: card.id,
         lastFx: 'draw',
         phase: 'playerAction',
@@ -568,7 +566,6 @@ export function reduce(state: GameState, action: GameAction): GameState {
         currentPlayerIndex: nextIndex,
         turnOwnerIndex: nextIndex,
         turnNumber: state.turnNumber + 1,
-        drewThisTurn: false,
         lastDrawnCardId: null,
         pendingScore: null,
         reactionOptions: [],

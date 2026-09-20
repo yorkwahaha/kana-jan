@@ -9,7 +9,6 @@ interface Props {
   onStartGame: () => void
   onLeaveRoom: () => void
   onToggleSlotAi: (seat: number) => void
-  onLessonChange?: (lessonId: string) => void
 }
 
 export function RoomLobby({

@@ -44,7 +44,7 @@ export function authorizeClientAction(state: GameState, seat: number, action: Ga
 
   switch (action.type) {
     case 'SKIP_PREVIEW':
-      return state.phase === 'preview'
+      return false
     case 'CHOOSE_YAKU': {
       if (state.phase !== 'playerAction') return false
       if (currentPlayer(state).seat !== seat) return false

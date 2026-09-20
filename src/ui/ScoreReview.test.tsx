@@ -30,7 +30,6 @@ function makeMockState(overrides?: Partial<GameState>): GameState {
     events: [],
     eventSeq: 0,
     turnNumber: 5,
-    drewThisTurn: false,
     lastDrawnCardId: null,
     gameOverReason: null,
     rankings: null,
