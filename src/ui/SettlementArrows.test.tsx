@@ -33,16 +33,17 @@ describe('SettlementArrows (圖三重新設計)', () => {
     expect(html).toContain('settlement-arrows-layer')
     expect(html).toContain('settlement-svg')
 
-    // 上方對家直向下箭頭路徑
-    expect(html).toContain('M 500,118 L 500,175')
-    // 左側外圍弧形箭頭路徑
-    expect(html).toContain('M 240,415 Q 270,525 345,545')
-    // 右側外圍弧形箭頭路徑
-    expect(html).toContain('M 760,415 Q 730,525 655,545')
+    // 上方對家直向下箭頭從面板外緣開始
+    expect(html).toContain('M 500,152 L 500,216')
+    // 左右兩側箭頭從面板內緣之外走外圍弧線
+    expect(html).toContain('M 286,414 Q 306,508 365,536')
+    expect(html).toContain('M 714,414 Q 694,508 635,536')
 
     // 箭頭三角形尖端與白色描邊
     expect(html).toContain('<polygon')
     expect(html).toContain('stroke="#ffffff"')
+    expect(html.match(/class="flying-coin-item"/g)).toHaveLength(15)
+    expect(html.match(/class="flying-coin-aura"/g)).toHaveLength(15)
   })
 
   it('renders single ron arrow when only one player pays', () => {
@@ -50,7 +51,9 @@ describe('SettlementArrows (圖三重新設計)', () => {
     const html = renderToString(
       <SettlementArrows transfers={transfers} players={PLAYERS} mySeat={0} />,
     )
-    expect(html).toContain('M 240,415 Q 270,525 345,545')
-    expect(html).not.toContain('M 500,118 L 500,175')
+    expect(html).toContain('M 286,414 Q 306,508 365,536')
+    expect(html).not.toContain('M 500,152 L 500,216')
+    expect(html).toContain('data-coin-count="7"')
+    expect(html.match(/class="flying-coin-item"/g)).toHaveLength(7)
   })
 })

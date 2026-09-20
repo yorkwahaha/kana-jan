@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { renderToString } from 'react-dom/server'
-import { ScoreReview } from './ScoreReview'
+import { SCORE_REVIEW_AUTO_ADVANCE_MS, ScoreReview } from './ScoreReview'
 import type { GameState } from '../engine/types'
 import { DEFAULT_SETTINGS } from './settings'
 import { buildCard } from '../data/cards'
 import { KANA_SOUNDS } from '../data/kana'
 import { DEFAULT_BONUS } from '../data/bonuses'
+
+it('金幣讓渡畫面停留 4.2 秒', () => {
+  expect(SCORE_REVIEW_AUTO_ADVANCE_MS).toBe(4200)
+})
 
 function makeMockState(overrides?: Partial<GameState>): GameState {
   const niSound = KANA_SOUNDS.find((s) => s.sound === 'ni')!

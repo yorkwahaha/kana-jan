@@ -835,8 +835,9 @@ body[data-anim='off'] .sakura-container {
 .hand-fan {
   position: absolute;
   display: flex;
-  z-index: 2;
+  z-index: 4;
   pointer-events: none;
+  transform-style: preserve-3d;
 }
 
 .hand-fan.pos-top {
@@ -874,7 +875,7 @@ body[data-anim='off'] .sakura-container {
   margin-bottom: clamp(-22px, -2.4vw, -16px);
   border: 1.5px solid rgba(255, 255, 255, 0.3);
   transform: none;
-  box-shadow: -5px 8px 16px rgba(0, 0, 0, 0.5);
+  box-shadow: 5px 8px 16px rgba(0, 0, 0, 0.5);
 }
 
 .hand-fan.pos-right {
@@ -897,7 +898,7 @@ body[data-anim='off'] .sakura-container {
   margin-bottom: clamp(-22px, -2.4vw, -16px);
   border: 1.5px solid rgba(255, 255, 255, 0.3);
   transform: none;
-  box-shadow: 5px 8px 16px rgba(0, 0, 0, 0.5);
+  box-shadow: -5px 8px 16px rgba(0, 0, 0, 0.5);
 }
 .hand-fan.pos-left .mini-back:last-child,
 .hand-fan.pos-right .mini-back:last-child {
@@ -909,20 +910,32 @@ body[data-anim='off'] .sakura-container {
   flex-shrink: 0;
 }
 
-/* --- 牌河 (Discard River - 參照圖一：四方對稱環繞中央島) --- */
+/* --- 牌河：每家固定四欄，第 5 張起回到第 1 欄向桌心堆疊 --- */
 .discard-river {
   position: absolute;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, max-content);
   z-index: 3;
   overflow: visible;
+  gap: 6px;
 }
 .discard-river.is-flying {
   z-index: 8;
   pointer-events: none;
 }
+.discard-river .river-column {
+  position: relative;
+  display: block;
+  width: 48px;
+  height: 66px;
+  overflow: visible;
+}
 .discard-river .river-slot {
   display: flex;
-  position: relative;
+  position: absolute;
+  inset: 0;
+  transform: translateY(calc(var(--river-layer, 0) * -10px));
+  z-index: calc(var(--river-layer, 0) + 1);
 }
 .discard-river .river-slot.is-live {
   z-index: 4;
@@ -941,42 +954,29 @@ body[data-anim='off'] .sakura-container {
 .discard-river.pos-top {
   top: 11%;
   left: 50%;
-  transform: translateX(-50%);
-  flex-direction: row;
-  justify-content: center;
-  gap: 6px;
   max-width: 32%;
-  flex-wrap: wrap;
+  transform: translateX(-50%) rotate(180deg);
 }
 
 .discard-river.pos-left {
   left: 16%;
   top: 32%;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 260px;
-  flex-wrap: nowrap;
+  transform: rotate(105deg);
+  transform-origin: top left;
 }
 
 .discard-river.pos-right {
   right: 16%;
   top: 32%;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 260px;
-  flex-wrap: nowrap;
-  align-items: flex-end;
+  transform: rotate(-105deg);
+  transform-origin: top right;
 }
 
 .discard-river.pos-human {
   left: 38%;
   bottom: 26%;
   transform: translateX(-50%);
-  flex-direction: row;
-  justify-content: center;
-  gap: 8px;
   max-width: 34%;
-  flex-wrap: wrap;
 }
 
 .discard-river .kana-card.size-river {
@@ -986,27 +986,15 @@ body[data-anim='off'] .sakura-container {
   font-size: 9px;
 }
 
+.discard-river.pos-top .river-column {
+  width: 36px;
+  height: 50px;
+}
 .discard-river.pos-top .kana-card.size-river {
   width: 36px;
   min-width: 36px;
   height: 50px;
   font-size: 7px;
-  transform: rotate(180deg);
-}
-
-.discard-river.pos-left .river-slot,
-.discard-river.pos-right .river-slot {
-  width: 66px;
-  height: 48px;
-  align-items: center;
-  justify-content: center;
-  overflow: visible;
-}
-.discard-river.pos-left .kana-card.size-river {
-  transform: rotate(90deg);
-}
-.discard-river.pos-right .kana-card.size-river {
-  transform: rotate(-90deg);
 }
 
 /* --- 中心牌山與役札盤 (Center Board - 參照圖一：嵌於四方牌河中央島) --- */
@@ -1924,8 +1912,12 @@ button.kana-card { appearance: none; }
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  animation: badgePopIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28) backwards;
+  animation: settlementBadgeReveal 0.22s ease-out backwards;
   overflow: visible;
+}
+@keyframes settlementBadgeReveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 @keyframes badgePopIn {
   from { opacity: 0; transform: scale(0.85); }
@@ -2431,18 +2423,22 @@ button.kana-card { appearance: none; }
 }
 
 .settlement-arrow-group {
-  animation: ribbonArrowPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards;
+  animation: ribbonArrowReveal 0.24s ease-out 0.08s backwards;
 }
 
-@keyframes ribbonArrowPop {
-  0% {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
+@keyframes ribbonArrowReveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.flying-coin-aura {
+  transform-origin: center;
+  animation: settlementCoinAura 0.42s ease-in-out infinite alternate;
+}
+
+@keyframes settlementCoinAura {
+  from { opacity: 0.55; transform: scale(0.82); }
+  to { opacity: 1; transform: scale(1.12); }
 }
 
 /* 中央成牌焦點區 (Settlement Center) */
@@ -2830,10 +2826,24 @@ button.kana-card { appearance: none; }
 }
 
 /* 設定面板 (Settings Panel) */
+.settings-modal {
+  width: min(920px, calc(100% - 24px));
+  max-height: min(90dvh, 700px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 .settings-body {
   display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  align-items: start;
   gap: 14px;
   padding: 12px 0;
+  min-height: 0;
+}
+.settings-column {
+  display: grid;
+  gap: 14px;
 }
 .settings-body fieldset {
   border: 1px solid rgba(140, 105, 75, 0.25);
@@ -2843,12 +2853,52 @@ button.kana-card { appearance: none; }
   gap: 10px;
   background: #fffdfa;
 }
+.settings-learning {
+  align-self: stretch;
+}
 .settings-body legend {
   padding: 0 8px;
   font-size: 0.88rem;
   font-weight: 700;
   color: var(--ink);
   letter-spacing: 0.06em;
+}
+
+@media (max-width: 680px) and (orientation: portrait) {
+  .settings-modal {
+    overflow-y: auto;
+  }
+  .settings-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .settings-modal {
+    max-height: 96dvh;
+    padding: 14px 20px;
+  }
+  .settings-modal .modal-head {
+    padding-bottom: 8px;
+  }
+  .settings-modal .modal-head h2 {
+    font-size: 1.35rem;
+  }
+  .settings-body,
+  .settings-column {
+    gap: 8px;
+  }
+  .settings-body {
+    padding: 8px 0;
+  }
+  .settings-body fieldset {
+    gap: 6px;
+    padding: 7px 12px 9px;
+  }
+  .settings-modal .modal-foot {
+    margin-top: 6px;
+    padding-top: 10px;
+  }
 }
 
 /* 五十音圖鑑 (Catalog Modal) */
@@ -3589,6 +3639,20 @@ button.kana-card { appearance: none; }
       0 0 0 3px var(--wood-edge),
       0 0 0 6px var(--lacquer-wood),
       0 8px 22px rgba(10, 6, 3, 0.5);
+    background-position: center 42%;
+    isolation: isolate;
+  }
+  .felt-oval::before {
+    content: '';
+    position: absolute;
+    inset: 16% 25% 21%;
+    border: 2px solid rgba(22, 77, 48, 0.28);
+    border-radius: 44% / 48%;
+    box-shadow:
+      inset 0 0 0 7px rgba(255, 255, 255, 0.025),
+      0 2px 0 rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+    z-index: 0;
   }
   .felt-oval[data-active-pos="top"],
   .felt-oval[data-active-pos="human"],
@@ -3694,23 +3758,23 @@ button.kana-card { appearance: none; }
   .kind { font-size: 0.58rem; padding: 0 4px; }
 
   .seat-hud.pos-top {
-    top: 4.5%;
-    left: 60%;
+    top: 3.5%;
+    left: 62%;
   }
   .seat-hud.pos-left {
-    left: 7.5%;
-    top: 11%;
+    left: 5%;
+    top: 10%;
   }
   .seat-hud.pos-right {
-    right: 6%;
-    top: 11%;
+    right: 5%;
+    top: 10%;
   }
   .human-seat-corner {
     left: 22px;
-    bottom: 14px;
+    bottom: 52px;
   }
 
-  .hand-fan.pos-top { top: 0; }
+  .hand-fan.pos-top { top: 0.5%; }
   .hand-fan.pos-top .mini-back {
     width: 26px;
     height: 36px;
@@ -3718,47 +3782,57 @@ button.kana-card { appearance: none; }
     border-radius: 3px;
   }
   .hand-fan.pos-left {
-    left: 14%;
-    top: 38%;
+    left: 16.5%;
+    top: 39%;
     width: auto;
     height: auto;
     flex-direction: column;
     flex-wrap: nowrap;
-    transform: translate(-50%, -50%) rotate(15deg);
+    transform: translate(-50%, -50%) rotate(5deg);
+    perspective: 220px;
   }
   .hand-fan.pos-left .mini-back {
-    width: 52px;
-    height: 36px;
+    width: 44px;
+    height: 58px;
     margin-right: 0;
-    margin-bottom: -16px;
+    margin-bottom: -35px;
     border-radius: 4px;
-    transform: none;
+    transform: rotateY(58deg);
+    transform-origin: left center;
+    box-shadow: 8px 7px 12px rgba(0, 0, 0, 0.52);
   }
   .hand-fan.pos-right {
-    left: 86%;
+    left: 83.5%;
     right: auto;
-    top: 38%;
+    top: 39%;
     width: auto;
     height: auto;
     flex-direction: column;
     flex-wrap: nowrap;
-    transform: translate(-50%, -50%) rotate(-15deg);
+    transform: translate(-50%, -50%) rotate(-5deg);
+    perspective: 220px;
   }
   .hand-fan.pos-right .mini-back {
-    width: 52px;
-    height: 36px;
+    width: 44px;
+    height: 58px;
     margin-right: 0;
-    margin-bottom: -16px;
+    margin-bottom: -35px;
     border-radius: 4px;
-    transform: none;
+    transform: rotateY(-58deg);
+    transform-origin: right center;
+    box-shadow: -8px 7px 12px rgba(0, 0, 0, 0.52);
   }
   .hand-fan.pos-left .mini-back:last-child,
   .hand-fan.pos-right .mini-back:last-child {
     margin-bottom: 0;
   }
 
-  .discard-river .river-slot { display: none; }
-  .discard-river .river-slot:nth-last-child(-n+6) { display: flex; }
+  .discard-river { gap: 3px; }
+  .discard-river .river-column {
+    width: 42px;
+    height: 58px;
+  }
+  .discard-river .river-slot { display: flex; }
   .discard-river .kana-card.size-river {
     width: 44px;
     min-width: 44px;
@@ -3786,56 +3860,44 @@ button.kana-card { appearance: none; }
   }
 
   .discard-river.pos-top {
-    top: 9%;
-    max-width: 30%;
-    flex-wrap: nowrap;
-    gap: 3px;
+    top: 16%;
+    max-width: none;
+  }
+  .discard-river.pos-top .river-column {
+    width: 30px;
+    height: 42px;
   }
   .discard-river.pos-left {
-    left: 15%;
-    top: 32%;
-    max-height: 200px;
-    flex-wrap: nowrap;
-    gap: 3px;
+    left: 29%;
+    top: 25%;
+    transform: rotate(95deg) scale(0.9);
   }
   .discard-river.pos-right {
-    right: 15%;
-    top: 32%;
-    max-height: 200px;
-    flex-wrap: nowrap;
-    gap: 3px;
+    right: 29%;
+    top: 25%;
+    transform: rotate(-95deg) scale(0.9);
   }
   .discard-river.pos-human {
-    left: 38%;
+    left: 50%;
     bottom: 28%;
     top: auto;
     transform: translateX(-50%);
-    max-width: 32%;
-    flex-wrap: nowrap;
-    gap: 4px;
-  }
-  .discard-river.pos-top .kana-card.size-river {
-    transform: rotate(180deg);
+    max-width: none;
   }
   .discard-river.pos-top .kana-card.size-river {
     width: 30px;
     min-width: 30px;
     height: 42px;
   }
-  .discard-river.pos-left .river-slot,
-  .discard-river.pos-right .river-slot {
-    width: 54px;
-    height: 38px;
-  }
-  .discard-river.pos-left .kana-card.size-river {
-    transform: rotate(90deg);
-  }
+  .discard-river.pos-left .kana-card.size-river,
   .discard-river.pos-right .kana-card.size-river {
-    transform: rotate(-90deg);
+    width: 42px;
+    min-width: 42px;
+    height: 58px;
   }
 
   .center-board {
-    top: 43%;
+    top: 44%;
     width: fit-content;
     min-width: 0;
     max-width: min(360px, 38vw);
@@ -3890,7 +3952,7 @@ button.kana-card { appearance: none; }
   .human-hand-area {
     left: 50%;
     right: auto;
-    bottom: 1.4%;
+    bottom: 0.8%;
     transform: translateX(-50%);
     width: fit-content;
     max-width: 58vw;
@@ -3948,6 +4010,18 @@ button.kana-card { appearance: none; }
   .mascot.mood-cheer { animation: none; }
   .kana-card, .btn { transition: none !important; animation: none !important; }
   .discard-river.is-flying { z-index: 3; }
+  .settlement-badge,
+  .settlement-arrow-group,
+  .flying-coin-aura,
+  .settlement-coins,
+  .settlement-coins .coin-icon,
+  .settlement-coins .coin-amount {
+    animation: none !important;
+    transition: none !important;
+  }
+  .flying-coin-item {
+    display: none;
+  }
 }
 
 /* ==========================================================================
@@ -5049,7 +5123,7 @@ button.kana-card { appearance: none; }
 }
 
 .river-slot.is-ron-gun.is-ron-active {
-  transform: scale(1.18) translateY(-4px);
+  transform: translateY(calc(var(--river-layer, 0) * -10px - 4px)) scale(1.18);
   z-index: 50;
 }
 

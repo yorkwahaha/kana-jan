@@ -24,33 +24,38 @@ export function SettingsPanel({ settings, onChange, onClose, onRestart, onToLobb
           </button>
         </header>
         <div className="settings-body">
-          <label className="toggle">
-            <input type="checkbox" checked={settings.bgm} onChange={() => toggle('bgm')} />
-            背景音樂
-          </label>
-          <label className="toggle">
-            <input type="checkbox" checked={settings.sfx} onChange={() => toggle('sfx')} />
-            音效
-          </label>
-          <label className="toggle">
-            <input type="checkbox" checked={settings.speech} onChange={() => toggle('speech')} />
-            假名讀音
-          </label>
-          <fieldset>
-            <legend>動畫速度</legend>
-            {(['normal', 'fast', 'off'] as const).map((v) => (
-              <label key={v}>
-                <input
-                  type="radio"
-                  name="anim"
-                  checked={settings.animation === v}
-                  onChange={() => onChange({ ...settings, animation: v })}
-                />
-                {v === 'normal' ? '慢速（容易看懂）' : v === 'fast' ? '快速' : '關閉／跳過'}
+          <div className="settings-column settings-general">
+            <fieldset>
+              <legend>聲音</legend>
+              <label className="toggle">
+                <input type="checkbox" checked={settings.bgm} onChange={() => toggle('bgm')} />
+                背景音樂
               </label>
-            ))}
-          </fieldset>
-          <fieldset>
+              <label className="toggle">
+                <input type="checkbox" checked={settings.sfx} onChange={() => toggle('sfx')} />
+                音效
+              </label>
+              <label className="toggle">
+                <input type="checkbox" checked={settings.speech} onChange={() => toggle('speech')} />
+                假名讀音
+              </label>
+            </fieldset>
+            <fieldset>
+              <legend>動畫速度</legend>
+              {(['normal', 'fast', 'off'] as const).map((v) => (
+                <label key={v}>
+                  <input
+                    type="radio"
+                    name="anim"
+                    checked={settings.animation === v}
+                    onChange={() => onChange({ ...settings, animation: v })}
+                  />
+                  {v === 'normal' ? '慢速（容易看懂）' : v === 'fast' ? '快速' : '關閉／跳過'}
+                </label>
+              ))}
+            </fieldset>
+          </div>
+          <fieldset className="settings-learning">
             <legend>學習提示</legend>
             <label className="toggle">
               <input type="checkbox" checked={settings.learningHints} onChange={() => toggle('learningHints')} />

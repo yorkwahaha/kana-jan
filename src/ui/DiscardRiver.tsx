@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, type CSSProperties } from 'react'
 import type { PlayerState } from '../engine/types'
 import type { TablePosition } from './seats'
 import { CardView } from './CardView'
@@ -44,6 +44,7 @@ export function DiscardRiver({
     const table = river?.closest('.felt-oval')
     const fromEl = table?.querySelector(`[data-hand-origin="${position}"]`)
     const to = slot.getBoundingClientRect()
+    const restingTransform = window.getComputedStyle(slot).transform
     let dx = FALLBACK_FROM[position].x
     let dy = FALLBACK_FROM[position].y
     if (fromEl) {
@@ -58,7 +59,7 @@ export function DiscardRiver({
       [
         { transform: `translate(${dx}px, ${dy}px) scale(${startScale})` },
         { transform: `translate(${dx}px, ${dy}px) scale(${startScale})`, offset: 0.22 },
-        { transform: 'none' },
+        { transform: restingTransform === 'none' ? 'none' : restingTransform },
       ],
       {
         duration: flightMs,
@@ -81,36 +82,53 @@ export function DiscardRiver({
 
   if (discards.length === 0) return null
 
+  const columns = Array.from({ length: Math.min(4, discards.length) }, (_, column) =>
+    discards
+      .map((card, index) => ({ card, index }))
+      .filter(({ index }) => index % 4 === column)
+      .map(({ card, index }) => ({ card, layer: Math.floor(index / 4) })),
+  )
+
   return (
     <div
       ref={riverRef}
       className={`discard-river pos-${position}`}
       aria-label={`${player.name} 的棄牌`}
     >
-      {discards.map((card) => {
-        const live = card.id === liveCardId
-        const isGun = ronGunCard?.id === card.id
-        const slotClass = [
-          'river-slot',
-          live ? 'is-live' : '',
-          isGun ? 'is-ron-gun' : '',
-          isGun && isRonHighlight ? 'is-ron-active' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')
+      {columns.map((column, columnIndex) => (
+        <span className="river-column" key={columnIndex}>
+          {column.map(({ card, layer }) => {
+            const live = card.id === liveCardId
+            const isGun = ronGunCard?.id === card.id
+            const slotClass = [
+              'river-slot',
+              live ? 'is-live' : '',
+              isGun ? 'is-ron-gun' : '',
+              isGun && isRonHighlight ? 'is-ron-active' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')
+            const layerStyle = { '--river-layer': layer } as CSSProperties
 
-        return (
-          <span key={card.id} ref={live ? liveRef : undefined} className={slotClass}>
-            <CardView card={card} size="river" showHints={settings} yakuPart={live || isGun} />
-            {isGun && (
-              <>
-                <SparkleCluster className="river-ron-sparkles" scale={0.75} />
-                <span className="ron-gun-badge">⚡ 放槍！</span>
-              </>
-            )}
-          </span>
-        )
-      })}
+            return (
+              <span
+                key={card.id}
+                ref={live ? liveRef : undefined}
+                className={slotClass}
+                style={layerStyle}
+              >
+                <CardView card={card} size="river" showHints={settings} yakuPart={live || isGun} />
+                {isGun && (
+                  <>
+                    <SparkleCluster className="river-ron-sparkles" scale={0.75} />
+                    <span className="ron-gun-badge">⚡ 放槍！</span>
+                  </>
+                )}
+              </span>
+            )
+          })}
+        </span>
+      ))}
     </div>
   )
 }

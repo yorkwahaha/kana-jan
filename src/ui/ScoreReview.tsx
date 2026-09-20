@@ -103,6 +103,7 @@ const PAYER_START_MS = 350
 const PAYER_DURATION_MS = 650
 const WINNER_START_MS = 1050
 const WINNER_DURATION_MS = 750
+export const SCORE_REVIEW_AUTO_ADVANCE_MS = 4200
 
 function easeOutQuad(x: number): number {
   return 1 - (1 - x) * (1 - x)
@@ -242,13 +243,13 @@ export function ScoreReview({
     }
   }, [pending, isGameOver, state.lastTransfers.length, settings.speech, settings.sfx])
 
-  // 非對局結束時，金幣畫面約 3.2 秒自動推進；對局結束時停在畫面不自動跳過
+  // 非對局結束時，金幣畫面約 4.2 秒自動推進；對局結束時停在畫面不自動跳過
   useEffect(() => {
     if (isGameOver) return
     if (!pending) return
     const autoTimer = window.setTimeout(() => {
       onFinish?.()
-    }, 3200)
+    }, SCORE_REVIEW_AUTO_ADVANCE_MS)
     return () => window.clearTimeout(autoTimer)
   }, [isGameOver, pending, onFinish])
 

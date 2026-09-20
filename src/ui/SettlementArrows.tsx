@@ -25,100 +25,100 @@ function getSettlementArrowGeom(from: TablePosition, to: TablePosition): ArrowGe
     // 贏家在下方 (自家 human) - 完美參照圖三
     // ==========================================
     case 'top->human':
-      // 對家直向下箭頭：上方銘牌底部直直向下指，絕不碰觸中央牌面 (停於 y=206，在牌型標題上方)
+      // 從上方銘牌外緣下方起跑，保留面板與箭頭之間的呼吸空間。
       return {
-        stemPath: 'M 500,118 L 500,175',
-        headPoints: '482,175 518,175 500,206',
-        coinPath: 'M 500,118 L 500,206',
+        stemPath: 'M 500,152 L 500,216',
+        headPoints: '484,216 516,216 500,244',
+        coinPath: 'M 500,152 L 500,244',
       }
     case 'left->human':
-      // 左側向右下優美弧線：沿左下方開闊走廊弧入下方銘牌左上
+      // 從左側銘牌右下外緣出發，沿外側走廊弧入下方銘牌上方。
       return {
-        stemPath: 'M 240,415 Q 270,525 345,545',
-        headPoints: '338,531 352,559 375,553',
-        coinPath: 'M 240,415 Q 270,525 375,553',
+        stemPath: 'M 286,414 Q 306,508 365,536',
+        headPoints: '356,523 374,549 395,537',
+        coinPath: 'M 286,414 Q 306,508 395,537',
       }
     case 'right->human':
-      // 右側向左下優美弧線：沿右下方開闊走廊弧入下方銘牌右上
+      // 右側鏡像走外側走廊，不壓到玩家銘牌。
       return {
-        stemPath: 'M 760,415 Q 730,525 655,545',
-        headPoints: '662,531 648,559 625,553',
-        coinPath: 'M 760,415 Q 730,525 625,553',
+        stemPath: 'M 714,414 Q 694,508 635,536',
+        headPoints: '644,523 626,549 605,537',
+        coinPath: 'M 714,414 Q 694,508 605,537',
       }
 
     // ==========================================
     // 贏家在上方 (對家 top)
     // ==========================================
     case 'human->top':
-      // 自家直向上箭頭：下方銘牌頂部直直向上指，絕不碰觸中央牌面
+      // 自家銘牌上方的直向導流，起點不覆蓋銘牌。
       return {
-        stemPath: 'M 500,575 L 500,518',
-        headPoints: '482,518 518,518 500,487',
-        coinPath: 'M 500,575 L 500,487',
+        stemPath: 'M 500,548 L 500,484',
+        headPoints: '484,484 516,484 500,456',
+        coinPath: 'M 500,548 L 500,456',
       }
     case 'left->top':
-      // 左側向右上優美弧線：沿左上方開闊走廊弧入上方銘牌左下
+      // 左上外側走廊，兩端皆停在銘牌外。
       return {
-        stemPath: 'M 240,275 Q 270,165 345,145',
-        headPoints: '338,159 352,131 375,137',
-        coinPath: 'M 240,275 Q 270,165 375,137',
+        stemPath: 'M 286,286 Q 306,192 365,164',
+        headPoints: '356,177 374,151 395,163',
+        coinPath: 'M 286,286 Q 306,192 395,163',
       }
     case 'right->top':
-      // 右側向左上優美弧線：沿右上方開闊走廊弧入上方銘牌右下
+      // 右上外側走廊鏡像。
       return {
-        stemPath: 'M 760,275 Q 730,165 655,145',
-        headPoints: '662,159 648,131 625,137',
-        coinPath: 'M 760,275 Q 730,165 625,137',
+        stemPath: 'M 714,286 Q 694,192 635,164',
+        headPoints: '644,177 626,151 605,163',
+        coinPath: 'M 714,286 Q 694,192 605,163',
       }
 
     // ==========================================
     // 贏家在左方 (left)
     // ==========================================
     case 'top->left':
-      // 上方流暢弧向左側贏家頂部
+      // 上方至左側的短外弧，避開雙方銘牌本體。
       return {
-        stemPath: 'M 360,135 Q 270,165 245,255',
-        headPoints: '231,248 259,262 238,285',
-        coinPath: 'M 360,135 Q 270,165 238,285',
+        stemPath: 'M 365,160 Q 306,190 286,274',
+        headPoints: '274,266 298,282 278,305',
+        coinPath: 'M 365,160 Q 306,190 278,305',
       }
     case 'human->left':
-      // 自家流暢弧向左側贏家底部
+      // 下方至左側的短外弧。
       return {
-        stemPath: 'M 360,555 Q 270,525 245,435',
-        headPoints: '231,442 259,428 238,405',
-        coinPath: 'M 360,555 Q 270,525 238,405',
+        stemPath: 'M 365,540 Q 306,510 286,426',
+        headPoints: '274,434 298,418 278,395',
+        coinPath: 'M 365,540 Q 306,510 278,395',
       }
     case 'right->left':
-      // 右側對家直向左箭頭：在右側銘牌左側向左水平直指，不穿透中央
+      // 橫向讓渡改走上方弧廊，避免穿過中央展示與左右銘牌。
       return {
-        stemPath: 'M 735,335 L 675,335',
-        headPoints: '675,317 675,353 647,335',
-        coinPath: 'M 735,335 L 647,335',
+        stemPath: 'M 714,286 C 646,210 354,210 306,286',
+        headPoints: '307,269 326,293 278,305',
+        coinPath: 'M 714,286 C 646,210 354,210 278,305',
       }
 
     // ==========================================
     // 贏家在右方 (right)
     // ==========================================
     case 'top->right':
-      // 上方流暢弧向右側贏家頂部
+      // 上方至右側的短外弧。
       return {
-        stemPath: 'M 640,135 Q 730,165 755,255',
-        headPoints: '769,248 741,262 762,285',
-        coinPath: 'M 640,135 Q 730,165 762,285',
+        stemPath: 'M 635,160 Q 694,190 714,274',
+        headPoints: '726,266 702,282 722,305',
+        coinPath: 'M 635,160 Q 694,190 722,305',
       }
     case 'human->right':
-      // 自家流暢弧向右側贏家底部
+      // 下方至右側的短外弧。
       return {
-        stemPath: 'M 640,555 Q 730,525 755,435',
-        headPoints: '769,442 741,428 762,405',
-        coinPath: 'M 640,555 Q 730,525 762,405',
+        stemPath: 'M 635,540 Q 694,510 714,426',
+        headPoints: '726,434 702,418 722,395',
+        coinPath: 'M 635,540 Q 694,510 722,395',
       }
     case 'left->right':
-      // 左側對家直向右箭頭：在左側銘牌右側向右水平直指，不穿透中央
+      // 左右互換時同樣走上方弧廊。
       return {
-        stemPath: 'M 265,335 L 325,335',
-        headPoints: '325,317 325,353 353,335',
-        coinPath: 'M 265,335 L 353,335',
+        stemPath: 'M 286,286 C 354,210 646,210 694,286',
+        headPoints: '693,269 674,293 722,305',
+        coinPath: 'M 286,286 C 354,210 646,210 722,305',
       }
 
     default:
@@ -166,6 +166,12 @@ export function SettlementArrows({ transfers, players, mySeat = 0 }: Props) {
             <stop offset="100%" stopColor="#b45309" />
           </linearGradient>
 
+          <radialGradient id="coin-aura-grad">
+            <stop offset="0%" stopColor="#fff7ae" stopOpacity="0.8" />
+            <stop offset="55%" stopColor="#fbbf24" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+          </radialGradient>
+
           {/* 3D 傾斜金幣物件 */}
           <g id="flying-gold-coin" filter="url(#settlement-coin-glow)">
             <ellipse cx="0" cy="2.5" rx="15" ry="11.5" fill="#78350f" />
@@ -184,11 +190,16 @@ export function SettlementArrows({ transfers, players, mySeat = 0 }: Props) {
           const geom = getSettlementArrowGeom(fromPos, toPos)
           if (!geom) return null
 
-          const coinCount = 4
-          const streamDuration = 1.15
+          const coinCount = t.amount >= 400 ? 7 : 5
+          const streamDuration = 1.28
 
           return (
-            <g key={`transfer-${t.fromId}-${t.toId}`} className="settlement-arrow-group">
+            <g
+              key={`transfer-${t.fromId}-${t.toId}`}
+              className="settlement-arrow-group"
+              data-amount={t.amount}
+              data-coin-count={coinCount}
+            >
               {/* 1. 立體帶狀紅箭頭（參照圖三：白色粗邊框 + 紅色飽滿主管道 + 箭頭三角形） */}
               <g filter="url(#settlement-arrow-shadow)">
                 {/* 1.1 管道底層純白厚描邊 */}
@@ -219,9 +230,10 @@ export function SettlementArrows({ transfers, players, mySeat = 0 }: Props) {
 
               {/* 2. 沿著箭頭軌跡飛舞的金幣串（由失分方沿外圍走廊飛入贏家，不遮擋中央） */}
               {Array.from({ length: coinCount }).map((_, i) => {
-                const delay = 0.2 + i * 0.16
+                const delay = 0.18 + i * 0.13
                 return (
                   <g key={`coin-${i}`} className="flying-coin-item" opacity="0">
+                    <circle r="23" fill="url(#coin-aura-grad)" className="flying-coin-aura" />
                     <use href="#flying-gold-coin" />
                     <animateMotion
                       path={geom.coinPath}
