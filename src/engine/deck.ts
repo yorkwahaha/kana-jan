@@ -83,17 +83,8 @@ export function drawOne(deck: KanaCard[]): { card: KanaCard | null; remaining: K
   return { card, remaining }
 }
 
-export function refillHand(
-  hand: KanaCard[],
-  deck: KanaCard[],
-  handSize = HAND_SIZE,
-): { hand: KanaCard[]; deck: KanaCard[] } {
-  const nextHand = [...hand]
-  const nextDeck = [...deck]
-  while (nextHand.length < handSize && nextDeck.length > 0) {
-    const card = nextDeck.shift()
-    if (!card) break
-    nextHand.push(card)
-  }
-  return { hand: sortHandByGojuon(nextHand), deck: nextDeck }
+export function copiesPerCardTypeForRows(rows: readonly RowId[]): number {
+  const motherPoolLength = catalogForRows(rows).length * COPIES_PER_CARD_TYPE
+  if (motherPoolLength >= MIN_DECK) return COPIES_PER_CARD_TYPE
+  return COPIES_PER_CARD_TYPE * copiesNeeded(motherPoolLength, MIN_DECK)
 }

@@ -29,7 +29,7 @@ export function SparkleStar({
   )
 }
 
-/** 參照截圖：放槍牌上方與 POKA JAN 標題旁的四角星芒群 (Sparkle Cluster) */
+/** 放槍牌上方與 KANA JAN 標題旁的四角星芒群 (Sparkle Cluster) */
 export function SparkleCluster({
   className = '',
   scale = 1,

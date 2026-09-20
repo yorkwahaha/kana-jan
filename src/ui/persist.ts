@@ -1,4 +1,6 @@
 import { createLobbyState } from '../engine/game'
+import { makeTargetBonus } from '../data/bonuses'
+import { getSound } from '../data/kana'
 import type { GameState } from '../engine/types'
 
 const KEY = 'kana-jan-save-v1'
@@ -38,6 +40,7 @@ export function loadGame(): GameState | null {
     if (!parsed || !parsed.phase || !Array.isArray(parsed.players)) return null
     if (parsed.phase === 'lobby') return null
     if (!Array.isArray(parsed.activeRows) || !parsed.lessonId || !parsed.bonus?.sound) return null
+    parsed.bonus = makeTargetBonus(getSound(parsed.bonus.sound), parsed.bonus.points)
     if (parsed.lastDiscardPlayerId === undefined) parsed.lastDiscardPlayerId = null
     if (typeof parsed.comboCount !== 'number') parsed.comboCount = 0
     if (typeof parsed.turnOwnerIndex !== 'number') {

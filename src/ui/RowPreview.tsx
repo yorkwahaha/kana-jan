@@ -10,15 +10,17 @@ interface Props {
   state: GameState
   settings?: Settings
   onContinue: () => void
+  canSkip?: boolean
 }
 
-export function RowPreview({ state, settings, onContinue }: Props) {
+export function RowPreview({ state, settings, onContinue, canSkip = true }: Props) {
   const [elapsed, setElapsed] = useState(() => (settings?.animation === 'off' ? 6000 : 0))
   const onContinueRef = useRef(onContinue)
   onContinueRef.current = onContinue
 
   useEffect(() => {
     if (settings?.animation === 'off') {
+      if (!canSkip) return
       const t = setTimeout(() => onContinueRef.current(), 2000)
       return () => clearTimeout(t)
     }
@@ -30,7 +32,7 @@ export function RowPreview({ state, settings, onContinue }: Props) {
       setElapsed(diff)
       if (diff >= 8000) {
         clearInterval(interval)
-        onContinueRef.current()
+        if (canSkip) onContinueRef.current()
       }
     }, 40)
 
@@ -51,11 +53,11 @@ export function RowPreview({ state, settings, onContinue }: Props) {
       clearInterval(interval)
       timeouts.forEach((t) => window.clearTimeout(t))
     }
-  }, [settings?.animation, settings?.sfx])
+  }, [canSkip, settings?.animation, settings?.sfx])
 
   const bonusCard =
     getCardById(state.bonus.cardId) ??
-    buildCard(getSound(state.bonus.sound), 'vocabulary')
+    buildCard(getSound(state.bonus.sound), 'hiragana')
 
   const isBonusFlipped = elapsed >= 4000
   const isBonusRevealed = elapsed >= 5000
@@ -70,14 +72,16 @@ export function RowPreview({ state, settings, onContinue }: Props) {
             <h2 id="preview-title">本次登場的牌組</h2>
           </div>
           <div className="preview-header-right">
-            <button
-              type="button"
-              className="btn sm preview-skip-btn"
-              onClick={onContinue}
-              title="略過展示直接開始"
-            >
-              略過 ⏩
-            </button>
+            {canSkip && (
+              <button
+                type="button"
+                className="btn sm preview-skip-btn"
+                onClick={onContinue}
+                title="略過展示直接開始"
+              >
+                略過 ⏩
+              </button>
+            )}
           </div>
         </header>
 
@@ -194,6 +198,9 @@ export function RowPreview({ state, settings, onContinue }: Props) {
             style={{ width: `${Math.min(100, (elapsed / 8000) * 100)}%` }}
           />
         </div>
+        {!canSkip && (settings?.animation === 'off' || elapsed >= 8000) && (
+          <p className="preview-host-wait" role="status">等待房主開始…</p>
+        )}
       </div>
     </div>
   )

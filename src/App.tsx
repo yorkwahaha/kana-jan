@@ -37,6 +37,13 @@ import { clearGame, initialState, loadGame, markTutorialSeen, saveGame } from '.
 import { forfeitGame } from './ui/profile'
 import { delayFor, loadSettings, saveSettings, type Settings } from './ui/settings'
 
+function reduceWithPresentationPause(state: GameState, action: GameAction): GameState {
+  const next = reduce(state, action)
+  if (action.type === 'FINISH_REVIEW') return next
+  if (action.type === 'REFILL' && next.phase === 'refill') return next
+  return drainAuto(next)
+}
+
 export function App() {
   const [state, setState] = useState<GameState>(initialState)
   const [settings, setSettings] = useState<Settings>(loadSettings)
@@ -50,6 +57,7 @@ export function App() {
   const [showCatalog, setShowCatalog] = useState(false)
   const [locked, setLocked] = useState(false)
   const lockRef = useRef(false)
+  const pendingDiscardIdRef = useRef<string | null>(null)
 
   // 連線對戰狀態
   const [networkMode, setNetworkMode] = useState<'none' | 'host' | 'guest'>('none')
@@ -106,7 +114,7 @@ export function App() {
       if (networkMode === 'guest') {
         guestManagerRef.current?.sendAction(action)
       } else {
-        apply((s) => drainAuto(reduce(s, action)))
+        apply((s) => reduceWithPresentationPause(s, action))
       }
     },
     [apply, networkMode],
@@ -152,6 +160,7 @@ export function App() {
 
     // 對局結束音效：若有和牌宣告，延遲至金幣畫面再播放
     const shouldPlayGameOverSfx =
+      !spectating &&
       state.phase === 'gameOver' &&
       !gameOverPlayedRef.current &&
       (!state.pendingScore || announcementStage === 'settlement')
@@ -177,9 +186,10 @@ export function App() {
     state.rankings,
     mySeat,
     announcementStage,
+    spectating,
   ])
 
-  // 和牌宣告時序控制：1秒放槍牌發亮 -> 2秒胡牌玩家一側彈出 POKA JAN! 宣告 -> 金幣讓渡結算
+  // 和牌宣告時序控制：1秒放槍牌發亮 -> 2秒胡牌玩家一側彈出 KANA JAN! 宣告 -> 金幣讓渡結算
   useEffect(() => {
     const isWinEvent = (state.phase === 'review' || state.phase === 'gameOver') && !!state.pendingScore
     if (!isWinEvent || !state.pendingScore) {
@@ -204,7 +214,7 @@ export function App() {
       playSfx('ready', settings.sfx)
     }
 
-    // 2. 1.0 秒後，從胡牌玩家一側跳出 POKA JAN! 宣告 Cut-in（持續 2.0 秒，搭配宣告音效）
+    // 2. 1.0 秒後，從胡牌玩家一側跳出 KANA JAN! 宣告 Cut-in（持續 2.0 秒，搭配宣告音效）
     const cutinTimer = window.setTimeout(() => {
       setAnnouncementStage('cutin')
       if (state.pendingScore?.source === 'tsumo') {
@@ -236,19 +246,22 @@ export function App() {
     setHoverYaku(null)
   }, [state.phase, state.currentPlayerIndex, state.turnNumber])
 
+  useEffect(() => {
+    const pendingId = pendingDiscardIdRef.current
+    if (!pendingId) return
+    const player = state.players.find((candidate) => candidate.seat === mySeat)
+    const authoritativeStateApplied = state.phase !== 'discard' || !player?.hand.some((card) => card.id === pendingId)
+    if (!authoritativeStateApplied) return
+    pendingDiscardIdRef.current = null
+    lockRef.current = false
+    setLocked(false)
+  }, [mySeat, state.phase, state.players])
+
   // AI 與自動推進流程（Guest 模式下不執行本地 AI，全由 Host 統御同步）
   useEffect(() => {
     if (networkMode === 'guest') return
     if (state.phase === 'lobby' || state.phase === 'gameOver' || showTutorial || showSettings) return
     if (state.phase === 'preview') return
-
-    // 1. 牌型結算展示畫面：在進入 settlement（金幣讓渡）畫面後等待 2.8 秒自動進入下一回合，無需手動點擊
-    if (state.phase === 'review' && state.pendingScore && announcementStage === 'settlement') {
-      const t = window.setTimeout(() => {
-        dispatch({ type: 'FINISH_REVIEW' })
-      }, 2800)
-      return () => window.clearTimeout(t)
-    }
 
     if (state.phase === 'dealing') {
       playSfx('draw', settings.sfx)
@@ -258,6 +271,18 @@ export function App() {
         window.clearTimeout(t1)
         window.clearTimeout(t)
       }
+    }
+
+    if (state.phase === 'refill') {
+      const refillDelay = state.pendingScore
+        ? settings.animation === 'normal'
+          ? 520
+          : settings.animation === 'fast'
+            ? 340
+            : 40
+        : 40
+      const t = window.setTimeout(() => dispatch({ type: 'REFILL' }), refillDelay)
+      return () => window.clearTimeout(t)
     }
 
     if (state.phase === 'playerDraw') {
@@ -345,7 +370,7 @@ export function App() {
             updated = pushEvent(restoreDisconnectedPlayer(s, seat), `玩家 ${player.name.replace(/\s*\(AI\)$/, '')} 已重新連線接管操作`)
           }
           if (!authorizeClientAction(updated, seat, action)) return updated
-          return drainAuto(reduce(updated, action))
+          return reduceWithPresentationPause(updated, action)
         })
       },
       onGuestReconnect: (seat, authoritativeState) => {
@@ -479,12 +504,15 @@ export function App() {
   const discardCard = (cardId: string) => {
     if (lockRef.current) return
     lockRef.current = true
+    pendingDiscardIdRef.current = cardId
     setLocked(true)
     dispatch({ type: 'DISCARD', cardId })
     window.setTimeout(() => {
+      if (networkMode === 'guest' && pendingDiscardIdRef.current !== cardId) return
+      pendingDiscardIdRef.current = null
       lockRef.current = false
       setLocked(false)
-    }, delayFor(settings, 'fx'))
+    }, networkMode === 'guest' ? 5000 : delayFor(settings, 'fx'))
   }
 
   const hasSave = useMemo(() => !roomState && !!loadGame() && state.phase === 'lobby', [state.phase, roomState])
@@ -684,6 +712,7 @@ export function App() {
         <RowPreview
           state={state}
           settings={settings}
+          canSkip={networkMode !== 'guest'}
           onContinue={() => {
             playSfx('click', settings.sfx)
             if (networkMode === 'none' || networkMode === 'host') {
@@ -698,21 +727,13 @@ export function App() {
         announcementStage !== 'idle' &&
         announcementStage !== 'settlement' && (
           <WinAnnouncement
-            winner={
-              state.players.find((p) => p.id === state.pendingScore?.playerId) ?? state.players[0]!
-            }
             winnerPos={tablePosition(
               (
                 state.players.find((p) => p.id === state.pendingScore?.playerId) ?? state.players[0]!
               ).seat,
               mySeat,
             )}
-            yakuLabel={state.pendingScore.yaku.label}
-            totalScore={state.pendingScore.yaku.totalScore}
-            isRon={state.pendingScore.source === 'ron'}
-            payerName={state.players.find((p) => p.id === state.pendingScore?.fromPlayerId)?.name}
             stage={announcementStage}
-            comboCount={state.comboCount}
           />
         )}
 

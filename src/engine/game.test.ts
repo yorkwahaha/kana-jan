@@ -29,6 +29,14 @@ describe('Bonus 任務分數', () => {
     expect(state.bonus.points).toBe(90)
     expect(state.turnOwnerIndex).toBe(state.currentPlayerIndex)
   })
+
+  it('開局 Bonus 必定是本局登場行內的平假名目標牌', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const state = startGame({ seed, activeRows: ['a', 'ka', 'sa', 'ta'], skipPreview: true })
+      expect(state.activeRows).toContain(getCardById(state.bonus.cardId).row)
+      expect(getCardById(state.bonus.cardId).cardType).toBe('hiragana')
+    }
+  })
 })
 
 describe('客端動作白名單', () => {
@@ -161,6 +169,49 @@ describe('完成牌型流程', () => {
     expect(p0.score).toBe(480)
     expect(p0.gold).toBe(INITIAL_GOLD + 480)
     expect(state.players.slice(1).every((p) => p.gold === INITIAL_GOLD - 160)).toBe(true)
+  })
+
+  it('和牌後的 refill 每次只補一張，補滿後才進入換家階段', () => {
+    const yakuCards = cards('ka-hiragana', 'ka-katakana', 'ka-vocabulary')
+    const rest = cards('sa-hiragana', 'ta-hiragana', 'na-hiragana', 'ha-hiragana')
+    let state = startGame({
+      seed: 33,
+      startPlayerIndex: 0,
+      bonus,
+      hands: [
+        [...yakuCards, ...rest],
+        fillHand([], ['sa-hiragana', 'shi-hiragana', 'su-hiragana', 'se-hiragana', 'so-hiragana', 'ta-hiragana', 'chi-hiragana']),
+        fillHand([], ['na-hiragana', 'ni-hiragana', 'nu-hiragana', 'ne-hiragana', 'no-hiragana', 'ki-katakana', 'ku-katakana']),
+        fillHand([], ['ke-katakana', 'ko-katakana', 'sa-katakana', 'shi-katakana', 'su-katakana', 'se-katakana', 'so-katakana']),
+      ],
+      deck: cards('o-hiragana', 'ki-hiragana', 'ko-hiragana', 'te-hiragana', 'to-hiragana'),
+    })
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    const yaku = findYaku(state.players[0]!.hand, state.bonus, { activeRows: state.activeRows }).find(
+      (candidate) => candidate.kind === 'sameSound',
+    )!
+    state = play(state, { type: 'CHOOSE_YAKU', yakuId: yaku.id })
+
+    state = reduce(state, { type: 'FINISH_REVIEW' })
+    expect(state.phase).toBe('refill')
+    expect(state.players[0]!.hand).toHaveLength(5)
+
+    const firstRefillId = state.deck[0]!.id
+    state = reduce(state, { type: 'REFILL' })
+    expect(state.phase).toBe('refill')
+    expect(state.players[0]!.hand).toHaveLength(6)
+    expect(state.lastFx).toBe('draw')
+    expect(state.lastDrawnCardId).toBe(firstRefillId)
+    expect(state.events.at(-1)?.text).toContain('補了一張牌')
+
+    state = reduce(state, { type: 'REFILL' })
+    expect(state.phase).toBe('refill')
+    expect(state.players[0]!.hand).toHaveLength(7)
+
+    state = reduce(state, { type: 'REFILL' })
+    expect(state.phase).toBe('nextTurn')
+    expect(state.pendingScore).toBeNull()
   })
 })
 

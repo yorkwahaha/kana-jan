@@ -45,12 +45,12 @@ function keepValue(card: KanaCard, hand: KanaCard[]): number {
 }
 
 function isDangerousDiscard(card: KanaCard, state: GameState, selfId: string): number {
-  let danger = 0
+  const discardedSame = state.discardPile.filter((c) => c.sound === card.sound).length
+  let danger = discardedSame === 0 ? 1 : 0
   for (const p of state.players) {
     if (p.id === selfId) continue
     const publicCards = p.completed.flatMap((c) => c.yaku.cards)
-    const discardedSame = state.discardPile.filter((c) => c.sound === card.sound).length
-    if (discardedSame === 0) danger += 1
+    // 已完成並公開的同一行卡牌已退出流通；公開得越多，該行剩餘牌造成抄牌的風險越低。
     if (!publicCards.some((c) => c.row === card.row)) danger += 0.5
   }
   if (card.cardType === 'katakana' && card.confusable) danger += 0.3
@@ -76,14 +76,19 @@ function pickDiscard(player: PlayerState, state: GameState, rng: Rng): string {
   })
   scored.sort((a, b) => a.score - b.score)
   const floor = scored[0]!.score
-  const candidates = scored.filter((s) => s.score <= floor + 1.5)
+  const candidates = scored.filter((s) => s.score <= floor + 0.75)
   return rng.pick(candidates).id
 }
 
-function shouldDelayLowYaku(yaku: YakuCandidate, hand: KanaCard[], rng: Rng): boolean {
+function shouldDelayLowYaku(
+  yaku: YakuCandidate,
+  hand: KanaCard[],
+  state: GameState,
+  rng: Rng,
+): boolean {
   if (yaku.kind !== 'sameSound') return false
   if (yaku.totalScore >= 480) return false
-  const near = findNearYaku(hand)
+  const near = findNearYaku(hand, state.activeRows)
   const high = near.find((n) => n.kind !== 'sameSound')
   if (!high) return false
   return rng.next() < 0.28
@@ -95,12 +100,13 @@ function decideAction(state: GameState, rng: Rng): GameAction {
   if (yakus.length === 0) return { type: 'SKIP_YAKU' }
 
   if (player.aiDifficulty === 'easy') {
-    const chosen = rng.pick(yakus)
+    const highestScore = yakus[0]!.totalScore
+    const chosen = rng.pick(yakus.filter((yaku) => yaku.totalScore === highestScore))
     return { type: 'CHOOSE_YAKU', yakuId: chosen.id }
   }
 
   const best = yakus[0]!
-  if (state.comboCount === 0 && shouldDelayLowYaku(best, player.hand, rng) && yakus.every((y) => y.totalScore <= 180)) {
+  if (state.comboCount === 0 && shouldDelayLowYaku(best, player.hand, state, rng) && yakus.every((y) => y.totalScore <= 180)) {
     return { type: 'SKIP_YAKU' }
   }
   return { type: 'CHOOSE_YAKU', yakuId: best.id }
@@ -127,7 +133,9 @@ export function decideAi(state: GameState, rng: Rng): GameAction | null {
       const yakus = currentReactionYakus(state)
       if (yakus.length === 0) return { type: 'PASS_CLAIM' }
       if (actor.aiDifficulty === 'easy') {
-        return { type: 'CLAIM_YAKU', yakuId: rng.pick(yakus).id }
+        const highestScore = yakus[0]!.totalScore
+        const chosen = rng.pick(yakus.filter((yaku) => yaku.totalScore === highestScore))
+        return { type: 'CLAIM_YAKU', yakuId: chosen.id }
       }
       return { type: 'CLAIM_YAKU', yakuId: yakus[0]!.id }
     }

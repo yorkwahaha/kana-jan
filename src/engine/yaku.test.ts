@@ -80,6 +80,27 @@ describe('同音三張', () => {
     expect(yaku?.label).toContain('三位相和')
   })
 
+  it('六張同音牌可列出不同型態組合，讓玩家決定先結算哪一組', () => {
+    const hira = getCardById('ka-hiragana')
+    const kata = getCardById('ka-katakana')
+    const hand = [
+      hira,
+      { ...hira, id: 'ka-hiragana#1' },
+      { ...hira, id: 'ka-hiragana#2' },
+      kata,
+      { ...kata, id: 'ka-katakana#1' },
+      { ...kata, id: 'ka-katakana#2' },
+    ]
+
+    const found = findYaku(hand, noBonus).filter((y) => y.kind === 'sameSound')
+    expect(found.some((y) => y.uniformType === 'hiragana')).toBe(true)
+    expect(found.some((y) => y.uniformType === 'katakana')).toBe(true)
+    expect(found.some((y) => !y.uniformType)).toBe(true)
+    const mixedLabels = found.filter((y) => !y.uniformType).map((y) => y.label)
+    expect(new Set(mixedLabels).size).toBe(mixedLabels.length)
+    expect(mixedLabels.every((label) => label.includes('混色'))).toBe(true)
+  })
+
   it('不同讀音不能誤判為同音三張', () => {
     const hand = cards('ka-hiragana', 'ki-katakana', 'ku-vocabulary')
     const found = findYaku(hand, noBonus)
@@ -135,36 +156,11 @@ describe('移除同一段 (sameColumn)', () => {
   })
 })
 
-describe('組字役', () => {
-  it('能用讀音卡拼出 Bonus 單字（基礎分 240 + Bonus 90 = 330）', () => {
+describe('移除組字役', () => {
+  it('Bonus 單字的讀音湊齊後也不構成牌型', () => {
     const bonus = makeTargetBonus(getSound('ne'), 90)
-    const hand = cards('ne-hiragana', 'ko-katakana', 'a-hiragana')
-    const found = findYaku(hand, bonus, { activeRows: ['a', 'ka', 'sa', 'ta', 'na'] }).filter((y) => y.kind === 'word')
-    expect(found).toHaveLength(1)
-    expect(found[0]?.word).toBe('ねこ')
-    expect(found[0]?.baseScore).toBe(240)
-    expect(found[0]?.missionBonus).toBe(90)
-    expect(found[0]?.totalScore).toBe(330)
-  })
-
-  it('本局有 ん 時可組字 ぱん', () => {
-    const bonus = makeTargetBonus(getSound('pa'), 90)
-    const hand = cards('pa-hiragana', 'n-hiragana')
-    const found = findYaku(hand, bonus, { activeRows: ['pa', 'wa'] }).filter((y) => y.kind === 'word')
-    expect(found).toHaveLength(1)
-    expect(found[0]?.word).toBe('ぱん')
-  })
-
-  it('缺音時不能組字', () => {
-    const bonus = makeTargetBonus(getSound('ne'), 90)
-    const hand = cards('ne-hiragana', 'a-hiragana')
-    expect(findYaku(hand, bonus).filter((y) => y.kind === 'word')).toHaveLength(0)
-  })
-
-  it('單字所需行未出場時不提供組字', () => {
-    const bonus = makeTargetBonus(getSound('ne'), 90)
-    const hand = cards('ne-hiragana', 'ko-hiragana')
-    expect(findYaku(hand, bonus, { activeRows: ['a'] }).filter((y) => y.kind === 'word')).toHaveLength(0)
+    const hand = cards('ne-hiragana', 'ko-katakana')
+    expect(findYaku(hand, bonus, { activeRows: ['na', 'ka'] })).toHaveLength(0)
   })
 })
 
@@ -216,6 +212,14 @@ describe('同類型加成與 Bonus', () => {
       'ko-hiragana',
     )
     expect(missionBonusFor('sameRow', row, bonus)).toBe(90)
+  })
+
+  it('Bonus 以讀音判定，平假名、片假名、單字牌任一形式都可觸發', () => {
+    const bonus = makeTargetBonus(getSound('ka'), 90)
+    for (const id of ['ka-hiragana', 'ka-katakana', 'ka-vocabulary']) {
+      const row = cards(id, 'ki-hiragana', 'ku-hiragana', 'ke-hiragana', 'ko-hiragana')
+      expect(missionBonusFor('sameRow', row, bonus)).toBe(90)
+    }
   })
 })
 
@@ -320,5 +324,22 @@ describe('抄牌與聽牌判定', () => {
     const hints = findNearYaku([ki, shi], ['sha', 'ka', 'sa', 'ta'])
     expect(hints.some((h) => h.label.includes('段'))).toBe(false)
   })
-})
 
+  it('findNearYaku 回報三音行與五音行真正缺少的讀音', () => {
+    const hints = findNearYaku(
+      cards(
+        'ya-hiragana',
+        'yo-katakana',
+        'ka-hiragana',
+        'ki-hiragana',
+        'ke-katakana',
+        'ko-vocabulary',
+      ),
+      ['ya', 'ka'],
+    )
+
+    expect(hints.find((h) => h.kind === 'sameYoon')?.missingSounds).toEqual(['yu'])
+    expect(hints.find((h) => h.kind === 'sameRow')?.missingSounds).toEqual(['ku'])
+  })
+
+})

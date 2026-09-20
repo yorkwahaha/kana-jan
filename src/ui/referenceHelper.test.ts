@@ -100,6 +100,20 @@ describe('referenceHelper', () => {
     expect(aSound!.totalRemaining).toBe(6)
   })
 
+  it('單行課程可用動態複本數顯示每種牌 6 張', () => {
+    const visibleCards = [
+      getCardById('a-hiragana'),
+      { ...getCardById('a-hiragana'), id: 'a-hiragana#1' },
+      { ...getCardById('a-hiragana'), id: 'a-hiragana#2' },
+    ]
+    const stats = computeRowCardStats(['a'], visibleCards, 6)
+    const aSound = stats[0]!.sounds.find((sound) => sound.sound === 'a')!
+
+    expect(aSound.hiragana.max).toBe(6)
+    expect(aSound.hiragana.remaining).toBe(3)
+    expect(aSound.totalMax).toBe(18)
+  })
+
   it('當前棄牌若已在 player.discards 中，不重複計數', () => {
     const card = getCardById('a-hiragana')
     const p: PlayerState = {

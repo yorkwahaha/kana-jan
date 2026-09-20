@@ -8,6 +8,7 @@ import {
 import { computeRankings } from '../engine/scoring'
 import { findNearYaku } from '../engine/yaku'
 import type { GameState, YakuCandidate } from '../engine/types'
+import { getSound } from '../data/kana'
 import type { Settings } from './settings'
 import { playersByPerspective, tablePosition } from './seats'
 import { CardDrawFlight } from './CardDrawFlight'
@@ -80,11 +81,11 @@ export function GameTable({
   const yakus = humanTurn && state.phase === 'playerAction' ? availableYakuFor(state, human.id) : []
   const reactionYakus =
     state.phase === 'reaction' && reactionActor(state)?.id === human.id ? currentReactionYakus(state) : []
-  const nearIds = new Set(
+  const nearHints =
     settings.highlightNear && settings.learningHints
-      ? findNearYaku(human.hand, state.activeRows).flatMap((n) => n.cardIds)
-      : [],
-  )
+      ? findNearYaku(human.hand, state.activeRows)
+      : []
+  const nearIds = new Set(nearHints.flatMap((hint) => hint.cardIds))
   const availableClaimYakus = yakus.length > 0 ? yakus : reactionYakus
   const targetClaimYaku = hoverYaku ?? availableClaimYakus[0] ?? null
   const yakuHighlight = new Set((targetClaimYaku?.cards ?? []).map((c) => c.id))
@@ -144,6 +145,13 @@ export function GameTable({
                 ? `等待 ${current.name} 行動中...`
                 : '高點を取れ · かなジャン'}
       </p>
+      {nearHints.length > 0 && (
+        <p className="near-yaku-hint" aria-live="polite">
+          聽牌：{nearHints.slice(0, 2).map((hint) =>
+            `${hint.label} 等 ${hint.missingSounds.map((sound) => getSound(sound).hiragana).join('・')}`,
+          ).join('／')}
+        </p>
+      )}
       <button className="chrome-fab top-right" onClick={onOpenSettings} aria-label="遊戲設定" title="遊戲設定">
         <span className="fab-icon">⚙️</span>
         <span className="fab-text">設定</span>
@@ -265,9 +273,10 @@ export function GameTable({
                   onFocus={() => onHoverYaku(y)}
                   onBlur={() => onHoverYaku(null)}
                   onClick={() => (yakus.length > 0 ? onChooseYaku(y.id) : onClaim(y.id))}
+                  aria-label={`和牌 ${y.label} ${y.totalScore} 點`}
                 >
                   <span className="compact-claim-badge">🪙 {y.totalScore}</span>
-                  <span className="compact-claim-title">和牌</span>
+                  <span className="compact-claim-title">{y.label}</span>
                 </button>
               ))}
             </div>
@@ -317,14 +326,6 @@ export function GameTable({
       </div>
 
       <div className="table-chrome-br">
-        <button
-          className="chrome-fab highlight-fab"
-          onClick={() => setShowReference((v) => !v)}
-          aria-label="牌況與役種"
-          title="牌況與役種"
-        >
-          況
-        </button>
         <button className="chrome-fab" onClick={onOpenCatalog} aria-label="五十音圖鑑">
           図
         </button>
@@ -339,12 +340,14 @@ export function GameTable({
         </div>
       )}
 
-      <ReferenceDrawer
-        state={state}
-        myPlayerId={human.id}
-        isOpen={showReference}
-        onClose={() => setShowReference(false)}
-      />
+      {showReference && (
+        <ReferenceDrawer
+          state={state}
+          myPlayerId={human.id}
+          isOpen
+          onClose={() => setShowReference(false)}
+        />
+      )}
     </div>
   )
 }

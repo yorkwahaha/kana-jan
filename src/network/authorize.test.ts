@@ -17,6 +17,13 @@ describe('authorizeClientAction', () => {
     expect(authorizeClientAction(state, 1, { type: 'SKIP_PREVIEW' })).toBe(false)
   })
 
+  it('結算畫面允許任何已驗證座位略過等待', () => {
+    const state = { ...startGame({ seed: 1, skipPreview: true }), phase: 'review' as const }
+    expect(authorizeClientAction(state, 1, { type: 'FINISH_REVIEW' })).toBe(true)
+    expect(authorizeClientAction(state, 3, { type: 'FINISH_REVIEW' })).toBe(true)
+    expect(authorizeClientAction(state, 99, { type: 'FINISH_REVIEW' })).toBe(false)
+  })
+
   it('棄牌必須是自己的手牌且處於 discard 階段', () => {
     let state = startGame({
       seed: 2,

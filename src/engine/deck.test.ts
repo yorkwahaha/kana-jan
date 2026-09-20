@@ -3,7 +3,13 @@ import { getCardById } from '../data/cards'
 import { soundsForRows } from '../data/kana'
 import { pickLessonRows } from '../data/lessons'
 import { createRng } from './rng'
-import { buildLessonDeck, copiesNeeded, dealHands, refillHand, sortHandByGojuon } from './deck'
+import {
+  buildLessonDeck,
+  copiesNeeded,
+  copiesPerCardTypeForRows,
+  dealHands,
+  sortHandByGojuon,
+} from './deck'
 import { HAND_SIZE, PLAYER_COUNT } from './types'
 
 describe('課程牌庫', () => {
@@ -13,6 +19,7 @@ describe('課程牌庫', () => {
     const deck = buildLessonDeck(['a'], rng)
     expect(deck.length).toBeGreaterThanOrEqual(PLAYER_COUNT * HAND_SIZE)
     expect(deck.every((c) => c.row === 'a')).toBe(true)
+    expect(copiesPerCardTypeForRows(['a'])).toBe(6)
   })
 
   it('四行牌組（含拗音）之標準對局牌庫切出前 100 張，發牌後山牌剩餘 72 張', () => {
@@ -20,6 +27,7 @@ describe('課程牌庫', () => {
     // 3 一般行 (a, ka, sa = 15 音) + 1 拗音行 (kya = 3 音) = 18 音
     const deck = buildLessonDeck(['a', 'ka', 'sa', 'kya'], rng)
     expect(deck).toHaveLength(100)
+    expect(copiesPerCardTypeForRows(['a', 'ka', 'sa', 'kya'])).toBe(3)
     const { hands, remaining } = dealHands(deck)
     expect(hands).toHaveLength(4)
     expect(hands.every((h) => h.length === 7)).toBe(true)
@@ -44,6 +52,11 @@ describe('課程牌庫', () => {
       const deck = buildLessonDeck(rows, rng)
       expect(deck).toHaveLength(100)
     }
+  })
+
+  it('固定課程保留完整登場行，不會被截成四行', () => {
+    const rows = pickLessonRows('a-na', (items) => [...items])
+    expect(rows).toEqual(['a', 'ka', 'sa', 'ta', 'na'])
   })
 })
 
@@ -74,17 +87,4 @@ describe('五十音手牌排序', () => {
     }
   })
 
-  it('補牌後仍保持五十音順序', () => {
-    const filled = refillHand(
-      [getCardById('sa-hiragana'), getCardById('a-hiragana')],
-      [getCardById('ka-hiragana'), getCardById('i-hiragana')],
-      4,
-    )
-    expect(filled.hand.map((c) => c.id)).toEqual([
-      'a-hiragana',
-      'i-hiragana',
-      'ka-hiragana',
-      'sa-hiragana',
-    ])
-  })
 })

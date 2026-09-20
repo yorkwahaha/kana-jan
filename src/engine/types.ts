@@ -18,7 +18,7 @@ export type Phase =
 
 export type PlayerKind = 'human' | 'ai' | 'local' | 'remote'
 export type AiDifficulty = 'easy' | 'normal'
-export type YakuKind = 'sameSound' | 'sameRow' | 'sameYoon' | 'word'
+export type YakuKind = 'sameSound' | 'sameRow' | 'sameYoon'
 export type ScoreSource = 'tsumo' | 'ron'
 
 export interface YakuCandidate {
@@ -28,7 +28,6 @@ export interface YakuCandidate {
   sound?: string
   row?: RowId
   column?: ColumnId
-  word?: string
   uniformType?: CardType
   baseScore: number
   typeBonus: number

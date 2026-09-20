@@ -17,6 +17,7 @@ export interface ScoreResult {
  * 自摸：由其他三方分攤牌型分數（每方分攤 safeAmount / 3，向上取整至整十數）。
  * 放銃：由單家放槍者全額支付該牌型分數。
  * 金幣不可低於 0，且任何讓渡皆至少十位數起跳，個位數永遠為 0。
+ * 破產保障：付款者餘額不足時扣至 0，得分者仍取得完整役值；不足額由系統補足。
  */
 export function settleGold(
   players: PlayerState[],
@@ -54,6 +55,7 @@ export function settleGold(
       : safeAmount
 
   for (const payer of payers) {
+    // 刻意採非零和的街機獎勵：即使付款者破產，也不削減得分者已贏得的役值。
     payer.gold = Math.max(0, payer.gold - eachAmount)
     winner.gold += eachAmount
     transfers.push({ fromId: payer.id, toId: winnerId, amount: eachAmount })

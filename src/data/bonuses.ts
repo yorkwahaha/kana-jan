@@ -1,5 +1,5 @@
 import { getCardById, type KanaCard } from './cards'
-import { getSound, spellingInRows, type KanaSound, type RowId } from './kana'
+import { getSound, type KanaSound } from './kana'
 
 export type BonusKind = 'targetSound'
 
@@ -15,24 +15,19 @@ export interface BonusMission {
 export const DEFAULT_MISSION_POINTS = 90
 
 export function makeTargetBonus(kana: KanaSound, points = DEFAULT_MISSION_POINTS): BonusMission {
-  const cardId = `${kana.sound}-vocabulary`
+  const cardId = `${kana.sound}-hiragana`
   return {
     kind: 'targetSound',
     sound: kana.sound,
     cardId,
-    label: kana.vocabulary,
-    detail: `包含「${kana.hiragana}」之同音組、行揃い，或拼出「${kana.vocabulary}」時額外 +${points} 分`,
+    label: kana.hiragana,
+    detail: `牌型中包含「${kana.hiragana}」讀音的平假名、片假名或單字牌時，額外 +${points} 分`,
     points,
   }
 }
 
 export function bonusCardOf(bonus: BonusMission): KanaCard {
   return getCardById(bonus.cardId)
-}
-
-export function bonusSpelling(bonus: BonusMission, rows: readonly RowId[]): string[] {
-  const kana = getSound(bonus.sound)
-  return spellingInRows(kana.spelling, rows) ? kana.spelling : []
 }
 
 /** 測試或預設用：目標音為ね，避免干擾あ行／か行牌型分數 */

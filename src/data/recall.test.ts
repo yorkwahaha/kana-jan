@@ -51,7 +51,7 @@ describe('假名資料完整性', () => {
     expect(KANA_SOUNDS.find((k) => k.sound === 'ya')?.hiragana).toBe('や')
   })
 
-  it('長音與重複音節不會從組字役資料中遺失', () => {
+  it('長音與重複音節不會從單字學習資料中遺失', () => {
     const spelling = (sound: string) => KANA_SOUNDS.find((k) => k.sound === sound)?.spelling
     expect(spelling('kyu')).toEqual(['kyu', 'u', 'ri'])
     expect(spelling('chu')).toEqual(['chu', 'u', 'sha'])

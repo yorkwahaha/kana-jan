@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_BONUS } from '../data/bonuses'
 import { getCardById, type KanaCard } from '../data/cards'
 import { decideAi, needsHumanInput } from './ai'
-import { drainAuto, reduce, startGame } from './game'
+import { currentReactionYakus, drainAuto, reduce, startGame } from './game'
 import { createRng } from './rng'
+import { findYaku } from './yaku'
 
 const bonus = DEFAULT_BONUS
 
@@ -35,6 +36,84 @@ describe('電腦決策', () => {
     const rng = createRng(1)
     const action = decideAi(state, rng)
     expect(action?.type).toBe('CHOOSE_YAKU')
+  })
+
+  it('簡單難度有多組同音候選時仍只從最高分組合中隨機選擇', () => {
+    const ka = getCardById('ka-hiragana')
+    let state = startGame({
+      seed: 109,
+      startPlayerIndex: 1,
+      aiDifficulty: 'easy',
+      activeRows: ['a', 'ka', 'sa', 'ta'],
+      hands: [
+        cards('a-hiragana', 'i-hiragana', 'u-hiragana', 'e-hiragana', 'o-hiragana', 'sa-hiragana', 'shi-hiragana'),
+        [
+          ka,
+          { ...ka, id: 'ka-hiragana#1' },
+          { ...ka, id: 'ka-hiragana#2' },
+          getCardById('ka-katakana'),
+          getCardById('ka-vocabulary'),
+          getCardById('sa-vocabulary'),
+          getCardById('ta-vocabulary'),
+        ],
+        cards('na-hiragana', 'ni-hiragana', 'nu-hiragana', 'ne-hiragana', 'no-hiragana', 'ki-katakana', 'ku-katakana'),
+        cards('ke-katakana', 'ko-katakana', 'sa-katakana', 'shi-katakana', 'su-katakana', 'se-katakana', 'so-katakana'),
+      ],
+      deck: cards('chi-vocabulary'),
+    })
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    const yakus = findYaku(state.players[1]!.hand, state.bonus, { activeRows: state.activeRows })
+
+    for (let seed = 1; seed <= 20; seed++) {
+      const action = decideAi(state, createRng(seed))
+      expect(action?.type).toBe('CHOOSE_YAKU')
+      if (action?.type === 'CHOOSE_YAKU') {
+        expect(yakus.find((candidate) => candidate.id === action.yakuId)?.totalScore).toBe(840)
+      }
+    }
+  })
+
+  it('簡單難度抄牌時也只從最高分組合中隨機選擇', () => {
+    const ka = getCardById('ka-hiragana')
+    const discarded = { ...ka, id: 'ka-hiragana#discarded' }
+    const base = startGame({
+      seed: 110,
+      aiDifficulty: 'easy',
+      activeRows: ['a', 'ka', 'sa', 'ta'],
+      hands: [
+        cards('a-hiragana'),
+        [
+          { ...ka, id: 'ka-hiragana#1' },
+          { ...ka, id: 'ka-hiragana#2' },
+          getCardById('ka-katakana'),
+          getCardById('ka-vocabulary'),
+          getCardById('sa-vocabulary'),
+          getCardById('ta-vocabulary'),
+          getCardById('na-vocabulary'),
+        ],
+        cards('sa-hiragana'),
+        cards('ta-hiragana'),
+      ],
+    })
+    const state = {
+      ...base,
+      phase: 'reaction' as const,
+      currentDiscard: discarded,
+      lastDiscardPlayerId: 'p0',
+      reactionOptions: [{ playerId: base.players[1]!.id }],
+      reactionIndex: 0,
+    }
+    const yakus = currentReactionYakus(state)
+    expect(new Set(yakus.map((yaku) => yaku.totalScore)).size).toBeGreaterThan(1)
+
+    for (let seed = 1; seed <= 20; seed++) {
+      const action = decideAi(state, createRng(seed))
+      expect(action?.type).toBe('CLAIM_YAKU')
+      if (action?.type === 'CLAIM_YAKU') {
+        expect(yakus.find((candidate) => candidate.id === action.yakuId)?.totalScore).toBe(840)
+      }
+    }
   })
 
   it('普通難度棄牌會避開自己接近完成的牌', () => {

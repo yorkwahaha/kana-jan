@@ -32,4 +32,15 @@ describe('對局存檔版本', () => {
 
     expect(loadGame()).toBeNull()
   })
+
+  it('載入舊存檔時會將 Bonus 單字卡轉為同讀音的平假名卡', () => {
+    const state = startGame({ seed: 9, skipPreview: true })
+    state.bonus.cardId = `${state.bonus.sound}-vocabulary`
+    state.bonus.label = '舊單字標籤'
+    saveGame(state)
+
+    const restored = loadGame()
+    expect(restored?.bonus.cardId).toBe(`${state.bonus.sound}-hiragana`)
+    expect(restored?.bonus.label).not.toBe('舊單字標籤')
+  })
 })

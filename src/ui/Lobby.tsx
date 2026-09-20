@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LESSONS } from '../data/lessons'
 import { Mascot } from './Mascot'
 import type { AiDifficulty } from '../engine/types'
 import { loadProfile, replenishGold, type UserProfile } from './profile'
@@ -24,12 +25,14 @@ interface Props {
 export function Lobby({
   playerName,
   difficulty,
+  lessonId,
   hasSave,
   initialRoomCode,
   bgmEnabled = true,
   onToggleBgm,
   onName,
   onDifficulty,
+  onLesson,
   onStart,
   onContinue,
   onHelp,
@@ -82,7 +85,7 @@ export function Lobby({
             )}
           </div>
           <p className="lede">
-            收集同音、同一行，並拼出桌上的 Bonus 役牌。每局隨機抽取四行，沉浸於和風五十音牌局之美。
+            收集同音、同一行，並善用本局 Bonus 假名加分。每局隨機抽取四行，沉浸於和風五十音牌局之美。
           </p>
         </header>
 
@@ -114,6 +117,23 @@ export function Lobby({
               onChange={(e) => onName(e.target.value)}
             />
           </label>
+
+          {onLesson && (
+            <label className="field">
+              <span className="field-label">登場牌組</span>
+              <select
+                className="lesson-select"
+                value={lessonId}
+                onChange={(event) => onLesson(event.target.value)}
+              >
+                {LESSONS.map((lesson) => (
+                  <option key={lesson.id} value={lesson.id}>
+                    {lesson.label}：{lesson.detail}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           {tab === 'single' ? (
             <>
@@ -186,6 +206,9 @@ export function Lobby({
                       placeholder="例如 KANA-7821"
                       maxLength={10}
                       onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && joinCode.trim()) onJoinRoom?.(joinCode)
+                      }}
                     />
                     <button
                       type="button"

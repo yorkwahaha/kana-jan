@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- testable stage decision helpers */
 import { useEffect, useMemo, useState } from 'react'
 import { speechText, type KanaCard } from '../data/cards'
 import { speakJapanese } from '../audio/speech'
@@ -25,6 +26,16 @@ const RANK_LABELS: Record<number, string> = {
   2: '2nd',
   3: '3rd',
   4: '4th',
+}
+
+export function profilePlayerForSeat(players: PlayerState[], mySeat: number): PlayerState | null {
+  if (mySeat < 0) return null
+  return (
+    players.find((player) => player.seat === mySeat) ??
+    players.find((player) => player.kind === 'human') ??
+    players[0] ??
+    null
+  )
 }
 
 /** 1st 名次專屬煙火慶祝特效 (參照截圖右方煙火粒子與星芒) */
@@ -104,6 +115,30 @@ const PAYER_DURATION_MS = 650
 const WINNER_START_MS = 1050
 const WINNER_DURATION_MS = 750
 export const SCORE_REVIEW_AUTO_ADVANCE_MS = 4200
+export const GAME_OVER_TRANSFER_REVEAL_MS = 4200
+
+export type SettlementPresentationStage = 'transfer' | 'summary'
+
+export function settlementPresentationStage(input: {
+  isGameOver: boolean
+  transferCount: number
+  elapsedMs: number
+}): SettlementPresentationStage {
+  if (!input.isGameOver) return 'transfer'
+  if (input.transferCount <= 0) return 'summary'
+  return input.elapsedMs >= GAME_OVER_TRANSFER_REVEAL_MS ? 'summary' : 'transfer'
+}
+
+export function settlementStageLayers(
+  stage: SettlementPresentationStage,
+  isGameOver: boolean,
+  transferCount: number,
+) {
+  return {
+    showArrows: stage === 'transfer' && transferCount > 0,
+    showGameOverSummary: isGameOver && stage === 'summary',
+  }
+}
 
 function easeOutQuad(x: number): number {
   return 1 - (1 - x) * (1 - x)
@@ -197,6 +232,8 @@ export function ScoreReview({
   const pending = state.pendingScore
   const rankings = useMemo(() => state.rankings ?? computeRankings(state.players), [state.rankings, state.players])
   const [showVocabModal, setShowVocabModal] = useState(false)
+  const transferCount = state.lastTransfers.length
+  const [gameOverElapsedMs, setGameOverElapsedMs] = useState(0)
 
   const deltas = useMemo(() => {
     const map: Record<string, number> = {}
@@ -212,10 +249,7 @@ export function ScoreReview({
   // 對局結束時結算個人存檔資產（依自己的座位，且同一局只結算一次）
   useEffect(() => {
     if (!isGameOver) return
-    const me =
-      state.players.find((p) => p.seat === mySeat) ??
-      state.players.find((p) => p.kind === 'human') ??
-      state.players[0]
+    const me = profilePlayerForSeat(state.players, mySeat)
     const myRank = rankings.find((r) => r.playerId === me?.id)
     if (!myRank || !me) return
     const matchId = `${state.seed}:${me.id}:${rankings.map((r) => `${r.playerId}=${r.gold}`).join(',')}`
@@ -253,6 +287,26 @@ export function ScoreReview({
     return () => window.clearTimeout(autoTimer)
   }, [isGameOver, pending, onFinish])
 
+  // 對局結束且有讓渡時，先完整播放 4.2 秒轉帳畫面，再揭示結算摘要
+  useEffect(() => {
+    if (!isGameOver || transferCount === 0) {
+      setGameOverElapsedMs(0)
+      return
+    }
+    setGameOverElapsedMs(0)
+    const revealTimer = window.setTimeout(() => {
+      setGameOverElapsedMs(GAME_OVER_TRANSFER_REVEAL_MS)
+    }, GAME_OVER_TRANSFER_REVEAL_MS)
+    return () => window.clearTimeout(revealTimer)
+  }, [isGameOver, transferCount])
+
+  const stage = settlementPresentationStage({
+    isGameOver,
+    transferCount,
+    elapsedMs: gameOverElapsedMs,
+  })
+  const { showArrows, showGameOverSummary } = settlementStageLayers(stage, isGameOver, transferCount)
+
   const placeOf = (id: string) => rankings.find((r) => r.playerId === id)?.place ?? 4
   const bankruptPlayer = state.players.find((p) => p.gold === 0)
 
@@ -275,7 +329,8 @@ export function ScoreReview({
 
   return (
     <div
-      className={`settlement-overlay ${isGameOver ? 'is-game-over' : ''}`}
+      className={`settlement-overlay ${isGameOver ? 'is-game-over' : ''} ${stage === 'summary' ? 'is-summary-stage' : 'is-transfer-stage'}`}
+      data-settlement-stage={stage}
       onClick={isGameOver ? undefined : onFinish}
       aria-live="polite"
     >
@@ -284,12 +339,9 @@ export function ScoreReview({
         {state.players.map((player) => {
           const pos = tablePosition(player.seat, mySeat)
           const delta = deltas[player.id] ?? 0
-          const isWinner = pending ? player.id === pending.playerId : placeOf(player.id) === 1
-          const isPayer = delta < 0
           const place = placeOf(player.id)
           const isRank1 = place === 1
-          const isBankrupt = player.gold === 0
-          const isHighlightWinner = isGameOver ? isRank1 : isWinner
+          const isHighlightWinner = isGameOver && isRank1
           const initial = player.name.slice(0, 1)
 
           const badgeClass = [
@@ -297,8 +349,7 @@ export function ScoreReview({
             `pos-${pos}`,
             `rank-${place}-badge`,
             isHighlightWinner ? 'is-winner' : '',
-            isBankrupt || isPayer ? 'is-payer' : '',
-            !isHighlightWinner && !isBankrupt && !isPayer ? 'is-neutral' : '',
+            !isHighlightWinner ? 'is-neutral' : '',
           ]
             .filter(Boolean)
             .join(' ')
@@ -306,7 +357,7 @@ export function ScoreReview({
           return (
             <div key={player.id} className={badgeClass}>
               {/* 第一名旁邊放煙火 */}
-              {isRank1 && <Fireworks />}
+              {isHighlightWinner && <Fireworks />}
 
               {/* 頂部名稱與右上角頭像 */}
               <div className="settlement-badge-header">
@@ -362,16 +413,18 @@ export function ScoreReview({
       </div>
 
       {/* 2. 參照圖三：立體帶狀指向箭頭與外圍金幣串（絕對不遮擋中央視窗，一目了然） */}
-      <SettlementArrows transfers={state.lastTransfers} players={state.players} mySeat={mySeat} />
+      {showArrows && (
+        <SettlementArrows transfers={state.lastTransfers} players={state.players} mySeat={mySeat} />
+      )}
 
       {/* 3. 中央區 (對局結束提示 與/或 成牌焦點區) */}
       <div className="settlement-center" onClick={(e) => e.stopPropagation()}>
-        {/* 對局結束時：停留在金幣讓渡畫面，顯示歸零提示與名次重開按鈕 */}
-        {isGameOver ? (
+        {/* 對局結束摘要：讓渡播完後才揭示，無讓渡則立刻顯示 */}
+        {showGameOverSummary ? (
           <div className="game-over-center-banner">
             <h3 className="game-over-banner-text">
               {bankruptPlayer
-                ? `${bankruptPlayer.name} 的分數已歸零，遊戲結束`
+                ? `${bankruptPlayer.name} 的點數已歸零，遊戲結束`
                 : '牌庫已耗盡，遊戲結束'}
             </h3>
 

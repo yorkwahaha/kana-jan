@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import { bonusSpelling } from '../data/bonuses'
 import { getSound } from '../data/kana'
+import { copiesPerCardTypeForRows } from '../engine/deck'
 import type { GameState } from '../engine/types'
-import { computeRowCardStats, getVisibleCards, MAX_COPIES_PER_TYPE } from './referenceHelper'
+import { computeRowCardStats, getVisibleCards } from './referenceHelper'
 
 interface Props {
   state: GameState
@@ -17,9 +17,13 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>('remaining')
 
   const visibleCards = useMemo(() => getVisibleCards(state, myPlayerId), [state, myPlayerId])
+  const copiesPerType = useMemo(
+    () => copiesPerCardTypeForRows(state.activeRows),
+    [state.activeRows],
+  )
   const rowStats = useMemo(
-    () => computeRowCardStats(state.activeRows, visibleCards),
-    [state.activeRows, visibleCards],
+    () => computeRowCardStats(state.activeRows, visibleCards, copiesPerType),
+    [state.activeRows, visibleCards, copiesPerType],
   )
 
   const bonusKana = useMemo(() => {
@@ -29,11 +33,6 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
       return null
     }
   }, [state.bonus.sound])
-
-  const spelling = useMemo(
-    () => bonusSpelling(state.bonus, state.activeRows),
-    [state.bonus, state.activeRows],
-  )
 
   if (!isOpen) return null
 
@@ -112,7 +111,7 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
                           <div className="block-bars">
                             {/* 平假名色塊 (紅/粉) */}
                             <div className="bar-row bar-hira" title={`平假名剩餘 ${sound.hiragana.remaining} 張`}>
-                              {Array.from({ length: MAX_COPIES_PER_TYPE }).map((_, i) => (
+                              {Array.from({ length: sound.hiragana.max }).map((_, i) => (
                                 <span
                                   key={i}
                                   className={`block-pip ${i < sound.hiragana.remaining ? 'is-active' : 'is-consumed'}`}
@@ -122,7 +121,7 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
 
                             {/* 片假名色塊 (藍/青) */}
                             <div className="bar-row bar-kata" title={`片假名剩餘 ${sound.katakana.remaining} 張`}>
-                              {Array.from({ length: MAX_COPIES_PER_TYPE }).map((_, i) => (
+                              {Array.from({ length: sound.katakana.max }).map((_, i) => (
                                 <span
                                   key={i}
                                   className={`block-pip ${i < sound.katakana.remaining ? 'is-active' : 'is-consumed'}`}
@@ -132,7 +131,7 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
 
                             {/* 單字卡色塊 (橙黃) */}
                             <div className="bar-row bar-vocab" title={`單字卡剩餘 ${sound.vocabulary.remaining} 張`}>
-                              {Array.from({ length: MAX_COPIES_PER_TYPE }).map((_, i) => (
+                              {Array.from({ length: sound.vocabulary.max }).map((_, i) => (
                                 <span
                                   key={i}
                                   className={`block-pip ${i < sound.vocabulary.remaining ? 'is-active' : 'is-consumed'}`}
@@ -172,8 +171,8 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
 
                 <div className="yaku-item-card">
                   <div className="yaku-info">
-                    <strong>拗音揃い（快攻首選）</strong>
-                    <p>同一拗音行的 3 個相異讀音（混色 180 / 純色 480）</p>
+                    <strong>三音行揃い（快攻首選）</strong>
+                    <p>同一拗音、や行或わ行的 3 個相異讀音（混色 180 / 純色 480）</p>
                   </div>
                   <div className="yaku-score">180 / 480 點</div>
                 </div>
@@ -187,13 +186,6 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
                   <div className="yaku-score">480 / 1800 點</div>
                 </div>
 
-                <div className="yaku-item-card">
-                  <div className="yaku-info">
-                    <strong>組字牌型</strong>
-                    <p>拼出本局指定 Bonus 目標單字</p>
-                  </div>
-                  <div className="yaku-score">240～360 點 ＋ Bonus</div>
-                </div>
               </div>
             </div>
           )}
@@ -213,36 +205,12 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
                       <p className="bonus-sound-name">
                         目標讀音：<strong>{bonusKana.hiragana} ({bonusKana.sound})</strong>
                       </p>
-                      <p className="bonus-vocab-spelling">
-                        組字目標：<strong>{bonusKana.vocabulary}</strong>（{bonusKana.meaning}）
-                      </p>
                       <p className="bonus-points-tag">
-                        達成時額外加成：<strong>＋{state.bonus.points} 點</strong>
+                        牌型含目標讀音的任一牌面：<strong>＋{state.bonus.points} 點</strong>
                       </p>
                     </div>
                   </div>
 
-                  {spelling.length >= 2 && (
-                    <div className="spelling-guide">
-                      <span>拼字讀音需要：</span>
-                      <div className="spelling-badges">
-                        {spelling.map((s, idx) => {
-                          const kana = (() => {
-                            try {
-                              return getSound(s)
-                            } catch {
-                              return null
-                            }
-                          })()
-                          return (
-                            <span key={idx} className="spelling-badge">
-                              {kana ? `${kana.hiragana} (${s})` : s}
-                            </span>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
                 </section>
               )}
 
@@ -258,7 +226,7 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
                     <strong>同音純色（3張）</strong>：同讀音 3 張皆為同一字形，得分提升至 <strong>840 點</strong>
                   </li>
                   <li>
-                    <strong>拗音純色（3張）</strong>：拗音 3 音同字形，得分提升至 <strong>480 點</strong>
+                    <strong>三音行純色（3張）</strong>：拗音、や行或わ行 3 音同字形，得分提升至 <strong>480 點</strong>
                   </li>
                 </ul>
               </section>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface Props {
   seconds?: number
@@ -9,6 +9,39 @@ interface Props {
   className?: string
 }
 
+function useTurnCountdown(seconds: number, turnKey: string | number, active: boolean, onTimeout: () => void) {
+  const [remaining, setRemaining] = useState(seconds)
+  const onTimeoutRef = useRef(onTimeout)
+  onTimeoutRef.current = onTimeout
+
+  useEffect(() => {
+    setRemaining(seconds)
+    if (!active) return
+
+    const deadline = Date.now() + seconds * 1000
+    let fired = false
+    const finish = () => {
+      if (fired) return
+      fired = true
+      setRemaining(0)
+      onTimeoutRef.current()
+    }
+    const tick = () => {
+      const next = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+      setRemaining(next)
+      if (next === 0) finish()
+    }
+    const interval = window.setInterval(tick, 250)
+    const timeout = window.setTimeout(finish, seconds * 1000)
+    return () => {
+      window.clearInterval(interval)
+      window.clearTimeout(timeout)
+    }
+  }, [active, seconds, turnKey])
+
+  return remaining
+}
+
 export function TurnTimer({
   seconds = 18,
   turnKey,
@@ -17,33 +50,7 @@ export function TurnTimer({
   label,
   className = '',
 }: Props) {
-  const [remaining, setRemaining] = useState(seconds)
-
-  useEffect(() => {
-    setRemaining(seconds)
-  }, [turnKey, seconds, active])
-
-  useEffect(() => {
-    if (!active) return
-
-    if (remaining <= 0) {
-      onTimeout()
-      return
-    }
-
-    const timer = setInterval(() => {
-      setRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          onTimeout()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [active, remaining, onTimeout])
+  const remaining = useTurnCountdown(seconds, turnKey, active, onTimeout)
 
   if (!active) return null
 
@@ -75,33 +82,7 @@ export function CompactTurnTimer({
   active: boolean
   onTimeout: () => void
 }) {
-  const [remaining, setRemaining] = useState(seconds)
-
-  useEffect(() => {
-    setRemaining(seconds)
-  }, [turnKey, seconds, active])
-
-  useEffect(() => {
-    if (!active) return
-
-    if (remaining <= 0) {
-      onTimeout()
-      return
-    }
-
-    const timer = setInterval(() => {
-      setRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          onTimeout()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [active, remaining, onTimeout])
+  const remaining = useTurnCountdown(seconds, turnKey, active, onTimeout)
 
   if (!active || remaining <= 0) return null
 

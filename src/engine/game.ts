@@ -2,7 +2,7 @@ import { DEFAULT_BONUS, DEFAULT_MISSION_POINTS, makeTargetBonus } from '../data/
 import { displayGlyph, type KanaCard } from '../data/cards'
 import { soundsForRows } from '../data/kana'
 import { DEFAULT_LESSON_ID, getLesson, pickLessonRows } from '../data/lessons'
-import { buildLessonDeck, dealHands, drawOne, refillHand, sortHandByGojuon } from './deck'
+import { buildLessonDeck, dealHands, drawOne, sortHandByGojuon } from './deck'
 import { createRng } from './rng'
 import { computeRankings, removeCardsFromHand, settleGold } from './scoring'
 import {
@@ -343,22 +343,40 @@ function applyRefill(state: GameState): GameState {
   const player = state.players.find((p) => p.id === targetId)
   if (!player) return { ...state, phase: 'nextTurn', pendingScore: null, comboCount: 0 }
 
-  const filled = refillHand(player.hand, state.deck, HAND_SIZE)
-  let next: GameState = replacePlayer(state, { ...player, hand: filled.hand })
-  next = {
-    ...next,
-    deck: filled.deck,
+  // 每次只補一張，讓 UI 能在下一步前完整播放抽牌飛行動畫。
+  if (player.hand.length < HAND_SIZE && state.deck.length > 0) {
+    const { card, remaining } = drawOne(state.deck)
+    if (card) {
+      let next = replacePlayer(state, {
+        ...player,
+        hand: sortHandByGojuon([...player.hand, card]),
+      })
+      next = {
+        ...next,
+        deck: remaining,
+        reactionOptions: [],
+        reactionIndex: 0,
+        lastTransfers: [],
+        lastDrawnCardId: card.id,
+        lastFx: 'draw',
+      }
+      next = syncDiscardPile(next)
+      return pushEvent(next, `${player.name} 補了一張牌`)
+    }
+  }
+
+  let next: GameState = {
+    ...state,
     pendingScore: null,
     reactionOptions: [],
     reactionIndex: 0,
     lastTransfers: [],
-    lastFx: state.lastFx ?? null,
   }
   next = syncDiscardPile(next)
 
   // 只有剛完成牌型後的補牌才檢查連鎖；略過＋棄牌後即使手牌仍有役也不再強行進入宣告
   if (scoredThisRefill) {
-    const availableYakus = findYaku(filled.hand, state.bonus, { activeRows: state.activeRows })
+    const availableYakus = findYaku(player.hand, state.bonus, { activeRows: state.activeRows })
     if (availableYakus.length > 0) {
       const targetIndex = state.players.findIndex((p) => p.id === targetId)
       const nextCurrentIndex = targetIndex !== -1 ? targetIndex : state.currentPlayerIndex
@@ -542,7 +560,16 @@ export function reduce(state: GameState, action: GameAction): GameState {
 
     case 'FINISH_REVIEW': {
       if (state.phase !== 'review') return state
-      return { ...state, phase: 'refill', lastFx: null }
+      const refillPlayerIndex = state.pendingScore
+        ? state.players.findIndex((player) => player.id === state.pendingScore?.playerId)
+        : state.currentPlayerIndex
+      return {
+        ...state,
+        phase: 'refill',
+        currentPlayerIndex: refillPlayerIndex >= 0 ? refillPlayerIndex : state.currentPlayerIndex,
+        lastDrawnCardId: null,
+        lastFx: null,
+      }
     }
 
     case 'APPLY_SCORING': {
@@ -616,7 +643,7 @@ export function drainAuto(state: GameState): GameState {
   let current = state
   for (let i = 0; i < 8; i++) {
     const next = autoStep(current)
-    if (next === current || next.phase === current.phase) return next
+    if (next === current) return next
     current = next
   }
   return current

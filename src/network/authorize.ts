@@ -66,9 +66,8 @@ export function authorizeClientAction(state: GameState, seat: number, action: Ga
     case 'PASS_CLAIM':
       return state.phase === 'reaction' && reactionActor(state)?.seat === seat
     case 'FINISH_REVIEW': {
-      if (state.phase !== 'review') return false
-      const scoring = state.players.find((p) => p.id === state.pendingScore?.playerId)
-      return scoring?.seat === seat || currentPlayer(state).seat === seat
+      // 結算畫面對所有已驗證座位都可點擊略過；動作本身只會進入補牌階段。
+      return state.phase === 'review'
     }
     default:
       return false

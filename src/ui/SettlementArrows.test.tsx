@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { renderToString } from 'react-dom/server'
-import { SettlementArrows } from './SettlementArrows'
+import {
+  SettlementArrows,
+  getCoinMotionParams,
+  getSettlementArrowGeom,
+  settlementAssetUrl,
+} from './SettlementArrows'
 import type { PlayerState } from '../engine/types'
 
 const PLAYERS: PlayerState[] = [
@@ -10,7 +15,25 @@ const PLAYERS: PlayerState[] = [
   { id: 'p3', name: 'aki', kind: 'ai', seat: 3, aiDifficulty: 'normal', gold: 840, score: 0, hand: [], discards: [], completed: [] },
 ]
 
+function firstLinePoint(path: string): { x: number; y: number } {
+  const match = path.match(/^M\s+([\d.]+),([\d.]+)/)
+  if (!match) throw new Error(`Cannot parse path ${path}`)
+  return { x: Number(match[1]), y: Number(match[2]) }
+}
+
+function lastLinePoint(path: string): { x: number; y: number } {
+  const match = path.match(/([\d.]+),([\d.]+)\s*$/)
+  if (!match) throw new Error(`Cannot parse path end ${path}`)
+  return { x: Number(match[1]), y: Number(match[2]) }
+}
+
 describe('SettlementArrows (圖三重新設計)', () => {
+  it('結算箭頭資源會套用 Vite 子路徑前綴', () => {
+    expect(settlementAssetUrl('/assets/ui/settlement-arrow-straight.svg', '/kana-jan/')).toBe(
+      '/kana-jan/assets/ui/settlement-arrow-straight.svg',
+    )
+  })
+
   it('returns null when transfers is empty', () => {
     const html = renderToString(
       <SettlementArrows transfers={[]} players={PLAYERS} mySeat={0} />,
@@ -33,15 +56,17 @@ describe('SettlementArrows (圖三重新設計)', () => {
     expect(html).toContain('settlement-arrows-layer')
     expect(html).toContain('settlement-svg')
 
-    // 上方對家直向下箭頭從面板外緣開始
-    expect(html).toContain('M 500,152 L 500,216')
-    // 左右兩側箭頭從面板內緣之外走外圍弧線
-    expect(html).toContain('M 286,414 Q 306,508 365,536')
-    expect(html).toContain('M 714,414 Q 694,508 635,536')
-
-    // 箭頭三角形尖端與白色描邊
-    expect(html).toContain('<polygon')
-    expect(html).toContain('stroke="#ffffff"')
+    const top = getSettlementArrowGeom('top', 'human')!
+    const left = getSettlementArrowGeom('left', 'human')!
+    const right = getSettlementArrowGeom('right', 'human')!
+    expect(html).toContain(top.coinPath)
+    expect(html).toContain(left.coinPath)
+    expect(html).toContain(right.coinPath)
+    expect(html).toContain('/assets/ui/settlement-arrow-straight.svg')
+    expect(html).toContain('/assets/ui/settlement-arrow-curve.svg')
+    expect(html.match(/class="settlement-arrow-art"/g)).toHaveLength(3)
+    expect(html).not.toContain('<marker')
+    expect(html).not.toContain('<polygon')
     expect(html.match(/class="flying-coin-item"/g)).toHaveLength(15)
     expect(html.match(/class="flying-coin-aura"/g)).toHaveLength(15)
   })
@@ -51,9 +76,121 @@ describe('SettlementArrows (圖三重新設計)', () => {
     const html = renderToString(
       <SettlementArrows transfers={transfers} players={PLAYERS} mySeat={0} />,
     )
-    expect(html).toContain('M 286,414 Q 306,508 365,536')
-    expect(html).not.toContain('M 500,152 L 500,216')
+    const left = getSettlementArrowGeom('left', 'human')!
+    const top = getSettlementArrowGeom('top', 'human')!
+    expect(html).toContain(left.coinPath)
+    expect(html).not.toContain(top.coinPath)
     expect(html).toContain('data-coin-count="7"')
     expect(html.match(/class="flying-coin-item"/g)).toHaveLength(7)
+  })
+
+  it('uses full payer-to-winner coin arcs beside the center island', () => {
+    const top = getSettlementArrowGeom('top', 'human')!
+    const left = getSettlementArrowGeom('left', 'human')!
+    const across = getSettlementArrowGeom('right', 'left')!
+
+    const topStart = firstLinePoint(top.coinPath)
+    const topEnd = lastLinePoint(top.coinPath)
+    expect(top.coinPath).toContain(' C ')
+    expect(topStart).toEqual({ x: 500, y: 154 })
+    expect(topEnd).toEqual({ x: 500, y: 546 })
+    expect(Math.abs(topEnd.y - topStart.y)).toBeGreaterThan(350)
+
+    const leftStart = firstLinePoint(left.coinPath)
+    const leftEnd = lastLinePoint(left.coinPath)
+    expect(leftStart).toEqual({ x: 286, y: 350 })
+    expect(leftEnd).toEqual({ x: 456, y: 548 })
+
+    const acrossStart = firstLinePoint(across.coinPath)
+    const acrossEnd = lastLinePoint(across.coinPath)
+    expect(across.coinPath).toContain(' C ')
+    expect(acrossStart).toEqual({ x: 714, y: 350 })
+    expect(acrossEnd).toEqual({ x: 286, y: 350 })
+    expect(across.arrowAsset).toBe('/assets/ui/settlement-arrow-arc.svg')
+  })
+
+  it('keeps top/bottom-to-side arrows in the outer corridors', () => {
+    const topToLeft = getSettlementArrowGeom('top', 'left')!
+    const humanToLeft = getSettlementArrowGeom('human', 'left')!
+    const topToRight = getSettlementArrowGeom('top', 'right')!
+    const humanToRight = getSettlementArrowGeom('human', 'right')!
+
+    // The center result window occupies roughly x=380..620 in the 1000-unit viewBox.
+    expect(topToLeft.arrowBox.x + topToLeft.arrowBox.width).toBeLessThanOrEqual(380)
+    expect(humanToLeft.arrowBox.x + humanToLeft.arrowBox.width).toBeLessThanOrEqual(380)
+    expect(topToRight.arrowBox.x).toBeGreaterThanOrEqual(620)
+    expect(humanToRight.arrowBox.x).toBeGreaterThanOrEqual(620)
+
+    expect(topToLeft.arrowAsset).toBe('/assets/ui/settlement-arrow-outer-corner.svg')
+    expect(humanToLeft.arrowAsset).toBe('/assets/ui/settlement-arrow-outer-corner.svg')
+    expect(topToRight.arrowAsset).toBe('/assets/ui/settlement-arrow-outer-corner.svg')
+    expect(humanToRight.arrowAsset).toBe('/assets/ui/settlement-arrow-outer-corner.svg')
+
+    expect(firstLinePoint(topToLeft.coinPath).x).toBeLessThan(500)
+    expect(firstLinePoint(humanToLeft.coinPath).x).toBeLessThan(500)
+    expect(firstLinePoint(topToRight.coinPath).x).toBeGreaterThan(500)
+    expect(firstLinePoint(humanToRight.coinPath).x).toBeGreaterThan(500)
+
+    // Top and bottom routes enter each side vertically from opposite outer edges.
+    expect(lastLinePoint(topToLeft.coinPath)).toEqual({ x: 225, y: 315 })
+    expect(lastLinePoint(humanToLeft.coinPath)).toEqual({ x: 225, y: 385 })
+    expect(lastLinePoint(topToRight.coinPath)).toEqual({ x: 775, y: 315 })
+    expect(lastLinePoint(humanToRight.coinPath)).toEqual({ x: 775, y: 385 })
+    expect(topToRight.arrowBox.transform).toBeUndefined()
+    expect(humanToRight.arrowBox.transform).toBe('translate(0 950) scale(1 -1)')
+  })
+
+  it('uses one-piece SVG artwork instead of a stroked line plus marker head', () => {
+    const html = renderToString(
+      <SettlementArrows
+        transfers={[{ fromId: 'p2', toId: 'p0', amount: 160 }]}
+        players={PLAYERS}
+        mySeat={0}
+      />,
+    )
+
+    expect(html).toContain('<image')
+    expect(html).toContain('class="settlement-arrow-art"')
+    expect(html).toContain('href="/assets/ui/settlement-arrow-straight.svg"')
+    expect(html).not.toContain('<marker')
+    expect(html).not.toContain('marker-end')
+    expect(html).not.toContain('<polygon')
+    expect(html).not.toContain('settlement-arrow-body')
+  })
+
+  it('renders larger coins with heterogeneous deterministic motion metadata', () => {
+    const html = renderToString(
+      <SettlementArrows
+        transfers={[{ fromId: 'p1', toId: 'p0', amount: 480 }]}
+        players={PLAYERS}
+        mySeat={0}
+      />,
+    )
+
+    expect(html).toContain('rx="26"')
+    expect(html).toContain('ry="19.5"')
+    expect(html).toContain('r="40"')
+
+    const delays = [...html.matchAll(/data-coin-delay="([^"]+)"/g)].map((m) => m[1])
+    const durations = [...html.matchAll(/data-coin-duration="([^"]+)"/g)].map((m) => m[1])
+    const scales = [...html.matchAll(/data-coin-scale="([^"]+)"/g)].map((m) => m[1])
+    const wobbles = [...html.matchAll(/data-coin-wobble="([^"]+)"/g)].map((m) => m[1])
+    const spins = [...html.matchAll(/data-coin-spin="([^"]+)"/g)].map((m) => m[1])
+    const glows = [...html.matchAll(/data-coin-glow="([^"]+)"/g)].map((m) => m[1])
+
+    expect(delays).toHaveLength(7)
+    expect(new Set(delays).size).toBeGreaterThan(1)
+    expect(new Set(durations).size).toBeGreaterThan(1)
+    expect(new Set(scales).size).toBeGreaterThan(1)
+    expect(new Set(wobbles).size).toBeGreaterThan(1)
+    expect(new Set(spins).size).toBeGreaterThan(1)
+    expect(new Set(glows).size).toBeGreaterThan(1)
+
+    const first = getCoinMotionParams(0, 480)
+    const second = getCoinMotionParams(1, 480)
+    expect(getCoinMotionParams(0, 480)).toEqual(first)
+    expect(second).not.toEqual(first)
+    expect(html).toContain(`data-coin-delay="${first.delay}"`)
+    expect(html).toContain(`data-coin-wobble="${first.wobble}"`)
   })
 })

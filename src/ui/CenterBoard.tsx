@@ -57,7 +57,7 @@ export function CenterBoard({ state, settings, actingPos }: Props) {
           )
         })}
       </div>
-      <div className="bonus-slot" title="懸賞役札（湊到額外加分）">
+      <div className="bonus-slot" title="懸賞役札（牌型含該讀音即加分）">
         <CardView card={bonusCard} size="sm" showHints={settings} />
         <span className="bonus-badge">BONUS</span>
       </div>

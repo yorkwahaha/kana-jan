@@ -39,7 +39,7 @@ export interface KanaSound {
   vocabulary: string
   meaning: string
   icon: string
-  /** 用本牌庫讀音拼出單字；空陣列表示無法組字 */
+  /** 單字的讀音拆分，供語音／學習資料使用。 */
   spelling: string[]
   /** 未來正式插圖路徑 */
   image: string
@@ -806,12 +806,4 @@ export function getSound(soundId: string): KanaSound {
 export function soundsForRows(rows: readonly RowId[]): KanaSound[] {
   const set = new Set(rows)
   return KANA_SOUNDS.filter((s) => set.has(s.row))
-}
-
-export function spellingInRows(spelling: string[], rows: readonly RowId[]): boolean {
-  const set = new Set(rows)
-  return spelling.length >= 2 && spelling.every((id) => {
-    const found = KANA_SOUNDS.find((s) => s.sound === id)
-    return found ? set.has(found.row) : false
-  })
 }

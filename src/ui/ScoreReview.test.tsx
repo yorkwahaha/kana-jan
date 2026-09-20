@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { renderToString } from 'react-dom/server'
-import { SCORE_REVIEW_AUTO_ADVANCE_MS, ScoreReview } from './ScoreReview'
+import {
+  GAME_OVER_TRANSFER_REVEAL_MS,
+  SCORE_REVIEW_AUTO_ADVANCE_MS,
+  ScoreReview,
+  profilePlayerForSeat,
+  settlementPresentationStage,
+  settlementStageLayers,
+} from './ScoreReview'
 import type { GameState } from '../engine/types'
 import { DEFAULT_SETTINGS } from './settings'
 import { buildCard } from '../data/cards'
@@ -9,6 +16,7 @@ import { DEFAULT_BONUS } from '../data/bonuses'
 
 it('金幣讓渡畫面停留 4.2 秒', () => {
   expect(SCORE_REVIEW_AUTO_ADVANCE_MS).toBe(4200)
+  expect(GAME_OVER_TRANSFER_REVEAL_MS).toBe(4200)
 })
 
 function makeMockState(overrides?: Partial<GameState>): GameState {
@@ -49,14 +57,14 @@ function makeMockState(overrides?: Partial<GameState>): GameState {
       playerId: 'p2',
       source: 'tsumo',
       yaku: {
-        id: 'word-niku',
-        kind: 'word',
-        label: '組字 にく',
-        word: 'にく',
-        baseScore: 240,
+        id: 'same-sound-ni',
+        kind: 'sameSound',
+        label: 'に同音組',
+        sound: 'ni',
+        baseScore: 120,
         typeBonus: 0,
         missionBonus: 0,
-        totalScore: 240,
+        totalScore: 120,
         cards: [cardNi, cardKu],
       },
     },
@@ -72,6 +80,10 @@ function makeMockState(overrides?: Partial<GameState>): GameState {
 }
 
 describe('ScoreReview (金幣讓渡畫面精簡化與籌碼跳動)', () => {
+  it('觀戰者不會套用任何座位的個人戰績', () => {
+    expect(profilePlayerForSeat(makeMockState().players, -1)).toBeNull()
+  })
+
   it('does NOT render 繼續對局 button in regular round settlement', () => {
     const state = makeMockState()
     const html = renderToString(
@@ -83,7 +95,7 @@ describe('ScoreReview (金幣讓渡畫面精簡化與籌碼跳動)', () => {
     expect(html).not.toContain('settlement-auto-timer')
   })
 
-  it('does NOT render 自摸 banner or 組字+240 yaku header', () => {
+  it('does NOT render 自摸 banner or yaku header', () => {
     const state = makeMockState()
     const html = renderToString(
       <ScoreReview state={state} settings={DEFAULT_SETTINGS} mySeat={0} />,
@@ -129,14 +141,111 @@ describe('ScoreReview (金幣讓渡畫面精簡化與籌碼跳動)', () => {
     expect(html).toContain('-80')
   })
 
-  it('renders restart and lobby buttons when isGameOver is true', () => {
+  it('keeps all player panels neutral during an in-game settlement', () => {
+    const html = renderToString(
+      <ScoreReview state={makeMockState()} settings={DEFAULT_SETTINGS} mySeat={0} />,
+    )
+
+    expect(html).not.toContain('is-winner')
+    expect(html).not.toContain('is-payer')
+    expect(html).not.toContain('settlement-fireworks')
+    expect(html.match(/is-neutral/g)).toHaveLength(4)
+  })
+
+  it('reserves blue first-place emphasis and fireworks for game over', () => {
+    const html = renderToString(
+      <ScoreReview
+        state={makeMockState({ gameOverReason: 'gold', lastTransfers: [] })}
+        settings={DEFAULT_SETTINGS}
+        mySeat={0}
+        isGameOver={true}
+      />,
+    )
+
+    expect(html).toContain('is-winner')
+    expect(html).toContain('settlement-fireworks')
+    expect(html).not.toContain('is-payer')
+  })
+
+  it('renders restart and lobby buttons immediately when game-over has no transfers', () => {
+    const base = makeMockState()
+    const state = makeMockState({
+      gameOverReason: 'gold',
+      lastTransfers: [],
+      players: base.players.map((player, index) => index === 0 ? { ...player, gold: 0 } : player),
+    })
+    const html = renderToString(
+      <ScoreReview state={state} settings={DEFAULT_SETTINGS} mySeat={0} isGameOver={true} />,
+    )
+
+    expect(html).toContain('data-settlement-stage="summary"')
+    expect(html).toContain('game-over-center-banner')
+    expect(html).toContain('再玩一次')
+    expect(html).toContain('回到大廳')
+    expect(html).not.toContain('settlement-arrows-layer')
+    expect(html).toContain('點數已歸零')
+    expect(html).not.toContain('分數已歸零')
+  })
+
+  it('keeps transfer arrows and withholds the game-over banner during the 4200ms transfer stage', () => {
     const state = makeMockState({ gameOverReason: 'gold' })
     const html = renderToString(
       <ScoreReview state={state} settings={DEFAULT_SETTINGS} mySeat={0} isGameOver={true} />,
     )
 
-    expect(html).toContain('game-over-center-banner')
-    expect(html).toContain('再玩一次')
-    expect(html).toContain('回到大廳')
+    expect(html).toContain('data-settlement-stage="transfer"')
+    expect(html).toContain('settlement-arrows-layer')
+    expect(html).not.toContain('game-over-center-banner')
+    expect(html).not.toContain('再玩一次')
+    expect(html).toContain('settlement-badge')
+    expect(html).toContain('settlement-rank')
+  })
+
+  it('treats transfer and summary layers as mutually exclusive around the 4200ms reveal', () => {
+    expect(GAME_OVER_TRANSFER_REVEAL_MS).toBe(4200)
+
+    const transferStage = settlementPresentationStage({
+      isGameOver: true,
+      transferCount: 3,
+      elapsedMs: 0,
+    })
+    const lateTransfer = settlementPresentationStage({
+      isGameOver: true,
+      transferCount: 3,
+      elapsedMs: 4199,
+    })
+    const summaryStage = settlementPresentationStage({
+      isGameOver: true,
+      transferCount: 3,
+      elapsedMs: GAME_OVER_TRANSFER_REVEAL_MS,
+    })
+    const noTransfer = settlementPresentationStage({
+      isGameOver: true,
+      transferCount: 0,
+      elapsedMs: 0,
+    })
+    const normalRound = settlementPresentationStage({
+      isGameOver: false,
+      transferCount: 3,
+      elapsedMs: 9000,
+    })
+
+    expect(transferStage).toBe('transfer')
+    expect(lateTransfer).toBe('transfer')
+    expect(summaryStage).toBe('summary')
+    expect(noTransfer).toBe('summary')
+    expect(normalRound).toBe('transfer')
+
+    const transferLayers = settlementStageLayers(transferStage, true, 3)
+    const summaryLayers = settlementStageLayers(summaryStage, true, 3)
+    const emptyLayers = settlementStageLayers(noTransfer, true, 0)
+
+    expect(transferLayers.showArrows).toBe(true)
+    expect(transferLayers.showGameOverSummary).toBe(false)
+    expect(summaryLayers.showArrows).toBe(false)
+    expect(summaryLayers.showGameOverSummary).toBe(true)
+    expect(emptyLayers.showArrows).toBe(false)
+    expect(emptyLayers.showGameOverSummary).toBe(true)
+    expect(summaryLayers.showArrows && summaryLayers.showGameOverSummary).toBe(false)
   })
 })

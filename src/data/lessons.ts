@@ -56,7 +56,7 @@ export function pickLessonRows(
   }
   const lesson = getLesson(lessonId)
   if (lesson.rows.length > 0) {
-    return lesson.rows.slice(0, 4)
+    return [...lesson.rows]
   }
   return shuffle(ROW_ORDER).slice(0, 4)
 }

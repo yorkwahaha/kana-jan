@@ -2,7 +2,7 @@ import type { CardType, KanaCard } from '../data/cards'
 import { ROW_COLOR, ROW_LABEL, soundsForRows, type RowId } from '../data/kana'
 import type { GameState } from '../engine/types'
 
-export const MAX_COPIES_PER_TYPE = 3
+export const DEFAULT_COPIES_PER_TYPE = 3
 
 export interface TypeStat {
   cardType: CardType
@@ -77,6 +77,7 @@ export function getVisibleCards(state: GameState, myPlayerId?: string): KanaCard
 export function computeRowCardStats(
   rows: readonly RowId[],
   visibleCards: KanaCard[],
+  copiesPerType = DEFAULT_COPIES_PER_TYPE,
 ): RowCardStat[] {
   // 建立快速計數字典：`${sound}_${cardType}` -> seen count
   const seenMap = new Map<string, number>()
@@ -93,12 +94,12 @@ export function computeRowCardStats(
     const sounds: SoundCardStat[] = soundsInRow.map((kana) => {
       const buildTypeStat = (type: CardType): TypeStat => {
         const seen = seenMap.get(`${kana.sound}_${type}`) ?? 0
-        const remaining = Math.max(0, MAX_COPIES_PER_TYPE - seen)
+        const remaining = Math.max(0, copiesPerType - seen)
         return {
           cardType: type,
           seen,
           remaining,
-          max: MAX_COPIES_PER_TYPE,
+          max: copiesPerType,
         }
       }
 
@@ -106,7 +107,7 @@ export function computeRowCardStats(
       const kata = buildTypeStat('katakana')
       const vocab = buildTypeStat('vocabulary')
       const totalRemaining = hira.remaining + kata.remaining + vocab.remaining
-      const totalMax = MAX_COPIES_PER_TYPE * 3
+      const totalMax = copiesPerType * 3
 
       rowTotalRemaining += totalRemaining
       rowTotalMax += totalMax

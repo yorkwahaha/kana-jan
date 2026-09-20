@@ -1,16 +1,9 @@
-import type { PlayerState } from '../engine/types'
 import type { TablePosition } from './seats'
 import { SparkleCluster, SparkleStar } from './Sparkles'
 
 interface Props {
-  winner?: PlayerState
   winnerPos: TablePosition
-  yakuLabel?: string
-  totalScore?: number
-  isRon?: boolean
-  payerName?: string
   stage: 'idle' | 'gun' | 'cutin' | 'settlement'
-  comboCount?: number
 }
 
 /**
@@ -182,23 +175,13 @@ export function WinAnnouncement({
       <div className="announcement-cutin-box frameless">
         <KanaJanTitle />
 
-        {/* 頂部均勻星芒群 */}
-        <SparkleCluster className="cutin-star top-left-cluster" scale={1.1} />
-        <SparkleStar size={26} color="#fef08a" className="cutin-star top-left-mid" />
-        <SparkleStar size={32} color="#ffffff" className="cutin-star top-center" />
-        <SparkleStar size={26} color="#67e8f9" className="cutin-star top-right-mid" />
-        <SparkleCluster className="cutin-star top-right-cluster" scale={1.1} />
-
-        {/* 兩側緊貼星芒 */}
-        <SparkleStar size={30} color="#ffffff" className="cutin-star flank-left" />
-        <SparkleStar size={30} color="#38bdf8" className="cutin-star flank-right" />
-
-        {/* 底部均勻星芒群 */}
-        <SparkleStar size={32} color="#67e8f9" className="cutin-star bottom-left-star" />
-        <SparkleStar size={26} color="#fef08a" className="cutin-star bottom-left-mid" />
-        <SparkleStar size={30} color="#ffffff" className="cutin-star bottom-center" />
-        <SparkleStar size={26} color="#38bdf8" className="cutin-star bottom-right-mid" />
-        <SparkleCluster className="cutin-star bottom-right-cluster" scale={1.05} />
+        {/* 六點式緊湊星芒：集中在字標輪廓，不向桌面四周散開 */}
+        <SparkleCluster className="cutin-star accent-top-left" scale={0.78} />
+        <SparkleStar size={24} color="#fef08a" className="cutin-star accent-top-right" />
+        <SparkleStar size={20} color="#ffffff" className="cutin-star accent-mid-left" />
+        <SparkleStar size={22} color="#67e8f9" className="cutin-star accent-mid-right" />
+        <SparkleStar size={24} color="#fef08a" className="cutin-star accent-bottom-left" />
+        <SparkleCluster className="cutin-star accent-bottom-right" scale={0.74} />
       </div>
     </div>
   )

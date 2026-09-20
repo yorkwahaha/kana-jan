@@ -858,7 +858,7 @@ body[data-anim='off'] .sakura-container {
 
 .hand-fan.pos-left {
   left: 15%;
-  top: 38%;
+  top: calc(38% + 8px);
   width: auto;
   height: auto;
   flex-direction: column;
@@ -881,7 +881,7 @@ body[data-anim='off'] .sakura-container {
 .hand-fan.pos-right {
   left: 85%;
   right: auto;
-  top: 38%;
+  top: calc(38% + 8px);
   width: auto;
   height: auto;
   flex-direction: column;
@@ -918,6 +918,25 @@ body[data-anim='off'] .sakura-container {
   z-index: 3;
   overflow: visible;
   gap: 6px;
+}
+
+.near-yaku-hint {
+  position: absolute;
+  z-index: 12;
+  top: 52px;
+  right: 88px;
+  max-width: min(520px, 58vw);
+  margin: 0;
+  padding: 5px 10px;
+  border: 1px solid rgba(254, 240, 138, 0.65);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #fef08a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  pointer-events: none;
 }
 .discard-river.is-flying {
   z-index: 8;
@@ -960,14 +979,14 @@ body[data-anim='off'] .sakura-container {
 
 .discard-river.pos-left {
   left: 16%;
-  top: 32%;
+  top: calc(32% + 8px);
   transform: rotate(105deg);
   transform-origin: top left;
 }
 
 .discard-river.pos-right {
   right: 16%;
-  top: 32%;
+  top: calc(32% + 8px);
   transform: rotate(-105deg);
   transform-origin: top right;
 }
@@ -2376,7 +2395,7 @@ button.kana-card { appearance: none; }
   align-items: center;
   gap: 2px;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
-  min-width: 120px;
+  min-width: 156px;
 }
 .btn-compact-claim:hover {
   transform: scale(1.05);
@@ -2395,17 +2414,17 @@ button.kana-card { appearance: none; }
 }
 
 .compact-claim-title {
-  font-size: 1.02rem;
-  letter-spacing: 0.04em;
+  max-width: 180px;
+  font-size: 0.72rem;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  text-align: center;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
 /* ==========================================================================
    結算讓渡立體箭頭 (Settlement Ribbon Arrows)
-   參照圖三：
-   - 走在外圍空曠桌角走廊的優美弧形實體帶狀紅箭頭（白粗描邊 + 鮮紅立體漸層）
-   - 對家直向箭頭緊貼失分方銘牌邊緣，長度適中絕不遮擋中央卡牌與文字
-   - 搭配外圍金幣飛舞動態，一眼看清是哪一家放槍給哪一家
+   箭頭使用一體成形 SVG 圖稿；金幣另走中央島外側的完整圓弧路徑
    ========================================================================== */
 
 .settlement-arrows-layer {
@@ -2426,9 +2445,20 @@ button.kana-card { appearance: none; }
   animation: ribbonArrowReveal 0.24s ease-out 0.08s backwards;
 }
 
+.settlement-arrow-art {
+  opacity: 0.98;
+  filter: drop-shadow(0 4px 5px rgba(15, 6, 10, 0.34));
+  pointer-events: none;
+}
+
 @keyframes ribbonArrowReveal {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+.flying-coin-item {
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
 .flying-coin-aura {
@@ -3445,6 +3475,15 @@ button.kana-card { appearance: none; }
   transition: width 0.08s linear;
 }
 
+.preview-host-wait {
+  margin: 4px 0 0;
+  color: #fef3c7;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: center;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
 /* 登場行預覽在小螢幕 / 手機橫向響應微調 */
 @media (max-height: 480px) {
   .preview-felt-stage {
@@ -3783,7 +3822,7 @@ button.kana-card { appearance: none; }
   }
   .hand-fan.pos-left {
     left: 16.5%;
-    top: 39%;
+    top: calc(39% + 8px);
     width: auto;
     height: auto;
     flex-direction: column;
@@ -3804,7 +3843,7 @@ button.kana-card { appearance: none; }
   .hand-fan.pos-right {
     left: 83.5%;
     right: auto;
-    top: 39%;
+    top: calc(39% + 8px);
     width: auto;
     height: auto;
     flex-direction: column;
@@ -3869,12 +3908,12 @@ button.kana-card { appearance: none; }
   }
   .discard-river.pos-left {
     left: 29%;
-    top: 25%;
+    top: calc(25% + 8px);
     transform: rotate(95deg) scale(0.9);
   }
   .discard-river.pos-right {
     right: 29%;
-    top: 25%;
+    top: calc(25% + 8px);
     transform: rotate(-95deg) scale(0.9);
   }
   .discard-river.pos-human {
@@ -3983,6 +4022,23 @@ button.kana-card { appearance: none; }
   .compact-claim-dock {
     right: 18px;
     bottom: 18px;
+    max-width: min(72vw, 680px);
+  }
+  .compact-claim-buttons {
+    flex-flow: row-reverse wrap;
+    justify-content: flex-start;
+    align-items: flex-end;
+    gap: 6px;
+  }
+  .btn-compact-claim {
+    min-width: 138px;
+    padding: 5px 14px;
+  }
+  .near-yaku-hint {
+    top: 42px;
+    right: 52px;
+    max-width: 58vw;
+    font-size: 0.7rem;
   }
   .compact-timer-display {
     font-size: clamp(1.8rem, 5vw, 2.6rem);
@@ -5182,8 +5238,8 @@ button.kana-card { appearance: none; }
 
 .river-ron-sparkles {
   position: absolute;
-  top: -24px;
-  right: -20px;
+  top: -30px;
+  right: -34px;
   width: 54px;
   height: 54px;
   pointer-events: none;
@@ -5264,7 +5320,7 @@ button.kana-card { appearance: none; }
 }
 
 /* ==========================================================================
-   和牌宣告 Cut-in (Win Announcement & POKA JAN! 3D Title)
+   和牌宣告 Cut-in (Win Announcement & KANA JAN! 3D Title)
    參照用戶截圖：看哪邊玩家胡牌，從該玩家一側彈出宣告 Cut-in 大約 2 秒
    ========================================================================== */
 
@@ -5410,118 +5466,8 @@ button.kana-card { appearance: none; }
   }
 }
 
-/* 背景速度線裝飾 */
-.cutin-speedlines {
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    -45deg,
-    transparent,
-    transparent 12px,
-    rgba(255, 255, 255, 0.03) 12px,
-    rgba(255, 255, 255, 0.03) 24px
-  );
-  border-radius: inherit;
-  pointer-events: none;
-}
-
-/* 動漫角色立繪容器 */
-.anime-cutin-portrait {
-  width: 175px;
-  height: 220px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.5));
-  animation: portrait-breathe 2s ease-in-out infinite alternate;
-}
-
-.anime-portrait-svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-@keyframes portrait-breathe {
-  0% {
-    transform: translateY(0) rotate(-1deg);
-  }
-  100% {
-    transform: translateY(-4px) rotate(1deg);
-  }
-}
-
-/* 宣告文字與內容區域 */
-.announcement-content-area {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.announcement-tag-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.announcement-player-badge {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: #fef08a;
-  background: rgba(0, 0, 0, 0.45);
-  padding: 3px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(254, 240, 138, 0.4);
-}
-
-.announcement-type-badge {
-  font-size: 0.95rem;
-  font-weight: 800;
-  padding: 3px 12px;
-  border-radius: 9999px;
-  color: #ffffff;
-}
-
-.announcement-type-badge.type-ron {
-  background: linear-gradient(135deg, #ef4444, #b91c1c);
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
-}
-
-.announcement-type-badge.type-tsumo {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.8);
-}
-
-.announcement-combo-badge {
-  font-size: 0.95rem;
-  font-weight: 900;
-  padding: 3px 12px;
-  border-radius: 9999px;
-  color: #ffffff;
-  background: linear-gradient(135deg, #ec4899, #f43f5e, #ef4444);
-  box-shadow: 0 0 16px rgba(244, 63, 94, 0.9);
-  animation: combo-pulse 0.8s ease-in-out infinite alternate;
-  letter-spacing: 0.05em;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-}
-
-@keyframes combo-pulse {
-  from {
-    transform: scale(1);
-    box-shadow: 0 0 12px rgba(244, 63, 94, 0.7);
-  }
-  to {
-    transform: scale(1.08);
-    box-shadow: 0 0 20px rgba(244, 63, 94, 1);
-  }
-}
-
 /* 3D 漫畫藝術字 KANA JAN! (正面端正、無歪斜旋轉) */
-.kanajan-3d-title-wrap,
-.pokajan-3d-title-wrap {
+.kanajan-3d-title-wrap {
   width: 380px;
   height: 175px;
   display: flex;
@@ -5531,15 +5477,13 @@ button.kana-card { appearance: none; }
   filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 22px rgba(56, 189, 248, 0.75));
 }
 
-.kanajan-3d-title-svg,
-.pokajan-3d-title-svg {
+.kanajan-3d-title-svg {
   width: 100%;
   height: 100%;
   overflow: visible;
 }
 
-.kanajan-svg-text,
-.pokajan-svg-text {
+.kanajan-svg-text {
   font-family: 'Montserrat', 'Arial Black', -apple-system, sans-serif;
   font-size: 80px;
   font-weight: 900;
@@ -5568,84 +5512,44 @@ button.kana-card { appearance: none; }
   animation: star-float-twinkle 1.6s ease-in-out infinite alternate;
 }
 
-/* 頂部星芒群 (Top row) */
-.cutin-star.top-left-cluster {
-  top: -24px;
-  left: -20px;
-  width: 68px;
-  height: 68px;
+/* 六點式星芒貼近字標輪廓，避免粒子散落到牌桌遠處 */
+.cutin-star.accent-top-left {
+  top: -2px;
+  left: 10px;
+  width: 52px;
+  height: 52px;
   animation-delay: 0s;
 }
 
-.cutin-star.top-left-mid {
-  top: -14px;
-  left: 28%;
+.cutin-star.accent-top-right {
+  top: 6px;
+  right: 38px;
   animation-delay: 0.25s;
 }
 
-.cutin-star.top-center {
-  top: -22px;
-  left: calc(50% - 16px);
-  animation-delay: 0.5s;
-}
-
-.cutin-star.top-right-mid {
-  top: -14px;
-  right: 28%;
-  animation-delay: 0.25s;
-}
-
-.cutin-star.top-right-cluster {
-  top: -24px;
-  right: -20px;
-  width: 68px;
-  height: 68px;
-  animation-delay: 0.1s;
-}
-
-/* 兩側緊貼星芒 (Flanks) */
-.cutin-star.flank-left {
-  top: calc(50% - 15px);
-  left: -22px;
+.cutin-star.accent-mid-left {
+  top: 72px;
+  left: 2px;
   animation-delay: 0.4s;
 }
 
-.cutin-star.flank-right {
-  top: calc(50% - 15px);
-  right: -22px;
+.cutin-star.accent-mid-right {
+  top: 78px;
+  right: 4px;
   animation-delay: 0.35s;
 }
 
-/* 底部星芒群 (Bottom row) */
-.cutin-star.bottom-left-star {
-  bottom: -16px;
-  left: -6px;
+.cutin-star.accent-bottom-left {
+  bottom: 0;
+  left: 48px;
   animation-delay: 0.6s;
 }
 
-.cutin-star.bottom-left-mid {
-  bottom: -12px;
-  left: 26%;
-  animation-delay: 0.3s;
-}
-
-.cutin-star.bottom-center {
-  bottom: -18px;
-  left: calc(50% - 15px);
-  animation-delay: 0.55s;
-}
-
-.cutin-star.bottom-right-mid {
-  bottom: -12px;
-  right: 26%;
-  animation-delay: 0.2s;
-}
-
-.cutin-star.bottom-right-cluster {
-  bottom: -20px;
-  right: -16px;
-  width: 66px;
-  height: 66px;
+.cutin-star.accent-bottom-right {
+  bottom: -4px;
+  right: 14px;
+  width: 50px;
+  height: 50px;
   animation-delay: 0.45s;
 }
 
@@ -5669,31 +5573,14 @@ button.kana-card { appearance: none; }
     border-radius: 16px;
   }
 
-  .anime-cutin-portrait {
-    width: 110px;
-    height: 140px;
-  }
-
-  .pokajan-3d-title-wrap {
+  .kanajan-3d-title-wrap {
     width: 220px;
     height: 100px;
   }
 
-  .pokajan-svg-text {
+  .kanajan-svg-text {
     font-size: 56px;
   }
 
-  .announcement-yaku-dock {
-    padding: 4px 10px;
-    gap: 8px;
-  }
-
-  .announcement-yaku-title {
-    font-size: 0.95rem;
-  }
-
-  .announcement-yaku-score {
-    font-size: 1.05rem;
-  }
 }
 
