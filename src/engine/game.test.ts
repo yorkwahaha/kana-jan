@@ -276,7 +276,9 @@ describe('棄牌優先順序', () => {
     expect(state.players[1]?.gold).toBe(INITIAL_GOLD + 480)
     expect(state.players[2]?.gold).toBe(INITIAL_GOLD)
     expect(state.players[3]?.gold).toBe(INITIAL_GOLD)
-    expect(state.lastTransfers).toEqual([{ fromId: 'p0', toId: 'p1', amount: 480 }])
+    expect(state.lastTransfers).toEqual([
+      { fromId: 'p0', toId: 'p1', amount: 480, paid: 480, systemTopUp: 0 },
+    ])
     expect(state.events.some((e) => e.text.includes('抄了'))).toBe(true)
     expect(state.players[0]?.discards.some((c) => c.id === discardId)).toBe(false)
   })
@@ -382,6 +384,7 @@ describe('金幣歸零結束', () => {
     expect(state.gameOverReason).toBe('gold')
     expect(state.players.some((p) => p.gold === 0)).toBe(true)
     expect(state.rankings).toBeTruthy()
+    expect(state.events.some((event) => event.text.includes('系統補足'))).toBe(true)
   })
 })
 
@@ -790,6 +793,48 @@ describe('連鎖和牌 (Combo 機制)', () => {
 
     // 抄牌連鎖結束後，應輪到原棄牌者（p1）的下一家 p2，而不是抄牌者 p0 的下一家 p1
     state = play(state, { type: 'FINISH_REVIEW' })
+    expect(state.phase).toBe('playerDraw')
+    expect(state.currentPlayerIndex).toBe(2)
+    expect(state.turnOwnerIndex).toBe(2)
+  })
+
+  it('下家抄牌結束後順延至對家，不再立刻進行該下家的常規摸打', () => {
+    const discardCard = getCardById('ka-vocabulary')
+    let state = startGame({
+      seed: 1001,
+      startPlayerIndex: 0,
+      skipPreview: true,
+      bonus,
+      hands: [
+        fillHand([discardCard], ['sa-hiragana', 'shi-hiragana', 'su-hiragana', 'se-hiragana', 'so-hiragana', 'ta-hiragana']),
+        [
+          getCardById('ka-hiragana'),
+          getCardById('ka-katakana'),
+          getCardById('sa-hiragana'),
+          getCardById('ta-hiragana'),
+          getCardById('na-hiragana'),
+          getCardById('ha-hiragana'),
+          getCardById('ma-hiragana'),
+        ],
+        fillHand([], ['ha-hiragana', 'hi-hiragana', 'fu-hiragana', 'he-hiragana', 'ho-hiragana', 'ma-hiragana', 'mi-hiragana']),
+        fillHand([], ['mu-hiragana', 'me-hiragana', 'mo-hiragana', 'ra-hiragana', 'ri-hiragana', 'ru-hiragana', 're-hiragana']),
+      ],
+      deck: cards('a-hiragana', 'i-hiragana', 'u-hiragana', 'e-hiragana', 'o-hiragana', 'ro-hiragana'),
+    })
+
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    state = play(state, { type: 'SKIP_YAKU' })
+    state = play(state, { type: 'DISCARD', cardId: discardCard.id })
+    expect(state.phase).toBe('reaction')
+
+    const yaku = findYaku([...state.players[1]!.hand, state.currentDiscard!], state.bonus, {
+      mustIncludeCardId: discardCard.id,
+      activeRows: state.activeRows,
+    })[0]!
+    state = play(state, { type: 'CLAIM_YAKU', yakuId: yaku.id })
+    state = play(state, { type: 'FINISH_REVIEW' })
+
     expect(state.phase).toBe('playerDraw')
     expect(state.currentPlayerIndex).toBe(2)
     expect(state.turnOwnerIndex).toBe(2)

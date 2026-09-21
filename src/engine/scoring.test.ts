@@ -112,6 +112,9 @@ describe('金幣結算', () => {
     expect(result.bankrupt).toBe(true)
     const totalGold = result.players.reduce((sum, p) => sum + p.gold, 0)
     expect(totalGold).toBe(3120)
+    expect(result.transfers).toEqual([
+      { fromId: 'b', toId: 'a', amount: 120, paid: 80, systemTopUp: 40 },
+    ])
   })
 
   it('自摸時其中一人金幣不足，該人歸零，完成者依然獲得完整牌型分數', () => {
@@ -127,6 +130,13 @@ describe('金幣結算', () => {
     expect(result.players.find((p) => p.id === 'd')?.gold).toBe(840)
     expect(result.players.find((p) => p.id === 'a')?.gold).toBe(1000 + 480)
     expect(result.bankrupt).toBe(true)
+    expect(result.transfers.find((t) => t.fromId === 'b')).toEqual({
+      fromId: 'b',
+      toId: 'a',
+      amount: 160,
+      paid: 80,
+      systemTopUp: 80,
+    })
   })
 
   it('正常未破產時，4位玩家金幣總額維持 4000 且無個位數', () => {
@@ -140,6 +150,8 @@ describe('金幣結算', () => {
     const totalGold = result.players.reduce((sum, p) => sum + p.gold, 0)
     expect(totalGold).toBe(4000)
     expect(result.players.every((p) => p.gold % 10 === 0)).toBe(true)
+    expect(result.transfers.every((t) => t.paid + t.systemTopUp === t.amount)).toBe(true)
+    expect(result.transfers.every((t) => t.systemTopUp === 0 && t.paid === t.amount)).toBe(true)
   })
 
   it('若玩家初始資料存在個位數歷史髒數據（如 857、1994、1349），結算時自動對齊為整十數且讓渡金額永遠為整十數', () => {

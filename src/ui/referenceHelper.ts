@@ -71,6 +71,23 @@ export function getVisibleCards(state: GameState, myPlayerId?: string): KanaCard
   return Array.from(map.values())
 }
 
+/** 只在可見牌面實際變動時重算參考抽屜。 */
+export function visibleCardsFingerprint(state: GameState, myPlayerId?: string): string {
+  const me = myPlayerId ? state.players.find((player) => player.id === myPlayerId) : undefined
+  const myHand = me?.hand.map((card) => card.id).join(',') ?? ''
+  const publicCards = state.players
+    .map((player) => {
+      const discards = (player.discards ?? []).map((card) => card.id).join(',')
+      const completed = (player.completed ?? [])
+        .flatMap((entry) => entry.yaku?.cards ?? [])
+        .map((card) => card.id)
+        .join(',')
+      return `${discards};${completed}`
+    })
+    .join('|')
+  return `${myHand}#${publicCards}#${state.currentDiscard?.id ?? ''}`
+}
+
 /**
  * 依據登場行與可見牌，計算每個讀音與卡牌型態的殘餘情況
  */

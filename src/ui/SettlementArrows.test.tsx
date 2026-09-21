@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import {
   SettlementArrows,
+  flyingCoinCount,
   getCoinMotionParams,
   getSettlementArrowGeom,
   settlementAssetUrl,
@@ -83,6 +84,20 @@ describe('SettlementArrows (圖三重新設計)', () => {
     expect(html).not.toContain(top.coinPath)
     expect(html).toContain('data-coin-count="7"')
     expect(html.match(/class="flying-coin-item"/g)).toHaveLength(7)
+  })
+
+  it('破產實扣很少時，飛幣數量跟 paid 走而不是役值', () => {
+    expect(flyingCoinCount(480, 20)).toBe(2)
+    expect(flyingCoinCount(480, 0)).toBe(0)
+    const html = renderToString(
+      <SettlementArrows
+        transfers={[{ fromId: 'p1', toId: 'p0', amount: 480, paid: 20, systemTopUp: 460 }]}
+        players={PLAYERS}
+        mySeat={0}
+      />,
+    )
+    expect(html).toContain('data-coin-count="2"')
+    expect(html.match(/class="flying-coin-item"/g)).toHaveLength(2)
   })
 
   it('uses full payer-to-winner coin arcs beside the center island', () => {

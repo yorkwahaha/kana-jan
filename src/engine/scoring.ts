@@ -4,7 +4,12 @@ import type { PlayerState, ScoreSource } from './types'
 export interface GoldTransfer {
   fromId: string
   toId: string
+  /** 該筆讓渡的役值（贏家入帳額）。 */
   amount: number
+  /** 付款者實際扣掉的金幣。 */
+  paid: number
+  /** 付款者不足時由系統補足的差額。 */
+  systemTopUp: number
 }
 
 export interface ScoreResult {
@@ -69,9 +74,11 @@ export function settleGold(
       : safeAmount
     if (eachAmount <= 0) continue
     // 刻意採非零和的街機獎勵：即使付款者破產，也不削減得分者已贏得的役值。
-    payer.gold = Math.max(0, payer.gold - eachAmount)
+    const paid = Math.min(payer.gold, eachAmount)
+    const systemTopUp = eachAmount - paid
+    payer.gold -= paid
     winner.gold += eachAmount
-    transfers.push({ fromId: payer.id, toId: winnerId, amount: eachAmount })
+    transfers.push({ fromId: payer.id, toId: winnerId, amount: eachAmount, paid, systemTopUp })
   }
 
   const bankrupt = next.some((p) => p.gold <= 0)

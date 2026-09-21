@@ -201,6 +201,27 @@ describe('ScoreReview (金幣讓渡畫面精簡化與籌碼跳動)', () => {
     expect(html).toContain('settlement-rank')
   })
 
+  it('客端結算畫面標示等待房主，且遮罩不可點擊繼續', () => {
+    const html = renderToString(
+      <ScoreReview state={makeMockState()} settings={DEFAULT_SETTINGS} mySeat={0} canFinish={false} />,
+    )
+    expect(html).toContain('等待房主繼續')
+    expect(html).toContain('is-waiting-host')
+  })
+
+  it('牌庫耗盡時依 gameOverReason 顯示終局原因', () => {
+    const html = renderToString(
+      <ScoreReview
+        state={makeMockState({ gameOverReason: 'deck', lastTransfers: [] })}
+        settings={DEFAULT_SETTINGS}
+        mySeat={0}
+        isGameOver={true}
+      />,
+    )
+    expect(html).toContain('牌庫已耗盡')
+    expect(html).not.toContain('點數已歸零')
+  })
+
   it('treats transfer and summary layers as mutually exclusive around the 4200ms reveal', () => {
     expect(GAME_OVER_TRANSFER_REVEAL_MS).toBe(4200)
 

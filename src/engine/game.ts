@@ -324,8 +324,14 @@ function applyScoring(state: GameState): GameState {
   for (const t of settled.transfers) {
     const from = next.players.find((p) => p.id === t.fromId)
     const to = next.players.find((p) => p.id === t.toId)
-    if (from && to) {
-      next = pushEvent(next, `${from.name} −${t.amount} → ${to.name} ＋${t.amount}`)
+    if (!from || !to) continue
+    const paid = t.paid ?? t.amount
+    const topUp = t.systemTopUp ?? 0
+    if (paid > 0) {
+      next = pushEvent(next, `${from.name} −${paid} → ${to.name} ＋${paid}`)
+    }
+    if (topUp > 0) {
+      next = pushEvent(next, `系統補足 ${to.name} ＋${topUp}`)
     }
   }
 
@@ -598,7 +604,14 @@ export function reduce(state: GameState, action: GameAction): GameState {
     case 'NEXT_TURN': {
       if (state.phase !== 'nextTurn') return state
       const ownerIndex = state.turnOwnerIndex ?? state.currentPlayerIndex
-      const nextIndex = (ownerIndex + 1) % state.players.length
+      const seatCount = state.players.length
+      const discarderNext = (ownerIndex + 1) % seatCount
+      // 下家抄牌已在他人回合完成副露與補牌，不再立刻進行該下家的常規摸打。
+      // 對家／上家抄牌仍輪到原棄牌者的下一家，避免跳過中間的人。
+      const nextIndex =
+        state.currentPlayerIndex === discarderNext
+          ? (discarderNext + 1) % seatCount
+          : discarderNext
       const nextPlayer = state.players[nextIndex]
       let next: GameState = {
         ...state,

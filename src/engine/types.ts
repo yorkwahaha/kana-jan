@@ -96,10 +96,10 @@ export interface GameState {
   gameOverReason: 'gold' | 'deck' | null
   rankings: Ranking[] | null
   lastFx: 'dekita' | 'moratta' | 'draw' | 'discard' | 'coin' | null
-  lastTransfers: { fromId: string; toId: string; amount: number }[]
+  lastTransfers: { fromId: string; toId: string; amount: number; paid?: number; systemTopUp?: number }[]
   lastDiscardPlayerId: string | null
   comboCount: number
-  /** 本回合擁有者（棄牌者）。抄牌連鎖時 currentPlayerIndex 會暫時換成抄牌者，換人時仍從這裡往下一家。 */
+  /** 本回合擁有者（棄牌者）。抄牌連鎖時 currentPlayerIndex 會暫時換成抄牌者；換人時仍從棄牌者往下一家，但下家若就是抄牌者則再順延一家。 */
   turnOwnerIndex: number
   /** 開局牌組中各讀音／型態的實際張數，不含牌序。 */
   deckManifest?: Record<string, number>

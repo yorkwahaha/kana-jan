@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   availableYakuFor,
   currentPlayer,
@@ -20,7 +20,7 @@ import { DiscardRiver } from './DiscardRiver'
 import { EventLog } from './EventLog'
 import { ReferenceDrawer } from './ReferenceDrawer'
 import { SeatHud } from './SeatHud'
-import { CompactTurnTimer, TurnTimer } from './TurnTimer'
+import { CompactTurnTimer, TurnTimer, useTurnCountdown } from './TurnTimer'
 
 interface Props {
   state: GameState
@@ -170,7 +170,20 @@ export function GameTable({
   const activeNearIndex = nearHints.length > 0 ? nearCycleIndex % nearHints.length : 0
   const activeNearHint = nearHints[activeNearIndex]
   const nearIds = new Set(activeNearHint?.cardIds ?? [])
-  const tenpaiWaits = buildTenpaiWaits(human.hand, nearHints, state)
+  const handKey = human.hand.map((card) => card.id).join(',')
+  const tenpaiWaits = useMemo(
+    () => buildTenpaiWaits(human.hand, nearHints, state),
+    // 用 fingerprint 當相依項，避免 lastFx／倒數造成的無關重算。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [handKey, nearCycleKey, state.activeRows, state.bonus.sound, state.bonus.points],
+  )
+  const turnRemaining = useTurnCountdown(
+    turnTimer?.seconds ?? 18,
+    turnTimer?.turnKey ?? '',
+    !!turnTimer?.active,
+    turnTimer?.onTimeout ?? (() => undefined),
+    state.phase,
+  )
   const hudFor = (player: typeof human) => ({
     player,
     place: placeOf(player.id),
@@ -365,12 +378,7 @@ export function GameTable({
             aria-label={yakus.length > 0 ? '自摸和牌決策' : '和牌決策'}
           >
             {turnTimer && turnTimer.active && (
-              <CompactTurnTimer
-                seconds={turnTimer.seconds}
-                turnKey={turnTimer.turnKey}
-                active={turnTimer.active}
-                onTimeout={turnTimer.onTimeout}
-              />
+              <CompactTurnTimer remaining={turnRemaining} active={turnTimer.active} />
             )}
             <div className="compact-claim-buttons">
               <button
@@ -417,10 +425,8 @@ export function GameTable({
                 <div key={card.id} className={`hand-card-slot ${isDrawn ? 'is-drawn-slot' : ''}`}>
                   {showTimer && turnTimer && (
                     <TurnTimer
-                      seconds={turnTimer.seconds}
-                      turnKey={turnTimer.turnKey}
+                      remaining={turnRemaining}
                       active={turnTimer.active}
-                      onTimeout={turnTimer.onTimeout}
                       label="摸牌"
                       className="timer-above-drawn"
                     />

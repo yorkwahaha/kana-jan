@@ -372,6 +372,24 @@ describe('抄牌與聽牌判定', () => {
     expect(rows.some((y) => y.uniformType === undefined && y.cards.some((c) => c.id === 'o-katakana'))).toBe(true)
   })
 
+  it('單行教學關的一行揃い改與拗音揃い同額，避免起手 1800 連發', () => {
+    const hand = cards('a-hiragana', 'i-hiragana', 'u-hiragana', 'e-hiragana', 'o-hiragana')
+    const scaled = findYaku(hand, noBonus, { activeRows: ['a'] }).filter((y) => y.kind === 'sameRow')
+    expect(scaled[0]?.baseScore).toBe(180)
+    expect(scaled[0]?.typeBonus).toBe(300)
+    expect(scaled[0]?.totalScore).toBe(480)
+
+    const twoRows = findYaku(hand, noBonus, { activeRows: ['a', 'ka'] }).filter((y) => y.kind === 'sameRow')
+    expect(twoRows[0]?.baseScore).toBe(300)
+    expect(twoRows[0]?.typeBonus).toBe(660)
+    expect(twoRows[0]?.totalScore).toBe(960)
+
+    const full = findYaku(hand, noBonus).filter((y) => y.kind === 'sameRow')
+    expect(full[0]?.baseScore).toBe(480)
+    expect(full[0]?.typeBonus).toBe(1320)
+    expect(full[0]?.totalScore).toBe(1800)
+  })
+
   it('行揃い只使用該行定義的五個讀音，不把異常第六音算入', () => {
     const extra = { ...getCardById('a-katakana'), id: 'bad-extra', sound: 'extra', hiragana: '外' }
     const hand = [...cards('a-hiragana', 'i-hiragana', 'u-hiragana', 'e-hiragana', 'o-hiragana'), extra]

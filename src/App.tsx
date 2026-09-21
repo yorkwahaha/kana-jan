@@ -36,6 +36,7 @@ import { recordSounds } from './ui/mastery'
 import { clearGame, initialState, loadGame, saveGame } from './ui/persist'
 import { forfeitGame } from './ui/profile'
 import { delayFor, loadSettings, saveSettings, type Settings } from './ui/settings'
+import { followUpDiscardAfterExpiredClock, turnClockKey } from './ui/TurnTimer'
 
 function reduceWithPresentationPause(state: GameState, action: GameAction): GameState {
   const next = reduce(state, action)
@@ -57,6 +58,10 @@ export function App() {
   const [locked, setLocked] = useState(false)
   const lockRef = useRef(false)
   const pendingDiscardIdRef = useRef<string | null>(null)
+  const pendingSaveRef = useRef<GameState | null>(null)
+  const saveTimerRef = useRef(0)
+  const handleTurnTimeoutRef = useRef<() => void>(() => undefined)
+  const turnClockExpiredRef = useRef(false)
 
   // 連線對戰狀態
   const [networkMode, setNetworkMode] = useState<'none' | 'host' | 'guest'>('none')
@@ -93,6 +98,43 @@ export function App() {
     }
   }, [])
 
+  const flushPendingSave = useCallback(() => {
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = 0
+    }
+    const pending = pendingSaveRef.current
+    pendingSaveRef.current = null
+    if (pending) saveGame(pending)
+  }, [])
+
+  const scheduleSave = useCallback(
+    (next: GameState) => {
+      pendingSaveRef.current = next
+      if (next.phase === 'lobby' || next.phase === 'review' || next.phase === 'gameOver') {
+        flushPendingSave()
+        return
+      }
+      window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = window.setTimeout(() => {
+        saveTimerRef.current = 0
+        const pending = pendingSaveRef.current
+        pendingSaveRef.current = null
+        if (pending) saveGame(pending)
+      }, 300)
+    },
+    [flushPendingSave],
+  )
+
+  useEffect(() => {
+    const onHide = () => flushPendingSave()
+    window.addEventListener('pagehide', onHide)
+    return () => {
+      window.removeEventListener('pagehide', onHide)
+      flushPendingSave()
+    }
+  }, [flushPendingSave])
+
   // 狀態更新並存檔／同步廣播至所有 Guest
   const apply = useCallback(
     (updater: (s: GameState) => GameState) => {
@@ -102,11 +144,11 @@ export function App() {
         const host = hostManagerRef.current
         const guest = guestManagerRef.current
         if (host) host.syncGameState(next)
-        else if (!guest) saveGame(next)
+        else if (!guest) scheduleSave(next)
         return next
       })
     },
-    [],
+    [scheduleSave],
   )
 
   const dispatch = useCallback(
@@ -329,6 +371,8 @@ export function App() {
     )
     const t = window.setTimeout(() => {
       apply((s) => {
+        const actorNow = s.phase === 'reaction' ? reactionActor(s) : currentPlayer(s)
+        if (!actorNow || actorNow.kind !== 'ai') return s
         const synced = reduce(s, { type: 'SYNC_RNG', rngState: rng.getState() })
         return drainAuto(reduce(synced, action))
       })
@@ -516,7 +560,7 @@ export function App() {
       pendingDiscardIdRef.current = null
       lockRef.current = false
       setLocked(false)
-    }, networkMode === 'guest' ? 5000 : delayFor(settings, 'fx'))
+    }, networkMode === 'guest' ? 2000 : delayFor(settings, 'fx'))
   }
 
   const hasSave = useMemo(() => !roomState && !!loadGame() && state.phase === 'lobby', [state.phase, roomState])
@@ -551,22 +595,45 @@ export function App() {
       }
     }
   }, [isTurnActive, isMyTurn, networkMode, currentActor, state, dispatch])
+  handleTurnTimeoutRef.current = handleTurnTimeout
+
+  const clockKey = turnClockKey({
+    turnNumber: state.turnNumber,
+    phase: state.phase,
+    actorId: currentActor?.id,
+    comboCount: state.comboCount,
+    reactionIndex: state.reactionIndex,
+  })
+  const hostTimeoutMs = state.phase === 'reaction' ? 14000 : 20000
+  const hostShouldTimeout =
+    networkMode === 'host' &&
+    isTurnActive &&
+    (state.phase === 'reaction' ? reactionActor(state) : currentPlayer(state))?.kind === 'remote'
+
+  useEffect(() => {
+    turnClockExpiredRef.current = false
+  }, [clockKey])
 
   // 房主統御權威回合計時器：防範遠端真人玩家背景化或網路封包遺失卡住牌局（執行單次回合摸切／略過，絕不將玩家篡改為 AI）
   useEffect(() => {
-    if (networkMode !== 'host') return
-    if (state.phase !== 'playerAction' && state.phase !== 'discard' && state.phase !== 'reaction') return
-
-    const actor = state.phase === 'reaction' ? reactionActor(state) : currentPlayer(state)
-    if (!actor || actor.kind !== 'remote') return
-
-    // 客端畫面倒數計時為出牌 18 秒、抄牌 12 秒。房主給予額外 2 秒網路寬限（20 秒／14 秒），若客端未送出動作則由房主執行單次回合摸切處置
-    const timeoutMs = state.phase === 'reaction' ? 14000 : 20000
+    if (!hostShouldTimeout) return
+    // 客端畫面倒數計時為出牌 18 秒、抄牌 12 秒。房主給予額外 2 秒網路寬限（20 秒／14 秒）
     const timer = window.setTimeout(() => {
-      handleTurnTimeout()
-    }, timeoutMs)
+      turnClockExpiredRef.current = true
+      handleTurnTimeoutRef.current()
+    }, hostTimeoutMs)
     return () => window.clearTimeout(timer)
-  }, [networkMode, state, handleTurnTimeout])
+  }, [hostShouldTimeout, clockKey, hostTimeoutMs])
+
+  // 遠端玩家的共用回合鐘在自摸階段耗盡後不會重開；棄牌階段必須再託管一次。
+  useEffect(() => {
+    if (!hostShouldTimeout) return
+    if (!followUpDiscardAfterExpiredClock(state.phase, turnClockExpiredRef.current)) return
+    const timer = window.setTimeout(() => {
+      handleTurnTimeoutRef.current()
+    }, 280)
+    return () => window.clearTimeout(timer)
+  }, [hostShouldTimeout, state.phase, clockKey])
 
   // 1. 若處於房間等待大廳且牌局尚未開始
   if (networkMode !== 'none' && roomState && !roomState.started && state.phase === 'lobby') {
@@ -665,7 +732,7 @@ export function App() {
         turnTimer={{
           active: isTurnActive && isMyTurn,
           seconds: state.phase === 'reaction' ? 12 : 18,
-          turnKey: `${state.turnNumber}-${state.phase}-${currentActor?.id}-${state.comboCount}`,
+          turnKey: clockKey,
           onTimeout: handleTurnTimeout,
         }}
         selectedCardId={selectedCardId}
@@ -751,6 +818,7 @@ export function App() {
           isGameOver={state.phase === 'gameOver'}
           onRestart={restartSame}
           canRestart={networkMode !== 'guest'}
+          canFinish={networkMode !== 'guest'}
           onLobby={toLobby}
           onFinish={() => {
             if (state.phase === 'review' && networkMode !== 'guest') {

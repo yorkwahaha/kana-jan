@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { getCardById } from '../data/cards'
 import { createLobbyState } from '../engine/game'
 import type { GameState, PlayerState } from '../engine/types'
-import { computeRowCardStats, getVisibleCards } from './referenceHelper'
+import { computeRowCardStats, getVisibleCards, visibleCardsFingerprint } from './referenceHelper'
 
 describe('referenceHelper', () => {
   it('correctly collects visible cards for human player', () => {
@@ -149,5 +149,28 @@ describe('referenceHelper', () => {
     }
     const visible = getVisibleCards(state, 'p0')
     expect(visible).toHaveLength(1)
+  })
+
+  it('公開牌指紋在動畫旗標變動時維持不變', () => {
+    const state = createLobbyState()
+    state.players = [
+      {
+        id: 'p0',
+        name: '小春',
+        kind: 'human',
+        seat: 0,
+        aiDifficulty: 'normal',
+        gold: 1000,
+        score: 0,
+        hand: [getCardById('a-hiragana')],
+        discards: [getCardById('ka-hiragana')],
+        completed: [],
+      },
+    ]
+    state.currentDiscard = getCardById('sa-hiragana')
+    const before = visibleCardsFingerprint(state, 'p0')
+    state.lastFx = 'draw'
+    state.turnNumber += 1
+    expect(visibleCardsFingerprint(state, 'p0')).toBe(before)
   })
 })

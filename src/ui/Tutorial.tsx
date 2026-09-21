@@ -36,7 +36,7 @@ export function Tutorial({ onClose }: Props) {
           </section>
           <section>
             <h3>3. 一行揃い（滿貫大牌 5 張）· 480 / 1800 點</h3>
-            <p>清音／濁音同一行的 5 個不同讀音（480 點）。全同類型享有高達 <strong>1,800 點純色滿貫大牌</strong>！</p>
+            <p>清音／濁音同一行的 5 個不同讀音（480 點）。全同類型享有高達 <strong>1,800 點純色滿貫大牌</strong>！單行或兩行教學關會依登場行數調降（單行 180／480、兩行 300／960），實際點數以牌況面板為準。</p>
             <div className="tutorial-cards">
               <CardView card={getCardById('ka-hiragana')} size="sm" />
               <CardView card={getCardById('ki-katakana')} size="sm" />
@@ -48,7 +48,7 @@ export function Tutorial({ onClose }: Props) {
           <section>
             <h3>4. Bonus 與連鎖（Combo）</h3>
             <p>牌型中只要包含 BONUS 讀音的平假名、片假名或單字牌，都額外 +90 點。</p>
-            <p>完成牌型並補滿 7 張後，若手牌仍有合法牌型，可繼續宣告自摸直到無法成牌或主動略過。抄牌後同樣可以連鎖。連鎖結束後輪到原回合玩家的下一家，不會跳過中間的人。</p>
+            <p>完成牌型並補滿 7 張後，若手牌仍有合法牌型，可繼續宣告自摸直到無法成牌或主動略過。抄牌後同樣可以連鎖。連鎖結束後輪到原棄牌者的下一家；若下家就是抄牌者，則再順延一家，避免抄牌後立刻再摸打一次。</p>
           </section>
           <section>
             <h3>5. 自己抽到 vs 使用別人的棄牌</h3>

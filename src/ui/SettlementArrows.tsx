@@ -3,9 +3,19 @@ import type { PlayerState } from '../engine/types'
 import { tablePosition, type TablePosition } from './seats'
 
 interface Props {
-  transfers: { fromId: string; toId: string; amount: number }[]
+  transfers: { fromId: string; toId: string; amount: number; paid?: number; systemTopUp?: number }[]
   players: PlayerState[]
   mySeat?: number
+}
+
+/** 飛幣數量跟實際扣款走；破產只扣 20 時不會再噴 7 顆大金幣。 */
+export function flyingCoinCount(amount: number, paid?: number): number {
+  const visual = paid ?? amount
+  if (visual <= 0) return 0
+  if (visual >= 400) return 7
+  if (visual >= 120) return 5
+  if (visual >= 40) return 3
+  return 2
 }
 
 export interface ArrowGeometry {
@@ -189,7 +199,8 @@ export function SettlementArrows({ transfers, players, mySeat = 0 }: Props) {
           const geom = getSettlementArrowGeom(fromPos, toPos)
           if (!geom) return null
 
-          const coinCount = t.amount >= 400 ? 7 : 5
+          const coinCount = flyingCoinCount(t.amount, t.paid)
+          if (coinCount <= 0) return null
 
           return (
             <g
@@ -210,7 +221,7 @@ export function SettlementArrows({ transfers, players, mySeat = 0 }: Props) {
               />
 
               {Array.from({ length: coinCount }).map((_, i) => {
-                const motion = getCoinMotionParams(i, t.amount)
+                const motion = getCoinMotionParams(i, t.paid ?? t.amount)
                 const flip = `${motion.scale} ${motion.scale}; 0.14 ${motion.scale}; ${motion.scale} ${motion.scale}; 0.2 ${motion.scale}; ${motion.scale} ${motion.scale}`
                 const wobble = `0 0; ${motion.wobble} ${-motion.wobble * 0.28}; ${-motion.wobble} ${motion.wobble * 0.22}; 0 0`
                 return (

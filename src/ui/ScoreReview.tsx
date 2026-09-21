@@ -19,6 +19,7 @@ interface Props {
   onFinish?: () => void
   onRestart?: () => void
   canRestart?: boolean
+  canFinish?: boolean
   onLobby?: () => void
 }
 
@@ -105,12 +106,6 @@ function Fireworks() {
   )
 }
 
-interface RollingGoldItem {
-  current: number
-  isRolling: boolean
-  justFinished: boolean
-}
-
 const PAYER_START_MS = 350
 const PAYER_DURATION_MS = 650
 const WINNER_START_MS = 1050
@@ -145,80 +140,69 @@ function easeOutQuad(x: number): number {
   return 1 - (1 - x) * (1 - x)
 }
 
-function useRollingGold(players: PlayerState[], deltas: Record<string, number>) {
-  const hasTransfers = useMemo(() => Object.values(deltas).some((d) => d !== 0), [deltas])
+function RollingGoldAmount({ target, delta }: { target: number; delta: number }) {
+  const hasTransfer = delta !== 0
   const [elapsed, setElapsed] = useState(0)
 
   useEffect(() => {
-    if (!hasTransfers) return
-    let animId: number
+    if (!hasTransfer) return
+    let animId = 0
     const startTime = performance.now()
     const maxDuration = 2200
-
     const step = (now: number) => {
       const diff = now - startTime
       setElapsed(diff)
-      if (diff < maxDuration) {
-        animId = requestAnimationFrame(step)
-      }
+      if (diff < maxDuration) animId = requestAnimationFrame(step)
     }
-
     animId = requestAnimationFrame(step)
     return () => cancelAnimationFrame(animId)
-  }, [hasTransfers, players, deltas])
+  }, [hasTransfer, target, delta])
 
-  return useMemo(() => {
-    const map: Record<string, RollingGoldItem> = {}
-    for (const p of players) {
-      const delta = deltas[p.id] ?? 0
-      const target = p.gold
-      const start = target - delta
+  const start = target - delta
+  let current = target
+  let isRolling = false
+  let justFinished = false
 
-      if (!hasTransfers || delta === 0) {
-        map[p.id] = { current: target, isRolling: false, justFinished: false }
-        continue
-      }
-
-      if (delta < 0) {
-        // 失分方遞減滾動
-        if (elapsed < PAYER_START_MS) {
-          map[p.id] = { current: start, isRolling: false, justFinished: false }
-        } else if (elapsed < PAYER_START_MS + PAYER_DURATION_MS) {
-          const progress = easeOutQuad((elapsed - PAYER_START_MS) / PAYER_DURATION_MS)
-          map[p.id] = {
-            current: Math.round(start + delta * progress),
-            isRolling: true,
-            justFinished: false,
-          }
-        } else {
-          map[p.id] = {
-            current: target,
-            isRolling: false,
-            justFinished: elapsed < PAYER_START_MS + PAYER_DURATION_MS + 350,
-          }
-        }
+  if (hasTransfer) {
+    if (delta < 0) {
+      if (elapsed < PAYER_START_MS) {
+        current = start
+      } else if (elapsed < PAYER_START_MS + PAYER_DURATION_MS) {
+        const progress = easeOutQuad((elapsed - PAYER_START_MS) / PAYER_DURATION_MS)
+        current = Math.round(start + delta * progress)
+        isRolling = true
       } else {
-        // 得分贏家遞增滾動
-        if (elapsed < WINNER_START_MS) {
-          map[p.id] = { current: start, isRolling: false, justFinished: false }
-        } else if (elapsed < WINNER_START_MS + WINNER_DURATION_MS) {
-          const progress = easeOutQuad((elapsed - WINNER_START_MS) / WINNER_DURATION_MS)
-          map[p.id] = {
-            current: Math.round(start + delta * progress),
-            isRolling: true,
-            justFinished: false,
-          }
-        } else {
-          map[p.id] = {
-            current: target,
-            isRolling: false,
-            justFinished: elapsed < WINNER_START_MS + WINNER_DURATION_MS + 400,
-          }
-        }
+        current = target
+        justFinished = elapsed < PAYER_START_MS + PAYER_DURATION_MS + 350
       }
+    } else if (elapsed < WINNER_START_MS) {
+      current = start
+    } else if (elapsed < WINNER_START_MS + WINNER_DURATION_MS) {
+      const progress = easeOutQuad((elapsed - WINNER_START_MS) / WINNER_DURATION_MS)
+      current = Math.round(start + delta * progress)
+      isRolling = true
+    } else {
+      current = target
+      justFinished = elapsed < WINNER_START_MS + WINNER_DURATION_MS + 400
     }
-    return map
-  }, [hasTransfers, players, deltas, elapsed])
+  }
+
+  const coinClass = [
+    'settlement-coins',
+    isRolling ? 'is-rolling' : '',
+    isRolling && delta > 0 ? 'rolling-win' : '',
+    isRolling && delta < 0 ? 'rolling-loss' : '',
+    justFinished && delta > 0 ? 'just-finished' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  return (
+    <div className={coinClass}>
+      <span className="coin-icon">🪙</span>
+      <span className="coin-amount">{current}</span>
+    </div>
+  )
 }
 
 export function ScoreReview({
@@ -229,6 +213,7 @@ export function ScoreReview({
   onFinish,
   onRestart,
   canRestart = true,
+  canFinish = true,
   onLobby,
 }: Props) {
   const pending = state.pendingScore
@@ -242,12 +227,10 @@ export function ScoreReview({
     const map: Record<string, number> = {}
     for (const t of state.lastTransfers) {
       map[t.toId] = (map[t.toId] ?? 0) + t.amount
-      map[t.fromId] = (map[t.fromId] ?? 0) - t.amount
+      map[t.fromId] = (map[t.fromId] ?? 0) - (t.paid ?? t.amount)
     }
     return map
   }, [state.lastTransfers])
-
-  const rollingGold = useRollingGold(state.players, deltas)
 
   // 對局結束時結算個人存檔資產（依自己的座位，且同一局只結算一次）
   useEffect(() => {
@@ -312,6 +295,7 @@ export function ScoreReview({
 
   const placeOf = (id: string) => rankings.find((r) => r.playerId === id)?.place ?? 4
   const bankruptPlayer = state.players.find((p) => p.gold === 0)
+  const overReason = state.gameOverReason ?? (bankruptPlayer ? 'gold' : 'deck')
 
   // 收集本局所有玩家完成牌型中的詞彙卡牌
   const vocabCards = useMemo(() => {
@@ -332,9 +316,9 @@ export function ScoreReview({
 
   return (
     <div
-      className={`settlement-overlay ${isGameOver ? 'is-game-over' : ''} ${stage === 'summary' ? 'is-summary-stage' : 'is-transfer-stage'}`}
+      className={`settlement-overlay ${isGameOver ? 'is-game-over' : ''} ${stage === 'summary' ? 'is-summary-stage' : 'is-transfer-stage'} ${!canFinish && !isGameOver ? 'is-waiting-host' : ''}`}
       data-settlement-stage={stage}
-      onClick={isGameOver ? undefined : onFinish}
+      onClick={isGameOver || !canFinish ? undefined : onFinish}
       aria-live="polite"
     >
       {/* 1. 桌面 4 方結算銘牌 (參照截圖：第一名右邊放煙火、失分方旁附帶短箭頭) */}
@@ -385,29 +369,7 @@ export function ScoreReview({
                       {delta > 0 ? `+${delta}` : delta}
                     </div>
                   )}
-                  {(() => {
-                    const roll = rollingGold[player.id] ?? {
-                      current: player.gold,
-                      isRolling: false,
-                      justFinished: false,
-                    }
-                    const coinClass = [
-                      'settlement-coins',
-                      roll.isRolling ? 'is-rolling' : '',
-                      roll.isRolling && delta > 0 ? 'rolling-win' : '',
-                      roll.isRolling && delta < 0 ? 'rolling-loss' : '',
-                      roll.justFinished && delta > 0 ? 'just-finished' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')
-
-                    return (
-                      <div className={coinClass}>
-                        <span className="coin-icon">🪙</span>
-                        <span className="coin-amount">{roll.current}</span>
-                      </div>
-                    )
-                  })()}
+                  <RollingGoldAmount target={player.gold} delta={delta} />
                 </div>
               </div>
             </div>
@@ -426,8 +388,8 @@ export function ScoreReview({
         {showGameOverSummary ? (
           <div className="game-over-center-banner">
             <h3 className="game-over-banner-text">
-              {bankruptPlayer
-                ? `${bankruptPlayer.name} 的點數已歸零，遊戲結束`
+              {overReason === 'gold'
+                ? `${bankruptPlayer?.name ?? '有人'} 的點數已歸零，遊戲結束`
                 : '牌庫已耗盡，遊戲結束'}
             </h3>
 
@@ -493,6 +455,9 @@ export function ScoreReview({
                     .map((c) => `${c.vocabulary}（${c.meaning}）`)
                     .join(' · ')}
                 </p>
+              )}
+              {!canFinish && (
+                <p className="settlement-host-wait">等待房主繼續</p>
               )}
             </>
           )

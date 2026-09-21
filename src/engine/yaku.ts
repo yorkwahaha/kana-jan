@@ -42,7 +42,23 @@ function uniformType(cards: KanaCard[]): CardType | undefined {
   return cards.every((c) => c.cardType === first) ? first : undefined
 }
 
-export function typeBonusFor(kind: YakuKind, cards: KanaCard[]): number {
+export function fiveSoundRowCount(activeRows?: readonly RowId[]): number | undefined {
+  if (!activeRows) return undefined
+  return activeRows.filter((row) => !isThreeSoundRow(row)).length
+}
+
+/** 登場五音行越少，一行揃い越容易，分數隨行數調降。 */
+export function sameRowScoreTable(fiveSoundRows?: number): { base: number; uniformBonus: number } {
+  if (fiveSoundRows === 1) return { base: 180, uniformBonus: 300 }
+  if (fiveSoundRows === 2) return { base: 300, uniformBonus: 660 }
+  return { base: BASE_SCORE.sameRow, uniformBonus: 1320 }
+}
+
+export function typeBonusFor(
+  kind: YakuKind,
+  cards: KanaCard[],
+  fiveSoundRows?: number,
+): number {
   if (kind === 'sameSound') {
     const types = new Set(cards.map((c) => c.cardType))
     if (types.size === 3) return 360 // 三位相和加成 120 + 360 = 480
@@ -53,7 +69,7 @@ export function typeBonusFor(kind: YakuKind, cards: KanaCard[]): number {
   const t = uniformType(cards)
   if (!t) return 0
   if (kind === 'sameYoon') return 300 // 180 + 300 = 480
-  if (kind === 'sameRow') return 1320 // 480 + 1320 = 1800
+  if (kind === 'sameRow') return sameRowScoreTable(fiveSoundRows).uniformBonus
   return 0
 }
 
@@ -72,10 +88,13 @@ function finishYaku(
     id?: string
   },
   bonus: BonusMission,
+  options?: FindYakuOptions,
 ): YakuCandidate {
-  const typeBonus = typeBonusFor(partial.kind, partial.cards)
+  const fiveSoundRows = fiveSoundRowCount(options?.activeRows)
+  const typeBonus = typeBonusFor(partial.kind, partial.cards, fiveSoundRows)
   const missionBonus = missionBonusFor(partial.kind, partial.cards, bonus)
-  const baseScore = BASE_SCORE[partial.kind]
+  const baseScore =
+    partial.kind === 'sameRow' ? sameRowScoreTable(fiveSoundRows).base : BASE_SCORE[partial.kind]
   const uniform = uniformType(partial.cards)
   const id =
     partial.id ??
@@ -204,6 +223,7 @@ export function findYaku(
             label: sameSoundLabel(displaySound, picked),
           },
           bonus,
+          options,
         ),
       )
     }
@@ -230,6 +250,7 @@ export function findYaku(
                 label: `${ROW_LABEL[rowId]}揃い`,
               },
               bonus,
+              options,
             ),
           )
         }
@@ -248,6 +269,7 @@ export function findYaku(
                 label: `${ROW_LABEL[rowId]}揃い`,
               },
               bonus,
+              options,
             ),
           )
         }

@@ -39,7 +39,22 @@ let sessionPromise: Promise<string | null> | null = null
 
 const cloudAudioCache = new Map<string, string>()
 const MAX_CLOUD_AUDIO_CACHE = 32
-const failedUrls = new Set<string>()
+const FAILED_URL_TTL_MS = 60_000
+const failedUrls = new Map<string, number>()
+
+function rememberFailedUrl(url: string): void {
+  failedUrls.set(url, Date.now())
+}
+
+function isFailedUrl(url: string): boolean {
+  const at = failedUrls.get(url)
+  if (at === undefined) return false
+  if (Date.now() - at > FAILED_URL_TTL_MS) {
+    failedUrls.delete(url)
+    return false
+  }
+  return true
+}
 
 function cacheCloudAudio(text: string, url: string): void {
   const previous = cloudAudioCache.get(text)
@@ -76,7 +91,7 @@ export function stopSpeech(): void {
 }
 
 async function playAudioUrl(url: string): Promise<boolean> {
-  if (failedUrls.has(url)) return false
+  if (isFailedUrl(url)) return false
   return new Promise<boolean>((resolve) => {
     try {
       const audio = new Audio(url)
@@ -90,20 +105,20 @@ async function playAudioUrl(url: string): Promise<boolean> {
       }
       audio.onended = () => done(true)
       audio.onerror = () => {
-        failedUrls.add(url)
+        rememberFailedUrl(url)
         done(false)
       }
       const p = audio.play()
       if (p !== undefined) {
         p.catch((err) => {
           if (err && err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
-            failedUrls.add(url)
+            rememberFailedUrl(url)
           }
           done(false)
         })
       }
     } catch {
-      failedUrls.add(url)
+      rememberFailedUrl(url)
       resolve(false)
     }
   })
