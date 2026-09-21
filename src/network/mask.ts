@@ -33,10 +33,15 @@ export function makeHiddenCard(id: string): KanaCard {
 export function maskStateForPlayer(state: GameState, seat: number): GameState {
   const currentPlayer = state.players[state.currentPlayerIndex]
   const canSeeDrawnCard = seat >= 0 && currentPlayer?.seat === seat
+  const currentReaction = state.reactionOptions[state.reactionIndex]
   return {
     ...state,
+    seed: 0,
+    rngState: 0,
     deck: state.deck.map((_, idx) => makeHiddenCard(`deck-hidden-${idx}`)),
     lastDrawnCardId: canSeeDrawnCard ? state.lastDrawnCardId : null,
+    reactionOptions: currentReaction ? [{ playerId: currentReaction.playerId }] : [],
+    reactionIndex: 0,
     players: state.players.map((p) => {
       // seat < 0：觀戰，所有手牌都遮罩
       if (seat >= 0 && p.seat === seat) return p

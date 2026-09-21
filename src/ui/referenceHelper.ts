@@ -78,6 +78,7 @@ export function computeRowCardStats(
   rows: readonly RowId[],
   visibleCards: KanaCard[],
   copiesPerType = DEFAULT_COPIES_PER_TYPE,
+  deckManifest?: Readonly<Record<string, number>>,
 ): RowCardStat[] {
   // 建立快速計數字典：`${sound}_${cardType}` -> seen count
   const seenMap = new Map<string, number>()
@@ -94,12 +95,13 @@ export function computeRowCardStats(
     const sounds: SoundCardStat[] = soundsInRow.map((kana) => {
       const buildTypeStat = (type: CardType): TypeStat => {
         const seen = seenMap.get(`${kana.sound}_${type}`) ?? 0
-        const remaining = Math.max(0, copiesPerType - seen)
+        const max = deckManifest?.[`${kana.sound}:${type}`] ?? copiesPerType
+        const remaining = Math.max(0, max - seen)
         return {
           cardType: type,
           seen,
           remaining,
-          max: copiesPerType,
+          max,
         }
       }
 
@@ -107,7 +109,7 @@ export function computeRowCardStats(
       const kata = buildTypeStat('katakana')
       const vocab = buildTypeStat('vocabulary')
       const totalRemaining = hira.remaining + kata.remaining + vocab.remaining
-      const totalMax = copiesPerType * 3
+      const totalMax = hira.max + kata.max + vocab.max
 
       rowTotalRemaining += totalRemaining
       rowTotalMax += totalMax

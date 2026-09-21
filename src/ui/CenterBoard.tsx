@@ -1,5 +1,5 @@
 import { bonusCardOf } from '../data/bonuses'
-import { ROW_COLOR, ROW_MARK, isYoonRow, soundsForRows } from '../data/kana'
+import { ROW_COLOR, ROW_MARK, isThreeSoundRow, soundsForRows } from '../data/kana'
 import type { GameState } from '../engine/types'
 import { CardView } from './CardView'
 import type { TablePosition } from './seats'
@@ -32,7 +32,7 @@ export function CenterBoard({ state, settings, actingPos }: Props) {
       <div className="gojuon-mini" aria-label="本次登場的行">
         <div className="gojuon-header">登場行</div>
         {state.activeRows.map((row) => {
-          const isRowYoon = isYoonRow(row) || ROW_MARK[row].length > 1
+          const isRowYoon = isThreeSoundRow(row)
           return (
             <div key={row} className="gojuon-row">
               <span

@@ -26,7 +26,6 @@ describe('audio/sfx', () => {
       'win',
       'lose',
       'ready',
-      'tick',
     ]
 
     for (const kind of requiredSfx) {
@@ -36,7 +35,6 @@ describe('audio/sfx', () => {
 
     expect(BGM_PATHS.lobby).toMatch(/\/audio\/bgm\/bgm-lobby\.mp3$/)
     expect(BGM_PATHS.table).toMatch(/\/audio\/bgm\/bgm-table\.mp3$/)
-    expect(BGM_PATHS.tension).toMatch(/\/audio\/bgm\/bgm-tension\.mp3$/)
   })
 
   it('safely handles playSfx without throwing when audio files or AudioContext are absent', () => {

@@ -68,7 +68,7 @@ describe('同音三張', () => {
     expect(yaku?.totalScore).toBe(840)
   })
 
-  it('手牌有多張同音牌時優先挑選最高分組合（純色 840 > 三位相和 480）', () => {
+  it('2 平 1 片 1 字時，最高分候選是三位相和 480', () => {
     // 2平 + 1片 + 1字 -> 應該挑選 1平+1片+1字 達成三位相和 (480分)
     const h1 = getCardById('ka-hiragana')
     const h2 = { ...h1, id: 'ka-hiragana#1' }
@@ -340,6 +340,44 @@ describe('抄牌與聽牌判定', () => {
 
     expect(hints.find((h) => h.kind === 'sameYoon')?.missingSounds).toEqual(['yu'])
     expect(hints.find((h) => h.kind === 'sameRow')?.missingSounds).toEqual(['ku'])
+  })
+
+  it('findNearYaku 忽略異常第六音，仍依正式五音判定差一張', () => {
+    const extra = { ...getCardById('a-katakana'), id: 'bad-extra-near', sound: 'extra', hiragana: '外' }
+    const hints = findNearYaku(
+      [...cards('a-hiragana', 'i-hiragana', 'u-hiragana', 'e-hiragana'), extra],
+      ['a'],
+    )
+    const rowHint = hints.find((hint) => hint.kind === 'sameRow')
+    expect(rowHint?.missingSounds).toEqual(['o'])
+    expect(rowHint?.cardIds).not.toContain(extra.id)
+  })
+
+  it('activeRows 會排除課程外原本可成立的牌型', () => {
+    const hand = cards('a-hiragana', 'a-katakana', 'a-vocabulary')
+    expect(findYaku(hand, noBonus, { activeRows: ['ka'] })).toHaveLength(0)
+  })
+
+  it('同一行有不同耗牌方式時，同時提供純色與混色候選', () => {
+    const hand = cards(
+      'a-hiragana',
+      'i-hiragana',
+      'u-hiragana',
+      'e-hiragana',
+      'o-hiragana',
+      'o-katakana',
+    )
+    const rows = findYaku(hand, noBonus, { activeRows: ['a'] }).filter((y) => y.kind === 'sameRow')
+    expect(rows.some((y) => y.uniformType === 'hiragana')).toBe(true)
+    expect(rows.some((y) => y.uniformType === undefined && y.cards.some((c) => c.id === 'o-katakana'))).toBe(true)
+  })
+
+  it('行揃い只使用該行定義的五個讀音，不把異常第六音算入', () => {
+    const extra = { ...getCardById('a-katakana'), id: 'bad-extra', sound: 'extra', hiragana: '外' }
+    const hand = [...cards('a-hiragana', 'i-hiragana', 'u-hiragana', 'e-hiragana', 'o-hiragana'), extra]
+    const rows = findYaku(hand, noBonus, { activeRows: ['a'] }).filter((y) => y.kind === 'sameRow')
+    expect(rows.length).toBeGreaterThan(0)
+    expect(rows.every((y) => y.cards.length === 5 && !y.cards.some((card) => card.id === extra.id))).toBe(true)
   })
 
 })

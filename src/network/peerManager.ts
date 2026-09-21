@@ -64,7 +64,7 @@ export class HostManager {
       {
         seat: 0,
         playerId: 'p0',
-        name: hostName.trim() || '房主',
+        name: sanitizePlayerName(hostName, '房主'),
         kind: 'human',
         isHost: true,
         connected: true,
@@ -245,6 +245,7 @@ export class HostManager {
         next = pushEvent(next, `玩家 ${slot.name} 已重新連線接管操作`)
       }
       this.currentGameState = next
+      this.syncGameState(next)
     }
 
     this.broadcastRoomUpdate()

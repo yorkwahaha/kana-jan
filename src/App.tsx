@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getGameOverSfxKind, playSfx, startBgm, stopBgm, type BgmTrack } from './audio/sfx'
 import { speakJapanese } from './audio/speech'
 import { speechText } from './data/cards'
-import { decideAi, needsHumanInput } from './engine/ai'
+import { decideAi, needsHumanInput, pickSafeTimeoutDiscard } from './engine/ai'
 import {
   availableYakuFor,
   createLobbyState,
@@ -17,7 +17,7 @@ import {
 import { createRngFromExactState } from './engine/rng'
 import { INITIAL_GOLD, type AiDifficulty, type GameState, type PlayerConfig, type YakuCandidate } from './engine/types'
 import { DEFAULT_LESSON_ID } from './data/lessons'
-import { authorizeClientAction, restoreDisconnectedPlayer } from './network/authorize'
+import { authorizeClientAction, generateResumeToken, restoreDisconnectedPlayer } from './network/authorize'
 import { GuestManager, HostManager } from './network/peerManager'
 import { clearResume, loadResume } from './network/resume'
 import { generateRoomCode, getRoomFromUrl, parseRoomCode } from './network/roomCode'
@@ -33,7 +33,7 @@ import { Tutorial } from './ui/Tutorial'
 import { WinAnnouncement } from './ui/WinAnnouncement'
 import { tablePosition } from './ui/seats'
 import { recordSounds } from './ui/mastery'
-import { clearGame, initialState, loadGame, markTutorialSeen, saveGame } from './ui/persist'
+import { clearGame, initialState, loadGame, saveGame } from './ui/persist'
 import { forfeitGame } from './ui/profile'
 import { delayFor, loadSettings, saveSettings, type Settings } from './ui/settings'
 
@@ -98,6 +98,7 @@ export function App() {
     (updater: (s: GameState) => GameState) => {
       setState((prev) => {
         const next = updater(prev)
+        if (next === prev) return prev
         const host = hostManagerRef.current
         const guest = guestManagerRef.current
         if (host) host.syncGameState(next)
@@ -259,7 +260,8 @@ export function App() {
   // AI 與自動推進流程（Guest 模式下不執行本地 AI，全由 Host 統御同步）
   useEffect(() => {
     if (networkMode === 'guest') return
-    if (state.phase === 'lobby' || state.phase === 'gameOver' || showTutorial || showSettings) return
+    if (state.phase === 'lobby' || state.phase === 'gameOver') return
+    if (networkMode === 'none' && (showTutorial || showSettings)) return
     if (state.phase === 'preview') return
 
     if (state.phase === 'dealing') {
@@ -433,12 +435,12 @@ export function App() {
           onRoomUpdate: (room, seat, isSpectating) => {
             setRoomState({ ...room })
             setSpectating(Boolean(isSpectating) || seat < 0)
-            setMySeat(seat >= 0 ? seat : 0)
+            setMySeat(seat)
           },
           onGameStart: (startState, seat, isSpectating) => {
             setState(startState)
             setSpectating(Boolean(isSpectating) || seat < 0)
-            setMySeat(seat >= 0 ? seat : 0)
+            setMySeat(seat)
             setNetworkMode('guest')
           },
           onGameSync: (syncedState, isSpectating) => {
@@ -464,7 +466,7 @@ export function App() {
     const playerConfigs: PlayerConfig[] = roomState.slots.map((slot) => ({
       id: slot.playerId,
       name: slot.name,
-      kind: slot.isHost ? 'human' : slot.kind === 'ai' ? 'ai' : 'remote',
+      kind: slot.isHost ? 'human' : slot.kind === 'ai' || !slot.connected ? 'ai' : 'remote',
       seat: slot.seat,
       aiDifficulty: difficulty,
     }))
@@ -472,6 +474,7 @@ export function App() {
     const initial = drainAuto(
       startGame({
         playerConfigs,
+        matchId: generateResumeToken(),
         lessonId: roomState.lessonId,
         aiDifficulty: difficulty,
         initialGold: INITIAL_GOLD,
@@ -486,7 +489,7 @@ export function App() {
     playSfx('click', settings.sfx)
     if (networkMode === 'host') {
       handleStartMultiplayerGame()
-    } else {
+    } else if (networkMode === 'none') {
       startSingle((Date.now() ^ state.seed) >>> 0, state.lessonId)
     }
   }
@@ -541,14 +544,13 @@ export function App() {
       } else if (state.phase === 'discard') {
         const actorPlayer = state.players.find((p) => p.seat === currentActor.seat)
         if (actorPlayer && actorPlayer.hand.length > 0) {
-          const cardToDiscard = actorPlayer.hand[actorPlayer.hand.length - 1]!
-          dispatch({ type: 'DISCARD', cardId: cardToDiscard.id })
+          dispatch({ type: 'DISCARD', cardId: pickSafeTimeoutDiscard(actorPlayer, state) })
         }
       } else if (state.phase === 'reaction') {
         dispatch({ type: 'PASS_CLAIM' })
       }
     }
-  }, [isTurnActive, isMyTurn, networkMode, currentActor, state.phase, state.players, dispatch])
+  }, [isTurnActive, isMyTurn, networkMode, currentActor, state, dispatch])
 
   // 房主統御權威回合計時器：防範遠端真人玩家背景化或網路封包遺失卡住牌局（執行單次回合摸切／略過，絕不將玩家篡改為 AI）
   useEffect(() => {
@@ -630,7 +632,6 @@ export function App() {
         {showTutorial && (
           <Tutorial
             onClose={() => {
-              markTutorialSeen()
               setShowTutorial(false)
             }}
           />
@@ -659,10 +660,10 @@ export function App() {
       <GameTable
         state={state}
         settings={settings}
-        mySeat={mySeat}
+        mySeat={spectating ? 0 : mySeat}
         isRonHighlight={announcementStage === 'gun' || announcementStage === 'cutin'}
         turnTimer={{
-          active: isTurnActive,
+          active: isTurnActive && isMyTurn,
           seconds: state.phase === 'reaction' ? 12 : 18,
           turnKey: `${state.turnNumber}-${state.phase}-${currentActor?.id}-${state.comboCount}`,
           onTimeout: handleTurnTimeout,
@@ -735,7 +736,7 @@ export function App() {
               (
                 state.players.find((p) => p.id === state.pendingScore?.playerId) ?? state.players[0]!
               ).seat,
-              mySeat,
+              spectating ? 0 : mySeat,
             )}
             stage={announcementStage}
           />
@@ -749,9 +750,10 @@ export function App() {
           mySeat={mySeat}
           isGameOver={state.phase === 'gameOver'}
           onRestart={restartSame}
+          canRestart={networkMode !== 'guest'}
           onLobby={toLobby}
           onFinish={() => {
-            if (state.phase === 'review') {
+            if (state.phase === 'review' && networkMode !== 'guest') {
               dispatch({ type: 'FINISH_REVIEW' })
             }
           }}
@@ -767,6 +769,7 @@ export function App() {
             setShowSettings(false)
             restartSame()
           }}
+          canRestart={networkMode !== 'guest'}
           onToLobby={() => {
             setShowSettings(false)
             toLobby()
@@ -779,7 +782,6 @@ export function App() {
       {showTutorial && (
         <Tutorial
           onClose={() => {
-            markTutorialSeen()
             setShowTutorial(false)
           }}
         />

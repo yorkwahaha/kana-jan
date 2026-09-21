@@ -8,16 +8,14 @@ export type SfxKind =
   | 'draw'
   | 'discard'
   | 'coin'
-  | 'yaku'
   | 'dekita'
   | 'moratta'
   | 'ron'
   | 'win'
   | 'lose'
   | 'ready'
-  | 'tick'
 
-export type BgmTrack = 'lobby' | 'table' | 'tension'
+export type BgmTrack = 'lobby' | 'table'
 
 /**
  * 依玩家名次決定結算音效：
@@ -46,14 +44,11 @@ export const SFX_PATHS: Record<string, string> = {
   win: `${AUDIO_BASE}sfx/win.mp3`,
   lose: `${AUDIO_BASE}sfx/lose.mp3`,
   ready: `${AUDIO_BASE}sfx/ready.mp3`,
-  tick: `${AUDIO_BASE}sfx/tick.mp3`,
-  yaku: `${AUDIO_BASE}sfx/dekita.mp3`,
 }
 
 export const BGM_PATHS: Record<BgmTrack, string> = {
   lobby: `${AUDIO_BASE}bgm/bgm-lobby.mp3`,
   table: `${AUDIO_BASE}bgm/bgm-table.mp3`,
-  tension: `${AUDIO_BASE}bgm/bgm-tension.mp3`,
 }
 
 const missingAudioPaths = new Set<string>()
@@ -129,7 +124,6 @@ function playFallbackTone(kind: SfxKind) {
         tone(audio, 1319, 0.28, 'sine', 0.26, 0.07)
         break
       case 'dekita':
-      case 'yaku':
         // 歡快明亮的和牌成牌和弦
         tone(audio, 523, 0.12, 'sine', 0.06)
         tone(audio, 659, 0.12, 'sine', 0.05, 0.1)
@@ -164,9 +158,6 @@ function playFallbackTone(kind: SfxKind) {
         // 聽牌提示叮聲
         tone(audio, 880, 0.12, 'sine', 0.05)
         tone(audio, 1174, 0.22, 'sine', 0.05, 0.1)
-        break
-      case 'tick':
-        tone(audio, 540, 0.04, 'sine', 0.02)
         break
       default:
         break

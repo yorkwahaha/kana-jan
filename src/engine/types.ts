@@ -1,6 +1,6 @@
 import type { BonusMission } from '../data/bonuses'
 import type { CardType, KanaCard } from '../data/cards'
-import type { ColumnId, RowId } from '../data/kana'
+import type { RowId } from '../data/kana'
 
 export type Phase =
   | 'lobby'
@@ -16,7 +16,7 @@ export type Phase =
   | 'nextTurn'
   | 'gameOver'
 
-export type PlayerKind = 'human' | 'ai' | 'local' | 'remote'
+export type PlayerKind = 'human' | 'ai' | 'remote'
 export type AiDifficulty = 'easy' | 'normal'
 export type YakuKind = 'sameSound' | 'sameRow' | 'sameYoon'
 export type ScoreSource = 'tsumo' | 'ron'
@@ -27,7 +27,6 @@ export interface YakuCandidate {
   cards: KanaCard[]
   sound?: string
   row?: RowId
-  column?: ColumnId
   uniformType?: CardType
   baseScore: number
   typeBonus: number
@@ -74,6 +73,8 @@ export interface ReactionOption {
 
 export interface GameState {
   phase: Phase
+  /** 公開的對局識別碼；連線局不應由 seed 推導。 */
+  matchId?: string
   seed: number
   rngState: number
   players: PlayerState[]
@@ -100,6 +101,8 @@ export interface GameState {
   comboCount: number
   /** 本回合擁有者（棄牌者）。抄牌連鎖時 currentPlayerIndex 會暫時換成抄牌者，換人時仍從這裡往下一家。 */
   turnOwnerIndex: number
+  /** 開局牌組中各讀音／型態的實際張數，不含牌序。 */
+  deckManifest?: Record<string, number>
 }
 
 export interface Ranking {
@@ -121,6 +124,7 @@ export interface PlayerConfig {
 
 export interface StartConfig {
   seed?: number
+  matchId?: string
   playerName?: string
   aiDifficulty?: AiDifficulty
   aiNames?: string[]

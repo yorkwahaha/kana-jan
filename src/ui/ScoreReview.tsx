@@ -18,6 +18,7 @@ interface Props {
   isGameOver?: boolean
   onFinish?: () => void
   onRestart?: () => void
+  canRestart?: boolean
   onLobby?: () => void
 }
 
@@ -227,9 +228,11 @@ export function ScoreReview({
   isGameOver = false,
   onFinish,
   onRestart,
+  canRestart = true,
   onLobby,
 }: Props) {
   const pending = state.pendingScore
+  const perspectiveSeat = mySeat >= 0 ? mySeat : 0
   const rankings = useMemo(() => state.rankings ?? computeRankings(state.players), [state.rankings, state.players])
   const [showVocabModal, setShowVocabModal] = useState(false)
   const transferCount = state.lastTransfers.length
@@ -252,9 +255,9 @@ export function ScoreReview({
     const me = profilePlayerForSeat(state.players, mySeat)
     const myRank = rankings.find((r) => r.playerId === me?.id)
     if (!myRank || !me) return
-    const matchId = `${state.seed}:${me.id}:${rankings.map((r) => `${r.playerId}=${r.gold}`).join(',')}`
+    const matchId = `${state.matchId ?? state.seed}:${me.id}:${rankings.map((r) => `${r.playerId}=${r.gold}`).join(',')}`
     settleMatch(myRank.place, matchId)
-  }, [isGameOver, rankings, state.players, state.seed, mySeat])
+  }, [isGameOver, rankings, state.players, state.seed, state.matchId, mySeat])
 
   // 音效播放（配合金幣飛行與籌碼滾動節奏）
   useEffect(() => {
@@ -337,7 +340,7 @@ export function ScoreReview({
       {/* 1. 桌面 4 方結算銘牌 (參照截圖：第一名右邊放煙火、失分方旁附帶短箭頭) */}
       <div className="settlement-badges-layer" onClick={(e) => e.stopPropagation()}>
         {state.players.map((player) => {
-          const pos = tablePosition(player.seat, mySeat)
+          const pos = tablePosition(player.seat, perspectiveSeat)
           const delta = deltas[player.id] ?? 0
           const place = placeOf(player.id)
           const isRank1 = place === 1
@@ -364,7 +367,7 @@ export function ScoreReview({
                 <span className="settlement-player-name" title={player.name}>
                   {player.name}
                 </span>
-                {pos === 'human' && <span className="settlement-human-tag">你</span>}
+                {player.seat === mySeat && <span className="settlement-human-tag">你</span>}
                 <div className="settlement-badge-avatar" aria-hidden>
                   {initial}
                 </div>
@@ -414,7 +417,7 @@ export function ScoreReview({
 
       {/* 2. 參照圖三：立體帶狀指向箭頭與外圍金幣串（絕對不遮擋中央視窗，一目了然） */}
       {showArrows && (
-        <SettlementArrows transfers={state.lastTransfers} players={state.players} mySeat={mySeat} />
+        <SettlementArrows transfers={state.lastTransfers} players={state.players} mySeat={perspectiveSeat} />
       )}
 
       {/* 3. 中央區 (對局結束提示 與/或 成牌焦點區) */}
@@ -438,13 +441,17 @@ export function ScoreReview({
 
             {/* 操作按鈕：再玩一次 與 回到大廳 */}
             <div className="game-over-actions">
-              <button
-                type="button"
-                className="btn primary lg game-over-btn-restart"
-                onClick={onRestart}
-              >
-                🔄 再玩一次
-              </button>
+              {canRestart ? (
+                <button
+                  type="button"
+                  className="btn primary lg game-over-btn-restart"
+                  onClick={onRestart}
+                >
+                  🔄 再玩一次
+                </button>
+              ) : (
+                <span className="game-over-waiting">等待房主開始下一局</span>
+              )}
               <button
                 type="button"
                 className="btn lg game-over-btn-lobby"

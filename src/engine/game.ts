@@ -36,6 +36,7 @@ export type GameAction =
 export function createLobbyState(): GameState {
   return {
     phase: 'lobby',
+    matchId: 'lobby',
     seed: 0,
     rngState: 0,
     players: [],
@@ -165,8 +166,12 @@ export function startGame(config: StartConfig = {}): GameState {
   const seed = config.seed ?? (Date.now() ^ 0x9e3779b9) >>> 0
   const rng = createRng(seed)
   const lesson = getLesson(config.lessonId)
+  const customRows = [...new Set(
+    [...(config.hands?.flat() ?? []), ...(config.deck ?? [])].map((card) => card.row),
+  )]
   const activeRows =
     config.activeRows ??
+    (customRows.length > 0 ? customRows : undefined) ??
     (lesson.rows.length > 0 ? lesson.rows : pickLessonRows(lesson.id, (arr) => rng.shuffle(arr)))
   const lessonSounds = soundsForRows(activeRows)
   const bonus = config.bonus ?? makeTargetBonus(rng.pick(lessonSounds), DEFAULT_MISSION_POINTS)
@@ -176,6 +181,12 @@ export function startGame(config: StartConfig = {}): GameState {
   const playerName = (config.playerName ?? '小春').trim() || '小春'
 
   let deck: KanaCard[] = config.deck ? [...config.deck] : buildLessonDeck(activeRows, rng)
+  const manifestCards = config.hands ? [...deck, ...config.hands.flat()] : deck
+  const deckManifest = manifestCards.reduce<Record<string, number>>((counts, card) => {
+    const key = `${card.sound}:${card.cardType}`
+    counts[key] = (counts[key] ?? 0) + 1
+    return counts
+  }, {})
 
   let hands: KanaCard[][]
   if (config.hands) {
@@ -233,6 +244,7 @@ export function startGame(config: StartConfig = {}): GameState {
   let state: GameState = {
     ...createLobbyState(),
     phase: skipPreview ? 'dealing' : 'preview',
+    matchId: config.matchId ?? `local-${seed}`,
     seed,
     rngState: rng.getState(),
     players,
@@ -243,6 +255,7 @@ export function startGame(config: StartConfig = {}): GameState {
     currentPlayerIndex: startPlayerIndex,
     startPlayerIndex,
     turnOwnerIndex: startPlayerIndex,
+    deckManifest,
     turnNumber: 1,
   }
   state = pushEvent(state, `遊戲開始！課程：${lesson.label}／Bonus：${bonus.label}`)
@@ -486,7 +499,7 @@ export function reduce(state: GameState, action: GameAction): GameState {
         }
         return { ...state, phase: 'nextTurn', comboCount: 0 }
       }
-      return { ...state, phase: 'discard' }
+      return { ...state, phase: 'discard', comboCount: 0 }
     }
 
     case 'DISCARD': {
@@ -512,7 +525,7 @@ export function reduce(state: GameState, action: GameAction): GameState {
       if (next.reactionOptions.length > 0) {
         return { ...next, phase: 'reaction' }
       }
-      return { ...next, phase: 'refill' }
+      return { ...next, phase: 'refill', currentDiscard: null }
     }
 
     case 'CLAIM_YAKU': {
@@ -555,7 +568,7 @@ export function reduce(state: GameState, action: GameAction): GameState {
       if (nextIndex < state.reactionOptions.length) {
         return { ...next, reactionIndex: nextIndex }
       }
-      return { ...next, phase: 'refill', reactionIndex: nextIndex, lastFx: null }
+      return { ...next, phase: 'refill', reactionIndex: nextIndex, currentDiscard: null, lastFx: null }
     }
 
     case 'FINISH_REVIEW': {
@@ -616,8 +629,6 @@ const CLIENT_ACTION_TYPES: ReadonlySet<GameAction['type']> = new Set([
   'DISCARD',
   'CLAIM_YAKU',
   'PASS_CLAIM',
-  'SKIP_PREVIEW',
-  'FINISH_REVIEW',
 ])
 
 /** 客端允許送出的動作。START／抽牌／計分等由房主狀態機推進，避免客端重開牌局或竄改亂數。 */
@@ -641,7 +652,8 @@ export function autoStep(state: GameState): GameState {
 
 export function drainAuto(state: GameState): GameState {
   let current = state
-  for (let i = 0; i < 8; i++) {
+  const maxSteps = HAND_SIZE + state.players.length + 6
+  for (let i = 0; i < maxSteps; i++) {
     const next = autoStep(current)
     if (next === current) return next
     current = next

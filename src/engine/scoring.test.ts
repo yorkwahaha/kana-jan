@@ -18,6 +18,42 @@ function player(partial: Partial<PlayerState> & Pick<PlayerState, 'id' | 'name'>
 }
 
 describe('金幣結算', () => {
+  it('未來若出現非 30 倍數的自摸分數，不會因整十分攤而額外增發', () => {
+    const players = [
+      player({ id: 'a', name: 'A', gold: 1000, seat: 0 }),
+      player({ id: 'b', name: 'B', gold: 1000, seat: 1 }),
+      player({ id: 'c', name: 'C', gold: 1000, seat: 2 }),
+      player({ id: 'd', name: 'D', gold: 1000, seat: 3 }),
+    ]
+    const result = settleGold(players, 'a', 500, 'tsumo')
+    expect(result.transfers.map((transfer) => transfer.amount)).toEqual([170, 170, 160])
+    expect(result.transfers.reduce((sum, transfer) => sum + transfer.amount, 0)).toBe(500)
+    expect(result.players.find((p) => p.id === 'a')?.gold).toBe(1500)
+  })
+
+  it('自摸餘數依贏家之後的座位順序分配，不受 players 陣列順序影響', () => {
+    const players = [
+      player({ id: 'd', name: 'D', gold: 1000, seat: 3 }),
+      player({ id: 'a', name: 'A', gold: 1000, seat: 0 }),
+      player({ id: 'c', name: 'C', gold: 1000, seat: 2 }),
+      player({ id: 'b', name: 'B', gold: 1000, seat: 1 }),
+    ]
+    const result = settleGold(players, 'b', 500, 'tsumo')
+    expect(result.transfers.map(({ fromId, amount }) => [fromId, amount])).toEqual([
+      ['c', 170],
+      ['d', 170],
+      ['a', 160],
+    ])
+  })
+
+  it('放銃結算找不到付款者時拒絕產生不完整結算', () => {
+    const players = [
+      player({ id: 'a', name: 'A' }),
+      player({ id: 'b', name: 'B' }),
+    ]
+    expect(() => settleGold(players, 'a', 120, 'ron', 'missing')).toThrow('Payer not found')
+  })
+
   it('自摸時由其他三方平分牌型分數，而非三方各付全額', () => {
     const players = [
       player({ id: 'a', name: 'A', gold: 1000, seat: 0 }),

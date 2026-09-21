@@ -80,6 +80,24 @@ function pickDiscard(player: PlayerState, state: GameState, rng: Rng): string {
   return rng.pick(candidates).id
 }
 
+/** 遠端玩家逾時時採用普通 AI 的風險評分，但不消耗引擎亂數。 */
+export function pickSafeTimeoutDiscard(player: PlayerState, state: GameState): string {
+  if (player.hand.length === 0) throw new Error('Empty hand')
+  const best = minDistance(player.hand)
+  return player.hand
+    .map((card) => {
+      const remaining = player.hand.filter((candidate) => candidate.id !== card.id)
+      const after = minDistance(remaining)
+      const score =
+        (after.distance - best.distance) * 8 +
+        (best.cardIds.has(card.id) ? 6 : 0) +
+        keepValue(card, player.hand) +
+        isDangerousDiscard(card, state, player.id)
+      return { id: card.id, score }
+    })
+    .sort((a, b) => a.score - b.score || a.id.localeCompare(b.id))[0]!.id
+}
+
 function shouldDelayLowYaku(
   yaku: YakuCandidate,
   hand: KanaCard[],

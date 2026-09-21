@@ -35,12 +35,3 @@ export function playersByPerspective(players: PlayerState[], mySeat = 0): {
     right: byPos.right ?? players[3]!,
   }
 }
-
-/** SVG viewBox 100×100 上各座位與桌心座標 */
-export const TABLE_POINTS: Record<TablePosition | 'center', { x: number; y: number }> = {
-  human: { x: 50, y: 90 },
-  right: { x: 90, y: 48 },
-  top: { x: 50, y: 10 },
-  left: { x: 10, y: 48 },
-  center: { x: 50, y: 48 },
-}

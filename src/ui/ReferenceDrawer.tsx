@@ -22,8 +22,8 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
     [state.activeRows],
   )
   const rowStats = useMemo(
-    () => computeRowCardStats(state.activeRows, visibleCards, copiesPerType),
-    [state.activeRows, visibleCards, copiesPerType],
+    () => computeRowCardStats(state.activeRows, visibleCards, copiesPerType, state.deckManifest),
+    [state.activeRows, visibleCards, copiesPerType, state.deckManifest],
   )
 
   const bonusKana = useMemo(() => {

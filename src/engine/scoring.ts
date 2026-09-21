@@ -14,7 +14,7 @@ export interface ScoreResult {
 }
 
 /**
- * 自摸：由其他三方分攤牌型分數（每方分攤 safeAmount / 3，向上取整至整十數）。
+ * 自摸：由其他三方以整十單位分攤；除不盡的 10 點依贏家之後的座位順序分配。
  * 放銃：由單家放槍者全額支付該牌型分數。
  * 金幣不可低於 0，且任何讓渡皆至少十位數起跳，個位數永遠為 0。
  * 破產保障：付款者餘額不足時扣至 0，得分者仍取得完整役值；不足額由系統補足。
@@ -46,15 +46,28 @@ export function settleGold(
     source === 'tsumo'
       ? next.filter((p) => p.id !== winnerId)
       : next.filter((p) => p.id === fromPlayerId)
+  if (source === 'ron' && payers.length !== 1) {
+    throw new Error(`Payer not found: ${fromPlayerId ?? '(missing)'}`)
+  }
+  if (source === 'tsumo') {
+    payers.sort((a, b) => {
+      const distanceA = (a.seat - winner.seat + next.length) % next.length
+      const distanceB = (b.seat - winner.seat + next.length) % next.length
+      return distanceA - distanceB
+    })
+  }
 
   // 自摸時由其餘三方平分分攤；放槍時由單家全數支付
   const payerCount = Math.max(1, payers.length)
-  const eachAmount =
-    source === 'tsumo'
-      ? Math.max(10, Math.ceil(safeAmount / payerCount / 10) * 10)
-      : safeAmount
+  const totalUnits = safeAmount / 10
+  const baseUnits = Math.floor(totalUnits / payerCount)
+  const extraUnits = totalUnits % payerCount
 
-  for (const payer of payers) {
+  for (const [index, payer] of payers.entries()) {
+    const eachAmount = source === 'tsumo'
+      ? (baseUnits + (index < extraUnits ? 1 : 0)) * 10
+      : safeAmount
+    if (eachAmount <= 0) continue
     // 刻意採非零和的街機獎勵：即使付款者破產，也不削減得分者已贏得的役值。
     payer.gold = Math.max(0, payer.gold - eachAmount)
     winner.gold += eachAmount

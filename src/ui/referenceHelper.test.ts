@@ -100,6 +100,19 @@ describe('referenceHelper', () => {
     expect(aSound!.totalRemaining).toBe(6)
   })
 
+  it('100 張牌組使用實際清單，而不是假設母池每型都保留三張', () => {
+    const manifest = {
+      'a:hiragana': 1,
+      'a:katakana': 2,
+      'a:vocabulary': 0,
+    }
+    const sound = computeRowCardStats(['a'], [], 3, manifest)[0]!.sounds[0]!
+    expect(sound.hiragana.max).toBe(1)
+    expect(sound.katakana.max).toBe(2)
+    expect(sound.vocabulary.max).toBe(0)
+    expect(sound.totalRemaining).toBe(3)
+  })
+
   it('單行課程可用動態複本數顯示每種牌 6 張', () => {
     const visibleCards = [
       getCardById('a-hiragana'),

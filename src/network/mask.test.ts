@@ -54,4 +54,15 @@ describe('maskStateForPlayer 防窺牌遮罩', () => {
     expect(maskStateForPlayer(state, -1).lastDrawnCardId).toBeNull()
     expect(state.reactionOptions.every((option) => !('yaku' in option))).toBe(true)
   })
+
+  it('不傳送可重建牌山的亂數狀態，且只公開目前反應者', () => {
+    const state = startGame({ seed: 123, activeRows: ['a', 'ka', 'sa', 'ta'], skipPreview: true })
+    state.reactionOptions = [{ playerId: 'p1' }, { playerId: 'p2' }]
+    state.reactionIndex = 0
+    const masked = maskStateForPlayer(state, 1)
+    expect(masked.seed).toBe(0)
+    expect(masked.rngState).toBe(0)
+    expect(masked.reactionOptions).toEqual([{ playerId: 'p1' }])
+    expect(masked.reactionIndex).toBe(0)
+  })
 })

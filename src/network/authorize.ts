@@ -43,8 +43,6 @@ export function authorizeClientAction(state: GameState, seat: number, action: Ga
   if (state.phase === 'lobby' || state.phase === 'gameOver') return false
 
   switch (action.type) {
-    case 'SKIP_PREVIEW':
-      return false
     case 'CHOOSE_YAKU': {
       if (state.phase !== 'playerAction') return false
       if (currentPlayer(state).seat !== seat) return false
@@ -65,10 +63,6 @@ export function authorizeClientAction(state: GameState, seat: number, action: Ga
     }
     case 'PASS_CLAIM':
       return state.phase === 'reaction' && reactionActor(state)?.seat === seat
-    case 'FINISH_REVIEW': {
-      // 結算畫面對所有已驗證座位都可點擊略過；動作本身只會進入補牌階段。
-      return state.phase === 'review'
-    }
     default:
       return false
   }

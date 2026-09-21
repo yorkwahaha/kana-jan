@@ -1,15 +1,67 @@
 import { createLobbyState } from '../engine/game'
 import { makeTargetBonus } from '../data/bonuses'
+import { CARD_CATALOG, type KanaCard } from '../data/cards'
 import { getSound } from '../data/kana'
 import type { GameState } from '../engine/types'
 
 const KEY = 'kana-jan-save-v1'
-const TUTORIAL_KEY = 'kana-jan-tutorial-seen'
 const SAVE_VERSION = 2
 
 interface SavedGame {
   version: typeof SAVE_VERSION
   state: GameState
+}
+
+const VALID_PHASES = new Set([
+  'lobby', 'preview', 'dealing', 'playerDraw', 'playerAction', 'discard', 'reaction',
+  'scoring', 'review', 'refill', 'nextTurn', 'gameOver',
+])
+const VALID_CARD_SHAPES = new Set(CARD_CATALOG.map((card) => `${card.sound}:${card.cardType}:${card.row}`))
+
+function isValidCard(card: unknown): card is KanaCard {
+  if (!card || typeof card !== 'object') return false
+  const candidate = card as Partial<KanaCard>
+  return typeof candidate.id === 'string' &&
+    VALID_CARD_SHAPES.has(`${candidate.sound}:${candidate.cardType}:${candidate.row}`)
+}
+
+function hasValidCoreState(state: GameState): boolean {
+  if (!VALID_PHASES.has(state.phase)) return false
+  if (!Array.isArray(state.players) || state.players.length !== 4) return false
+  if (!Number.isInteger(state.currentPlayerIndex) || state.currentPlayerIndex < 0 || state.currentPlayerIndex >= state.players.length) return false
+  if (!Array.isArray(state.deck) || !state.deck.every(isValidCard)) return false
+  if (state.currentDiscard !== null && !isValidCard(state.currentDiscard)) return false
+  if (state.pendingScore) {
+    const pending = state.pendingScore
+    if (!state.players.some((player) => player.id === pending.playerId)) return false
+    if (!Array.isArray(pending.yaku?.cards) || !pending.yaku.cards.every(isValidCard)) return false
+    if (pending.claimedCard && !isValidCard(pending.claimedCard)) return false
+    if (pending.fromPlayerId && !state.players.some((player) => player.id === pending.fromPlayerId)) return false
+  }
+  return state.players.every((player) =>
+    Number.isInteger(player.seat) &&
+    Array.isArray(player.hand) && player.hand.every(isValidCard) &&
+    Array.isArray(player.discards ?? []) && (player.discards ?? []).every(isValidCard) &&
+    Array.isArray(player.completed ?? []) &&
+    (player.completed ?? []).every((completed) => completed?.yaku?.cards?.every(isValidCard)),
+  )
+}
+
+function rebuildDeckManifest(state: GameState): Record<string, number> {
+  const unique = new Map<string, KanaCard>()
+  const add = (card: KanaCard) => unique.set(card.id, card)
+  state.deck.forEach(add)
+  for (const player of state.players) {
+    player.hand.forEach(add)
+    player.discards.forEach(add)
+    player.completed.forEach((completed) => completed.yaku.cards.forEach(add))
+  }
+  const manifest: Record<string, number> = {}
+  for (const card of unique.values()) {
+    const key = `${card.sound}:${card.cardType}`
+    manifest[key] = (manifest[key] ?? 0) + 1
+  }
+  return manifest
 }
 
 export function saveGame(state: GameState) {
@@ -40,12 +92,18 @@ export function loadGame(): GameState | null {
     if (!parsed || !parsed.phase || !Array.isArray(parsed.players)) return null
     if (parsed.phase === 'lobby') return null
     if (!Array.isArray(parsed.activeRows) || !parsed.lessonId || !parsed.bonus?.sound) return null
+    if (parsed.currentDiscard === undefined) parsed.currentDiscard = null
+    if (!hasValidCoreState(parsed)) return null
     parsed.bonus = makeTargetBonus(getSound(parsed.bonus.sound), parsed.bonus.points)
     if (parsed.lastDiscardPlayerId === undefined) parsed.lastDiscardPlayerId = null
     if (typeof parsed.comboCount !== 'number') parsed.comboCount = 0
     if (typeof parsed.turnOwnerIndex !== 'number') {
-      parsed.turnOwnerIndex = parsed.currentPlayerIndex ?? 0
+      const ownerId = parsed.pendingScore?.fromPlayerId ?? parsed.lastDiscardPlayerId
+      const ownerIndex = ownerId ? parsed.players.findIndex((player) => player.id === ownerId) : -1
+      parsed.turnOwnerIndex = ownerIndex >= 0 ? ownerIndex : (parsed.currentPlayerIndex ?? 0)
     }
+    parsed.matchId ??= `legacy-${parsed.seed}`
+    parsed.deckManifest ??= rebuildDeckManifest(parsed)
     // 未標版本的舊檔仍以餘額辨識 20/25 點制；新版合法低餘額必須可恢復。
     if (!isVersioned && parsed.players.some((p) => p.gold < 100)) return null
     // 自動消除存檔中歷史殘留的個位數零頭（如 857 -> 860, 1994 -> 1990, 1349 -> 1350），確保十位數起跳
@@ -63,14 +121,6 @@ export function loadGame(): GameState | null {
 export function clearGame() {
   try {
     localStorage.removeItem(KEY)
-  } catch {
-    // ignore
-  }
-}
-
-export function markTutorialSeen() {
-  try {
-    localStorage.setItem(TUTORIAL_KEY, '1')
   } catch {
     // ignore
   }

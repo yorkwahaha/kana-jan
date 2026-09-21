@@ -17,10 +17,10 @@ describe('authorizeClientAction', () => {
     expect(authorizeClientAction(state, 1, { type: 'SKIP_PREVIEW' })).toBe(false)
   })
 
-  it('結算畫面允許任何已驗證座位略過等待', () => {
+  it('結算推進只由房主控制，拒絕所有 Guest', () => {
     const state = { ...startGame({ seed: 1, skipPreview: true }), phase: 'review' as const }
-    expect(authorizeClientAction(state, 1, { type: 'FINISH_REVIEW' })).toBe(true)
-    expect(authorizeClientAction(state, 3, { type: 'FINISH_REVIEW' })).toBe(true)
+    expect(authorizeClientAction(state, 1, { type: 'FINISH_REVIEW' })).toBe(false)
+    expect(authorizeClientAction(state, 3, { type: 'FINISH_REVIEW' })).toBe(false)
     expect(authorizeClientAction(state, 99, { type: 'FINISH_REVIEW' })).toBe(false)
   })
 

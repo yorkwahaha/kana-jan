@@ -23,4 +23,17 @@ describe('SettingsPanel', () => {
     expect(html).toContain('重新開始')
     expect(html).toContain('完成')
   })
+
+  it('Guest 模式可隱藏無效的重新開始操作', () => {
+    const html = renderToString(
+      <SettingsPanel
+        settings={DEFAULT_SETTINGS}
+        onChange={vi.fn()}
+        onClose={vi.fn()}
+        onRestart={vi.fn()}
+        canRestart={false}
+      />,
+    )
+    expect(html).not.toContain('重新開始')
+  })
 })

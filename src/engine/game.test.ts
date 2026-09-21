@@ -48,6 +48,27 @@ describe('客端動作白名單', () => {
     expect(isClientAction({ type: 'RESTART' })).toBe(false)
     expect(isClientAction({ type: 'SYNC_RNG', rngState: 1 })).toBe(false)
     expect(isClientAction({ type: 'DRAW' })).toBe(false)
+    expect(isClientAction({ type: 'SKIP_PREVIEW' })).toBe(false)
+    expect(isClientAction({ type: 'FINISH_REVIEW' })).toBe(false)
+  })
+})
+
+describe('防禦性狀態清理', () => {
+  it('8 張手牌略過成役進入棄牌時會清除舊 comboCount', () => {
+    const state = startGame({
+      seed: 2,
+      skipPreview: true,
+      startPlayerIndex: 0,
+      hands: [
+        cards('a-hiragana', 'i-hiragana', 'u-hiragana', 'e-hiragana', 'o-hiragana', 'ka-hiragana', 'ki-hiragana', 'ku-hiragana'),
+        [], [], [],
+      ],
+    })
+    state.phase = 'playerAction'
+    state.comboCount = 3
+    const next = reduce(state, { type: 'SKIP_YAKU' })
+    expect(next.phase).toBe('discard')
+    expect(next.comboCount).toBe(0)
   })
 })
 
@@ -282,6 +303,7 @@ describe('棄牌河', () => {
     state = play(state, { type: 'DISCARD', cardId: discardId })
     expect(state.players[0]?.discards.map((c) => c.id)).toEqual([discardId])
     expect(state.discardPile.map((c) => c.id)).toEqual([discardId])
+    expect(state.currentDiscard).toBeNull()
     expect(state.players.slice(1).every((p) => p.discards.length === 0)).toBe(true)
   })
 })

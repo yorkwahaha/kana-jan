@@ -428,13 +428,6 @@ body[data-anim='off'] .sakura-container {
   padding: 2px 8px;
   font-size: 0.75rem;
 }
-.lobby-audio-fab {
-  position: fixed;
-  top: 18px;
-  right: 18px;
-  z-index: 10;
-}
-
 .lobby-form {
   padding: clamp(14px, 2.5dvh, 26px) clamp(16px, 2.5vw, 28px);
   display: flex;
@@ -477,47 +470,6 @@ body[data-anim='off'] .sakura-container {
   margin-bottom: 3px;
 }
 
-.lesson-picks {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  max-height: 220px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-.lesson-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  border: 1.5px solid rgba(140, 105, 75, 0.25);
-  border-radius: 6px;
-  padding: 8px 10px;
-  background: #fffdfa;
-  cursor: pointer;
-  transition: all 0.16s ease;
-}
-.lesson-card:hover {
-  border-color: rgba(180, 140, 90, 0.5);
-  background: #ffffff;
-}
-.lesson-card.is-on {
-  border-color: var(--vermillion);
-  background: linear-gradient(180deg, #fff4f1 0%, #fbe8e4 100%);
-  box-shadow: 0 0 0 1px var(--vermillion);
-}
-.lesson-card input { accent-color: var(--vermillion); margin-top: 3px; }
-.lesson-info { display: grid; gap: 2px; }
-.lesson-name {
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--ink);
-}
-.lesson-desc {
-  font-size: 0.72rem;
-  color: var(--muted);
-  line-height: 1.25;
-}
-
 .diff-row {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -555,13 +507,6 @@ body[data-anim='off'] .sakura-container {
   gap: 12px;
   margin-top: clamp(6px, 1.2dvh, 10px);
 }
-.seats-note {
-  color: var(--muted);
-  font-size: 0.72rem;
-  margin: clamp(4px, 0.8dvh, 8px) 0 0;
-  letter-spacing: 0.04em;
-}
-
 /* --- 牌桌結構與空間氛圍 (Game Table Atmosphere) --- */
 .table-shell {
   min-height: 100dvh;
@@ -658,10 +603,6 @@ body[data-anim='off'] .sakura-container {
     0 0 0 4px var(--wood-edge),
     0 0 0 10px var(--lacquer-wood),
     0 24px 60px rgba(10, 6, 3, 0.55);
-}
-
-.clockwise-hint {
-  display: none;
 }
 
 /* --- 玩家銘牌：頭像 + 大字名次（對齊圖二，不再用厚黑銘牌） --- */
@@ -1202,11 +1143,6 @@ body[data-anim='off'] .sakura-container {
   box-shadow: 0 0 6px rgba(245, 215, 127, 0.6);
 }
 
-/* --- 回合狀態提示 (Turn Status Banner - 依指示改由燈號取代) --- */
-.turn-status {
-  display: none;
-}
-
 /* --- 自家玩家資訊角 (Human Seat Corner - 參照圖一與圖二固定左下角，緊湊無遮擋) --- */
 .human-seat-corner {
   position: absolute;
@@ -1232,43 +1168,9 @@ body[data-anim='off'] .sakura-container {
   max-width: 64vw;
   pointer-events: none;
 }
-.human-hand-area .action-bar,
 .human-hand-area .btn,
 .human-hand-area .kana-card {
   pointer-events: auto;
-}
-
-.action-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 16px;
-  margin: 0 0 6px;
-  background: linear-gradient(180deg, rgba(255, 253, 249, 0.96), rgba(246, 238, 226, 0.96));
-  color: var(--ink);
-  border: 1.5px solid rgba(212, 160, 23, 0.6);
-  border-radius: 10px;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.8) inset,
-    0 10px 24px rgba(20, 12, 6, 0.25);
-  backdrop-filter: blur(6px);
-  animation: fadeInBar 0.2s ease-out;
-}
-.action-bar p {
-  width: 100%;
-  text-align: center;
-  margin: 0 0 4px;
-  color: var(--ink);
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  font-size: 0.92rem;
-}
-
-@keyframes fadeInBar {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 .hand-row {
@@ -2803,68 +2705,6 @@ button.kana-card { appearance: none; }
   line-height: 1.15;
 }
 
-/* 放槍 / 自摸 結算橫幅標籤 (Settlement Deal Banner) */
-.settlement-deal-banner {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(18, 24, 38, 0.88);
-  border: 1.5px solid rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
-  padding: 3px 14px;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #f1f5f9;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-  margin-bottom: 2px;
-  animation: badgePopIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28) backwards;
-}
-.settlement-deal-banner.deal-ron {
-  border-color: rgba(255, 59, 92, 0.65);
-  background: linear-gradient(135deg, rgba(45, 15, 22, 0.92) 0%, rgba(20, 10, 15, 0.95) 100%);
-}
-.settlement-deal-banner.deal-tsumo {
-  border-color: rgba(56, 189, 248, 0.65);
-  background: linear-gradient(135deg, rgba(12, 35, 55, 0.92) 0%, rgba(8, 20, 32, 0.95) 100%);
-}
-.settlement-deal-banner .deal-tag {
-  font-size: 0.72rem;
-  font-weight: 800;
-  padding: 1px 7px;
-  border-radius: 999px;
-  letter-spacing: 0.05em;
-}
-.settlement-deal-banner .deal-tag.ron {
-  background: #ff334b;
-  color: #fff;
-}
-.settlement-deal-banner .deal-tag.tsumo {
-  background: #0284c7;
-  color: #fff;
-}
-.settlement-deal-banner .deal-payer {
-  color: #ff8595;
-  font-weight: 800;
-}
-.settlement-deal-banner .deal-arrow {
-  color: #ff334b;
-  font-weight: 900;
-  font-size: 1.1rem;
-}
-.settlement-deal-banner .deal-winner {
-  color: #38bdf8;
-  font-weight: 800;
-}
-.settlement-deal-banner .deal-action {
-  color: #cbd5e1;
-  font-size: 0.86rem;
-}
-.settlement-deal-banner .tsumo-note {
-  color: #94a3b8;
-  font-size: 0.82rem;
-  font-weight: normal;
-}
-
 .settlement-yaku-header {
   display: flex;
   align-items: baseline;
@@ -2957,7 +2797,7 @@ button.kana-card { appearance: none; }
 }
 
 /* 模態彈窗 (General Modals & Game Over) */
-.modal, .preview-panel, .review-panel {
+.modal {
   width: min(740px, 100%);
   max-height: 90dvh;
   overflow-y: auto;
@@ -3834,7 +3674,6 @@ button.kana-card { appearance: none; }
 
 @media (max-width: 900px) {
   .felt-oval { height: min(92dvh, 760px); width: min(99vw, 1280px); margin: 8px auto; border-width: 12px; }
-  .human-on-table { grid-template-columns: 1fr; left: 4%; right: 4%; }
   .human-side { display: none; }
   .turn-status { bottom: 25%; font-size: 0.95rem; }
   .center-board { width: fit-content; max-width: min(380px, 42vw); }
@@ -4525,37 +4364,6 @@ button.kana-card { appearance: none; }
   color: var(--muted);
   line-height: 1.35;
 }
-
-.lesson-picks.compact {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 8px;
-}
-
-.lesson-picks.compact .lesson-card {
-  padding: 8px 12px;
-}
-
-.multi-divider {
-  text-align: center;
-  position: relative;
-  font-family: var(--font-display);
-  font-size: 0.92rem;
-  color: var(--muted-light);
-}
-
-.multi-divider::before,
-.multi-divider::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 42%;
-  height: 1px;
-  background: rgba(130, 95, 60, 0.2);
-}
-
-.multi-divider::before { left: 0; }
-.multi-divider::after { right: 0; }
 
 .join-section {
   display: flex;
@@ -5505,29 +5313,6 @@ button.kana-card { appearance: none; }
   font-weight: bold;
 }
 
-.spelling-guide {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  font-size: 0.85rem;
-  color: #8b949e;
-}
-
-.spelling-badges {
-  display: flex;
-  gap: 6px;
-}
-
-.spelling-badge {
-  background: rgba(56, 139, 253, 0.2);
-  border: 1px solid rgba(56, 139, 253, 0.4);
-  padding: 2px 8px;
-  border-radius: 4px;
-  color: #fff;
-  font-weight: bold;
-}
-
 .rule-list {
   list-style: none;
   padding: 0;
@@ -5564,7 +5349,7 @@ button.kana-card { appearance: none; }
   z-index: 50;
 }
 
-.river-slot.is-ron-gun .card-view {
+.river-slot.is-ron-gun .kana-card {
   box-shadow:
     0 0 0 3px #ffffff,
     0 0 16px #38bdf8,

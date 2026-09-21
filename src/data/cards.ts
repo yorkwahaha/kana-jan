@@ -88,6 +88,7 @@ export function createCardCatalog(): KanaCard[] {
 }
 
 export const CARD_CATALOG = createCardCatalog()
+const CARD_BY_ID = new Map(CARD_CATALOG.map((card) => [card.id, card]))
 
 export function catalogForRows(rows: readonly RowId[]): KanaCard[] {
   const cards: KanaCard[] = []
@@ -100,12 +101,12 @@ export function catalogForRows(rows: readonly RowId[]): KanaCard[] {
 }
 
 export function baseCardId(id: string): string {
-  return id.split('#')[0] ?? id
+  return id.replace(/(?:#\d+)?(?:-\$\d+)?$/, '')
 }
 
 export function getCardById(id: string): KanaCard {
   const baseId = baseCardId(id)
-  const card = CARD_CATALOG.find((c) => c.id === baseId)
+  const card = CARD_BY_ID.get(baseId)
   if (!card) throw new Error(`Unknown card id: ${id}`)
   return id === card.id ? card : { ...card, id }
 }

@@ -5,10 +5,11 @@ interface Props {
   onChange: (next: Settings) => void
   onClose: () => void
   onRestart: () => void
+  canRestart?: boolean
   onToLobby?: () => void
 }
 
-export function SettingsPanel({ settings, onChange, onClose, onRestart, onToLobby }: Props) {
+export function SettingsPanel({ settings, onChange, onClose, onRestart, canRestart = true, onToLobby }: Props) {
   const toggle = (key: keyof Settings) => {
     const value = settings[key]
     if (typeof value === 'boolean') onChange({ ...settings, [key]: !value })
@@ -89,9 +90,11 @@ export function SettingsPanel({ settings, onChange, onClose, onRestart, onToLobb
               回到大廳
             </button>
           )}
-          <button className="btn danger" onClick={onRestart}>
-            重新開始
-          </button>
+          {canRestart && (
+            <button className="btn danger" onClick={onRestart}>
+              重新開始
+            </button>
+          )}
           <button className="btn primary" onClick={onClose}>
             完成
           </button>
