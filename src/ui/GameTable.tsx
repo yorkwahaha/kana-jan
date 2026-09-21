@@ -12,6 +12,7 @@ import { getSound } from '../data/kana'
 import type { Settings } from './settings'
 import { playersByPerspective, tablePosition } from './seats'
 import { CardDrawFlight } from './CardDrawFlight'
+import { InitialDealFlight } from './InitialDealFlight'
 import { CardView } from './CardView'
 import { CenterBoard } from './CenterBoard'
 import { DiscardRiver } from './DiscardRiver'
@@ -157,7 +158,10 @@ export function GameTable({
         <span className="fab-text">設定</span>
       </button>
 
-      <div className="felt-oval" data-active-pos={actingPos}>
+      <div
+        className={`felt-oval ${state.phase === 'dealing' ? 'is-initial-dealing' : ''}`}
+        data-active-pos={actingPos}
+      >
         <SeatHud {...hudFor(top)} />
         <SeatHud {...hudFor(left)} />
         <SeatHud {...hudFor(right)} />
@@ -233,6 +237,9 @@ export function GameTable({
         })()}
 
         <CenterBoard state={state} settings={settings} actingPos={actingPos} />
+        {state.phase === 'dealing' && (
+          <InitialDealFlight state={state} settings={settings} mySeat={mySeat} />
+        )}
         <CardDrawFlight state={state} settings={settings} mySeat={mySeat} />
 
         <div className="human-seat-corner">

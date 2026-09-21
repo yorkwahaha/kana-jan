@@ -263,11 +263,13 @@ export function App() {
     if (state.phase === 'preview') return
 
     if (state.phase === 'dealing') {
-      playSfx('draw', settings.sfx)
-      const t1 = window.setTimeout(() => playSfx('draw', settings.sfx), 160)
+      const cadence = settings.animation === 'normal' ? 420 : settings.animation === 'fast' ? 200 : 0
+      const dealSounds = Array.from({ length: cadence > 0 ? 7 : 1 }, (_, index) =>
+        window.setTimeout(() => playSfx('draw', settings.sfx), index * cadence),
+      )
       const t = window.setTimeout(() => dispatch({ type: 'DEAL_DONE' }), delayFor(settings, 'deal'))
       return () => {
-        window.clearTimeout(t1)
+        dealSounds.forEach((timer) => window.clearTimeout(timer))
         window.clearTimeout(t)
       }
     }

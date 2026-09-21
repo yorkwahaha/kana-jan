@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getCardById } from './cards'
+import { CARD_CATALOG, getCardById } from './cards'
 import { KANA_SOUNDS } from './kana'
 import { pickRecallCard, recallOptions } from './recall'
 
@@ -36,6 +36,14 @@ describe('回想題選項', () => {
 })
 
 describe('假名資料完整性', () => {
+  it('所有單字牌都有結算複習用的標準表記', () => {
+    const vocabularyCards = CARD_CATALOG.filter((card) => card.cardType === 'vocabulary')
+    expect(vocabularyCards).toHaveLength(KANA_SOUNDS.length)
+    expect(vocabularyCards.every((card) => card.writtenForm.length > 0)).toBe(true)
+    expect(getCardById('a-vocabulary').writtenForm).toBe('雨')
+    expect(getCardById('ja-vocabulary').writtenForm).toBe('馬鈴薯')
+  })
+
   it('所有單字拼字中的讀音均存在於 KANA_SOUNDS 中', () => {
     const allSoundIds = new Set(KANA_SOUNDS.map((k) => k.sound))
     for (const kana of KANA_SOUNDS) {

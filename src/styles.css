@@ -1319,6 +1319,145 @@ body[data-anim='off'] .sakura-container {
   overflow: visible;
 }
 
+/* 開局配牌：中央牌池依起始玩家順時針逐張滑出，抵達後鎖入各家手牌。 */
+.initial-deal-flight-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 28;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.felt-oval.is-initial-dealing .hand-fan .mini-back,
+.felt-oval.is-initial-dealing .human-hand-area .hand-card-slot {
+  opacity: 0;
+}
+.felt-oval.is-initial-dealing .deck-badge {
+  visibility: hidden;
+}
+
+.table-shell.anim-off .initial-deal-flight-layer {
+  display: none;
+}
+.table-shell.anim-off .felt-oval.is-initial-dealing .hand-fan .mini-back,
+.table-shell.anim-off .felt-oval.is-initial-dealing .human-hand-area .hand-card-slot {
+  opacity: 1;
+}
+.table-shell.anim-off .felt-oval.is-initial-dealing .deck-badge {
+  visibility: visible;
+}
+
+.initial-deal-card {
+  --deal-end-rotation: 0deg;
+  --deal-end-scale: 0.82;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 44px;
+  height: 62px;
+  margin: -31px 0 0 -22px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid rgba(255, 255, 255, 0.42);
+  border-radius: 5px;
+  color: #d94b36;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+  background: url('/textures/card-back.png') center / cover no-repeat;
+  box-shadow: 0 7px 16px rgba(0, 0, 0, 0.48);
+  transform-origin: center;
+  will-change: transform, opacity, filter;
+  animation: initialDealSlide var(--deal-duration) cubic-bezier(0.2, 0.82, 0.24, 1)
+    var(--deal-delay) both;
+}
+
+.initial-deal-card.pos-left { --deal-end-rotation: 84deg; --deal-end-scale: 0.72; }
+.initial-deal-card.pos-right { --deal-end-rotation: -84deg; --deal-end-scale: 0.72; }
+.initial-deal-card.pos-top { --deal-end-rotation: 180deg; --deal-end-scale: 0.72; }
+
+.initial-deal-card span {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 18px;
+  border-radius: 2px;
+  background: rgba(22, 18, 18, 0.8);
+  box-shadow: 0 0 0 1px rgba(218, 75, 54, 0.22);
+}
+
+.initial-deal-status {
+  position: absolute;
+  left: 50%;
+  top: 64%;
+  transform: translateX(-50%);
+  padding: 5px 14px;
+  border: 1px solid rgba(245, 215, 127, 0.7);
+  border-radius: 999px;
+  background: rgba(29, 20, 14, 0.78);
+  color: #fff8df;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.34);
+}
+
+.initial-deal-deck-count {
+  position: absolute;
+  left: var(--deal-deck-x);
+  top: calc(var(--deal-deck-y) + 52px);
+  transform: translateX(-50%);
+  min-width: 64px;
+  padding: 3px 9px;
+  border: 1px solid rgba(212, 160, 23, 0.5);
+  border-radius: 999px;
+  background: #fffdf8;
+  color: #27180c;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+
+@keyframes initialDealSlide {
+  0% {
+    opacity: 0;
+    filter: brightness(0.86);
+    transform: translate(var(--deal-start-x), var(--deal-start-y)) scale(0.76) rotate(0deg);
+  }
+  12% { opacity: 1; }
+  58% {
+    opacity: 1;
+    filter: brightness(1.18);
+    transform:
+      translate(
+        calc((var(--deal-start-x) + var(--deal-end-x)) / 2),
+        calc((var(--deal-start-y) + var(--deal-end-y)) / 2 - 24px)
+      )
+      scale(1.02)
+      rotate(calc(var(--deal-end-rotation) * 0.35));
+  }
+  88% {
+    opacity: 1;
+    filter: brightness(1.05);
+    transform:
+      translate(var(--deal-end-x), var(--deal-end-y))
+      scale(calc(var(--deal-end-scale) * 1.08))
+      rotate(var(--deal-end-rotation));
+  }
+  100% {
+    opacity: 1;
+    filter: none;
+    transform:
+      translate(var(--deal-end-x), var(--deal-end-y))
+      scale(var(--deal-end-scale))
+      rotate(var(--deal-end-rotation));
+  }
+}
+
 .flying-draw-card {
   position: absolute;
   top: 0;
@@ -1412,6 +1551,16 @@ body[data-anim='off'] .sakura-container {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .initial-deal-flight-layer {
+    display: none !important;
+  }
+  .felt-oval.is-initial-dealing .hand-fan .mini-back,
+  .felt-oval.is-initial-dealing .human-hand-area .hand-card-slot {
+    opacity: 1;
+  }
+  .felt-oval.is-initial-dealing .deck-badge {
+    visibility: visible;
+  }
   .card-draw-flight-layer {
     display: none !important;
   }
@@ -1933,6 +2082,19 @@ button.kana-card { appearance: none; }
   box-sizing: border-box;
   animation: settlementBadgeReveal 0.22s ease-out backwards;
   overflow: visible;
+}
+
+.card-written-form {
+  ruby-position: over;
+  text-align: center;
+  line-height: 1.05;
+}
+.card-written-form rt {
+  color: #5b4635;
+  font-family: var(--font-body);
+  font-size: 0.42em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 @keyframes settlementBadgeReveal {
   from { opacity: 0; }
@@ -2621,6 +2783,24 @@ button.kana-card { appearance: none; }
 }
 .vocab-card-item:hover {
   transform: scale(1.08);
+}
+.vocab-review-modal .vocab-card-item .kana-card {
+  width: 108px;
+  min-width: 108px;
+  height: 144px;
+}
+.vocab-review-modal .card-written-form .card-word {
+  font-size: 1.72em !important;
+}
+.vocab-review-modal .card-written-form rt {
+  font-size: 0.58em;
+}
+.vocab-review-modal .kana-card .card-meaning {
+  margin-top: 8px !important;
+  color: #352519 !important;
+  font-size: 0.82em !important;
+  font-weight: 900 !important;
+  line-height: 1.15;
 }
 
 /* 放槍 / 自摸 結算橫幅標籤 (Settlement Deal Banner) */

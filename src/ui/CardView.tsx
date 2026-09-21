@@ -15,6 +15,7 @@ interface Props {
   onClick?: () => void
   faceDown?: boolean
   revealMeaning?: boolean
+  showWrittenForm?: boolean
 }
 
 export function CardView({
@@ -30,10 +31,13 @@ export function CardView({
   onClick,
   faceDown,
   revealMeaning,
+  showWrittenForm,
 }: Props) {
   const glyph = displayGlyph(card)
   const isVocab = card.cardType === 'vocabulary'
-  const charLength = isVocab ? card.vocabulary.length : glyph.length
+  const charLength = isVocab
+    ? (showWrittenForm ? card.writtenForm.length : card.vocabulary.length)
+    : glyph.length
   const isYouon = !isVocab && glyph.length >= 2
 
   const className = [
@@ -72,7 +76,14 @@ export function CardView({
       </span>
       {card.cardType === 'vocabulary' ? (
         <span className="card-vocab">
-          <span className="card-word">{card.vocabulary}</span>
+          {showWrittenForm ? (
+            <ruby className="card-written-form">
+              <span className="card-word">{card.writtenForm}</span>
+              {card.writtenForm !== card.vocabulary ? <rt>{card.vocabulary}</rt> : null}
+            </ruby>
+          ) : (
+            <span className="card-word">{card.vocabulary}</span>
+          )}
           {showMeaning ? <span className="card-meaning">{card.meaning}</span> : null}
         </span>
       ) : (

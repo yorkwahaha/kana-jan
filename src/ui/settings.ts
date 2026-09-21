@@ -60,7 +60,8 @@ export function delayFor(
     case 'think':
       return fast ? 600 : 1800 + Math.floor(Math.random() * 700)
     case 'deal':
-      return fast ? 500 : 1100
+      // 28 張依起始玩家輪流配牌；保留最後一張落位後的短暫確認。
+      return fast ? 1700 : 3400
     case 'fx':
       return fast ? 700 : 1600
     case 'hold':

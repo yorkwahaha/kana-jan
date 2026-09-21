@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   BGM_PATHS,
+  BGM_STARTUP_GRACE_MS,
   getGameOverSfxKind,
   pauseBgm,
   playSfx,
@@ -8,6 +9,7 @@ import {
   SFX_PATHS,
   startBgm,
   stopBgm,
+  shouldWaitForBgmGesture,
   type SfxKind,
 } from './sfx'
 
@@ -49,6 +51,7 @@ describe('audio/sfx', () => {
   })
 
   it('safely starts and stops BGM without throwing', () => {
+    expect(BGM_STARTUP_GRACE_MS).toBeGreaterThanOrEqual(5000)
     expect(() => {
       startBgm('lobby', true)
       pauseBgm()
@@ -57,6 +60,20 @@ describe('audio/sfx', () => {
       stopBgm()
       startBgm(false)
     }).not.toThrow()
+  })
+
+  it('keeps the real BGM available when autoplay waits for a user gesture', () => {
+    const blocked = new Error('Autoplay blocked')
+    blocked.name = 'NotAllowedError'
+    const aborted = new Error('Track changed')
+    aborted.name = 'AbortError'
+    const missing = new Error('Missing file')
+    missing.name = 'NotSupportedError'
+
+    expect(shouldWaitForBgmGesture(blocked)).toBe(true)
+    expect(shouldWaitForBgmGesture(aborted)).toBe(true)
+    expect(shouldWaitForBgmGesture({ name: 'NotAllowedError' })).toBe(true)
+    expect(shouldWaitForBgmGesture(missing)).toBe(false)
   })
 
   it('correctly resolves game over SFX based on placement', () => {

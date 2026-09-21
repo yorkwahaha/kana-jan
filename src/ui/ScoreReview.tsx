@@ -518,7 +518,13 @@ export function ScoreReview({
                 onClick={() => void speakJapanese(speechText(card), true)}
                 title={`點擊發音：${card.vocabulary}`}
               >
-                <CardView card={card} size="md" revealMeaning showHints={{ showRomaji: true }} />
+                <CardView
+                  card={card}
+                  size="md"
+                  revealMeaning
+                  showWrittenForm
+                  showHints={{ showRomaji: true }}
+                />
               </div>
             ))}
           </div>

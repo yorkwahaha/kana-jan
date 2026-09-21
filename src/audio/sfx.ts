@@ -63,6 +63,19 @@ let bgmTimer: number | null = null
 let bgmStep = 0
 let currentBgmAudio: HTMLAudioElement | null = null
 let currentBgmTrack: BgmTrack | null = null
+let bgmFallbackTimer: number | null = null
+let bgmRetryTimer: number | null = null
+let bgmPlayPending = false
+
+export const BGM_STARTUP_GRACE_MS = 8000
+const BGM_RETRY_DELAY_MS = 1200
+
+export function shouldWaitForBgmGesture(error: unknown): boolean {
+  const name = typeof error === 'object' && error !== null && 'name' in error
+    ? String(error.name)
+    : ''
+  return name === 'NotAllowedError' || name === 'AbortError'
+}
 
 function getCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null
@@ -253,6 +266,73 @@ function stopSynthBgm() {
   }
 }
 
+function clearBgmStartupTimers() {
+  if (bgmFallbackTimer !== null) {
+    if (typeof window !== 'undefined') window.clearTimeout(bgmFallbackTimer)
+    bgmFallbackTimer = null
+  }
+  if (bgmRetryTimer !== null) {
+    if (typeof window !== 'undefined') window.clearTimeout(bgmRetryTimer)
+    bgmRetryTimer = null
+  }
+}
+
+function fallBackFromBgm(audio: HTMLAudioElement, path: string) {
+  if (currentBgmAudio !== audio || !audio.paused) return
+  missingAudioPaths.add(path)
+  audio.pause()
+  currentBgmAudio = null
+  bgmPlayPending = false
+  clearBgmStartupTimers()
+  startSynthBgm()
+}
+
+function tryPlayBgm(audio: HTMLAudioElement, path: string, retryCount = 0) {
+  if (currentBgmAudio !== audio || bgmPlayPending) return
+  bgmPlayPending = true
+
+  try {
+    const promise = audio.play()
+    if (promise === undefined) {
+      bgmPlayPending = false
+      clearBgmStartupTimers()
+      stopSynthBgm()
+      return
+    }
+    promise
+      .then(() => {
+        if (currentBgmAudio !== audio) return
+        bgmPlayPending = false
+        clearBgmStartupTimers()
+        stopSynthBgm()
+      })
+      .catch((error) => {
+        if (currentBgmAudio !== audio) return
+        bgmPlayPending = false
+
+        // 自動播放限制與切換音軌中斷都不是檔案失效；保留原音檔，等首次手勢直接重播。
+        if (shouldWaitForBgmGesture(error)) {
+          clearBgmStartupTimers()
+          return
+        }
+
+        // 冷啟動或網路抖動先給音檔一次實質不同的緩衝重試，再由 grace timer 決定 fallback。
+        if (retryCount < 1 && bgmRetryTimer === null) {
+          bgmRetryTimer = window.setTimeout(() => {
+            bgmRetryTimer = null
+            tryPlayBgm(audio, path, retryCount + 1)
+          }, BGM_RETRY_DELAY_MS)
+        }
+      })
+  } catch (error) {
+    bgmPlayPending = false
+    if (shouldWaitForBgmGesture(error)) {
+      clearBgmStartupTimers()
+      return
+    }
+  }
+}
+
 export function startBgm(trackOrEnabled: BgmTrack | boolean = 'table', enabled = true) {
   let track: BgmTrack = 'table'
   let isEnabled = true
@@ -270,8 +350,12 @@ export function startBgm(trackOrEnabled: BgmTrack | boolean = 'table', enabled =
     return
   }
 
-  if (currentBgmTrack === track && (currentBgmAudio || bgmTimer !== null)) {
-    return
+  if (currentBgmTrack === track) {
+    if (currentBgmAudio) {
+      if (currentBgmAudio.paused) tryPlayBgm(currentBgmAudio, BGM_PATHS[track])
+      return
+    }
+    if (bgmTimer !== null) return
   }
 
   stopBgm()
@@ -283,26 +367,12 @@ export function startBgm(trackOrEnabled: BgmTrack | boolean = 'table', enabled =
       const audio = new Audio(path)
       audio.loop = true
       audio.volume = 0.35
+      audio.preload = 'auto'
       currentBgmAudio = audio
-      const promise = audio.play()
-      if (promise !== undefined) {
-        promise
-          .then(() => {
-            // HTML5 BGM 正常播放中
-          })
-          .catch((err) => {
-            if (err && err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
-              missingAudioPaths.add(path)
-            }
-            if (currentBgmAudio === audio) {
-              currentBgmAudio = null
-            }
-            startSynthBgm()
-          })
-        return
-      }
+      bgmFallbackTimer = window.setTimeout(() => fallBackFromBgm(audio, path), BGM_STARTUP_GRACE_MS)
+      tryPlayBgm(audio, path)
+      return
     } catch {
-      missingAudioPaths.add(path)
       currentBgmAudio = null
     }
   }
@@ -337,6 +407,8 @@ export function resumeBgm() {
 
 export function stopBgm() {
   isBgmPausedForVisibility = false
+  bgmPlayPending = false
+  clearBgmStartupTimers()
   if (currentBgmAudio) {
     try {
       currentBgmAudio.pause()

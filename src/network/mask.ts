@@ -15,6 +15,7 @@ export function makeHiddenCard(id: string): KanaCard {
     columnLabel: '？',
     cardType: 'hiragana',
     vocabulary: '？',
+    writtenForm: '？',
     meaning: '？',
     image: '',
     icon: '🎴',
