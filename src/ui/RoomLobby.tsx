@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { copyToClipboard, makeRoomUrl } from '../network/roomCode'
 import type { RoomState } from '../network/types'
+import { LESSONS, getLesson } from '../data/lessons'
 
 interface Props {
   roomState: RoomState
@@ -9,6 +10,7 @@ interface Props {
   onStartGame: () => void
   onLeaveRoom: () => void
   onToggleSlotAi: (seat: number) => void
+  onSelectLesson?: (lessonId: string) => void
 }
 
 export function RoomLobby({
@@ -18,6 +20,7 @@ export function RoomLobby({
   onStartGame,
   onLeaveRoom,
   onToggleSlotAi,
+  onSelectLesson,
 }: Props) {
   const [copied, setCopied] = useState(false)
 
@@ -29,6 +32,8 @@ export function RoomLobby({
       setTimeout(() => setCopied(false), 2500)
     }
   }
+
+  const currentLesson = getLesson(roomState.lessonId)
 
   // 判斷是否可開局：4 個座位都已準備（不論是真人已連線或設為 AI）
   const allReady = roomState.slots.every((s) => s.connected || s.kind === 'ai')
@@ -47,6 +52,28 @@ export function RoomLobby({
           </div>
           <p className="room-subtext">將連結分享給好友，朋友點開即可直接加入！</p>
         </header>
+
+        <div className="room-lesson-picker">
+          <span className="field-label">登場牌組</span>
+          {isHost ? (
+            <select
+              id="room-lesson-select"
+              className="lesson-select"
+              value={roomState.lessonId}
+              onChange={(e) => onSelectLesson?.(e.target.value)}
+            >
+              {LESSONS.map((lesson) => (
+                <option key={lesson.id} value={lesson.id}>
+                  {lesson.label}：{lesson.detail}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="room-lesson-current">
+              {currentLesson.label}：{currentLesson.detail}
+            </span>
+          )}
+        </div>
 
         <div className="slots-grid">
           {roomState.slots.map((slot) => {

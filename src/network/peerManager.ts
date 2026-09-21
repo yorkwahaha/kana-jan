@@ -335,6 +335,12 @@ export class HostManager {
     this.broadcastRoomUpdate()
   }
 
+  public setLessonId(lessonId: string) {
+    if (this.roomState.started) return
+    this.roomState.lessonId = lessonId
+    this.broadcastRoomUpdate()
+  }
+
   public broadcastRoomUpdate() {
     this.callbacks.onRoomChange({ ...this.roomState, slots: [...this.roomState.slots] })
     for (const [seat, conn] of this.connections.entries()) {
@@ -344,6 +350,16 @@ export class HostManager {
           roomState: this.roomState,
           yourSeat: seat,
           resumeToken: this.resumeTokens.get(seat),
+        } satisfies HostMessage)
+      }
+    }
+    for (const spectator of this.spectators.values()) {
+      if (spectator.conn.open) {
+        spectator.conn.send({
+          type: 'ROOM_UPDATE',
+          roomState: this.roomState,
+          yourSeat: -1,
+          spectating: true,
         } satisfies HostMessage)
       }
     }

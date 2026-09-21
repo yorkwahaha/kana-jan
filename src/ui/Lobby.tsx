@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { LESSONS } from '../data/lessons'
 import { Mascot } from './Mascot'
 import type { AiDifficulty } from '../engine/types'
 import { loadProfile, replenishGold, type UserProfile } from './profile'
@@ -7,14 +6,12 @@ import { loadProfile, replenishGold, type UserProfile } from './profile'
 interface Props {
   playerName: string
   difficulty: AiDifficulty
-  lessonId?: string
   hasSave: boolean
   initialRoomCode?: string | null
   bgmEnabled?: boolean
   onToggleBgm?: () => void
   onName: (v: string) => void
   onDifficulty: (v: AiDifficulty) => void
-  onLesson?: (id: string) => void
   onStart: () => void
   onContinue: () => void
   onHelp: () => void
@@ -25,14 +22,12 @@ interface Props {
 export function Lobby({
   playerName,
   difficulty,
-  lessonId,
   hasSave,
   initialRoomCode,
   bgmEnabled = true,
   onToggleBgm,
   onName,
   onDifficulty,
-  onLesson,
   onStart,
   onContinue,
   onHelp,
@@ -118,23 +113,6 @@ export function Lobby({
             />
           </label>
 
-          {onLesson && (
-            <label className="field">
-              <span className="field-label">登場牌組</span>
-              <select
-                className="lesson-select"
-                value={lessonId}
-                onChange={(event) => onLesson(event.target.value)}
-              >
-                {LESSONS.map((lesson) => (
-                  <option key={lesson.id} value={lesson.id}>
-                    {lesson.label}：{lesson.detail}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-
           {tab === 'single' ? (
             <>
               <fieldset className="diff">
@@ -175,7 +153,6 @@ export function Lobby({
                   開始對局
                 </button>
               </div>
-              <p className="seats-note">對戰 さくら、ひなた、あおい（牌局隨機四行登場）。</p>
             </>
           ) : (
             <div className="multiplayer-panel">
@@ -227,9 +204,6 @@ export function Lobby({
                   玩法說明
                 </button>
               </div>
-              <p className="seats-note">
-                支援 2～4 位真人玩家同樂；空缺位置由房主指派電腦 AI 補位。
-              </p>
             </div>
           )}
         </div>

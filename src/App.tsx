@@ -49,7 +49,6 @@ export function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings)
   const [playerName, setPlayerName] = useState('小春')
   const [difficulty, setDifficulty] = useState<AiDifficulty>('normal')
-  const [lessonId, setLessonId] = useState(DEFAULT_LESSON_ID)
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [hoverYaku, setHoverYaku] = useState<YakuCandidate | null>(null)
   const [showTutorial, setShowTutorial] = useState(false)
@@ -334,7 +333,7 @@ export function App() {
   }, [state, settings, dispatch, apply, showTutorial, showSettings, networkMode, announcementStage])
 
   // 單人遊戲開始
-  const startSingle = (seed?: number, nextLesson = lessonId) => {
+  const startSingle = (seed?: number, nextLesson = DEFAULT_LESSON_ID) => {
     playSfx('click', settings.sfx)
     cleanupNetwork()
     clearGame()
@@ -360,7 +359,7 @@ export function App() {
       window.history.replaceState({}, '', `?room=${code}`)
     }
 
-    const host = new HostManager(code, playerName, lessonId, {
+    const host = new HostManager(code, playerName, DEFAULT_LESSON_ID, {
       onRoomChange: (r) => setRoomState({ ...r }),
       onClientAction: (seat, action) => {
         apply((s) => {
@@ -411,7 +410,7 @@ export function App() {
     setNetworkMode('host')
     setMySeat(0)
     setRoomState(host.getRoomState())
-  }, [playerName, lessonId, cleanupNetwork, apply, settings.sfx])
+  }, [playerName, cleanupNetwork, apply, settings.sfx])
 
   // 多人連線：加入房間（Guest）
   const handleJoinRoom = useCallback(
@@ -588,6 +587,11 @@ export function App() {
               hostManagerRef.current.setSlotType(seat, nextType)
             }
           }}
+          onSelectLesson={(newLessonId) => {
+            if (hostManagerRef.current) {
+              hostManagerRef.current.setLessonId(newLessonId)
+            }
+          }}
         />
       </>
     )
@@ -606,14 +610,12 @@ export function App() {
         <Lobby
           playerName={playerName}
           difficulty={difficulty}
-          lessonId={lessonId}
           hasSave={hasSave}
           initialRoomCode={initialUrlRoom}
           bgmEnabled={settings.bgm}
           onToggleBgm={() => setSettings((s) => ({ ...s, bgm: !s.bgm }))}
           onName={setPlayerName}
           onDifficulty={setDifficulty}
-          onLesson={setLessonId}
           onStart={() => startSingle()}
           onContinue={() => {
             const saved = loadGame()

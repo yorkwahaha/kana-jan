@@ -4061,6 +4061,124 @@ button.kana-card { appearance: none; }
   }
 }
 
+/* 平板橫向：沿用手機版的側家透視，但保留平板較寬鬆的尺寸與桌面留白。
+   側家牌河必須位於手牌的桌心側，並顯示在手牌之上，避免被直疊手牌吞掉。 */
+@media (orientation: landscape) and (min-height: 561px) and (max-width: 1280px) {
+  .seat-hud.pos-left {
+    left: 0.5%;
+    top: 16%;
+  }
+
+  .seat-hud.pos-right {
+    right: 0.5%;
+    top: 16%;
+  }
+
+  .seat-hud.pos-top {
+    left: 67%;
+    top: 7%;
+  }
+
+  .hand-fan.pos-top {
+    top: 7%;
+    left: 52.5%;
+  }
+
+  .hand-fan.pos-top .mini-back {
+    width: 35px;
+    height: 58px;
+    margin-right: -9px;
+  }
+
+  .hand-fan.pos-left,
+  .hand-fan.pos-right {
+    width: auto;
+    height: auto;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    perspective: 300px;
+  }
+
+  .hand-fan.pos-left {
+    left: 14.5%;
+    top: 34.1%;
+    transform: translate(-50%, -50%) rotate(5deg);
+  }
+
+  .hand-fan.pos-right {
+    left: 86.5%;
+    right: auto;
+    top: 39%;
+    transform: translate(-50%, -50%) rotate(-5deg);
+  }
+
+  .hand-fan.pos-left .mini-back,
+  .hand-fan.pos-right .mini-back {
+    width: 74px;
+    height: 78px;
+    margin-right: 0;
+    border-radius: 5px;
+  }
+
+  .hand-fan.pos-left .mini-back {
+    margin-bottom: -55px;
+    transform: rotateY(52deg);
+    transform-origin: left center;
+    box-shadow: 9px 8px 15px rgba(0, 0, 0, 0.52);
+  }
+
+  .hand-fan.pos-right .mini-back {
+    margin-bottom: -50px;
+    transform: rotateY(-52deg);
+    transform-origin: right center;
+    box-shadow: -9px 8px 15px rgba(0, 0, 0, 0.52);
+  }
+
+  .hand-fan.pos-left .mini-back:last-child,
+  .hand-fan.pos-right .mini-back:last-child {
+    margin-bottom: 0;
+  }
+
+  .discard-river.pos-left,
+  .discard-river.pos-right {
+    z-index: 5;
+  }
+
+  .discard-river.pos-left {
+    left: 23.5%;
+    top: 27%;
+    transform: rotate(95deg) scale(0.95);
+  }
+
+  .discard-river.pos-right {
+    right: 20.5%;
+    top: 48%;
+    transform: rotate(-95deg) scale(0.95);
+  }
+
+  .discard-river.pos-human {
+    left: 41%;
+  }
+
+  .center-board {
+    left: 53%;
+  }
+
+  .human-hand-area {
+    left: 45%;
+    bottom: 4%;
+    max-width: 68vw;
+  }
+
+  .human-hand-area .kana-card,
+  .human-hand-area .kana-card.size-lg {
+    width: 76px;
+    min-width: 76px;
+    height: 106px;
+    font-size: 13px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sakura-container { display: none !important; }
   .mascot.mood-cheer { animation: none; }
@@ -4344,6 +4462,20 @@ button.kana-card { appearance: none; }
   padding: 8px 16px;
   background: rgba(130, 95, 60, 0.08);
   border-radius: 6px;
+}
+
+.room-lesson-picker .field-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.room-lesson-current {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .lesson-select {
@@ -4657,6 +4789,14 @@ button.kana-card { appearance: none; }
   }
   .room-subtext {
     display: none;
+  }
+  .room-lesson-picker {
+    padding: 4px 10px;
+    gap: 8px;
+  }
+  .room-lesson-picker .lesson-select {
+    padding: 3px 8px;
+    font-size: 0.85rem;
   }
   .slots-grid {
     grid-template-columns: repeat(2, 1fr);
