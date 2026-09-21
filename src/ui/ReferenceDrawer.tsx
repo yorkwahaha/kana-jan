@@ -10,12 +10,13 @@ interface Props {
   myPlayerId?: string
   isOpen: boolean
   onClose: () => void
+  initialTab?: TabKey
 }
 
 type TabKey = 'remaining' | 'yaku' | 'bonus'
 
-export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
-  const [activeTab, setActiveTab] = useState<TabKey>('remaining')
+export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose, initialTab = 'remaining' }: Props) {
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
 
   const cardsKey = visibleCardsFingerprint(state, myPlayerId)
   const visibleCards = useMemo(
@@ -33,9 +34,11 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
     [state.activeRows, visibleCards, copiesPerType, state.deckManifest],
   )
 
-  const rowScore = sameRowScoreTable(fiveSoundRowCount(state.activeRows))
+  const fiveSoundRows = fiveSoundRowCount(state.activeRows)
+  const rowScore = sameRowScoreTable(fiveSoundRows)
+  const rowAvailable = fiveSoundRows !== 0
   const rowUniform = rowScore.base + rowScore.uniformBonus
-  const rowScoreScaled = rowScore.base !== 480
+  const rowScoreScaled = rowAvailable && rowScore.base !== 480
 
   const bonusKana = useMemo(() => {
     try {
@@ -192,12 +195,18 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
                 <div className="yaku-item-card highlight">
                   <div className="yaku-info">
                     <strong>一行揃い（滿貫大牌 5 張）</strong>
-                    <p>
-                      清音／濁音同一行 5 個相異讀音（混色 {rowScore.base} / 純色 {rowUniform}）
-                      {rowScoreScaled ? '。本局登場行較少，分數已調降' : ''}
-                    </p>
+                    {rowAvailable ? (
+                      <p>
+                        清音／濁音同一行 5 個相異讀音（混色 {rowScore.base} / 純色 {rowUniform}）
+                        {rowScoreScaled ? '。本局登場行較少，分數已調降' : ''}
+                      </p>
+                    ) : (
+                      <p>本局沒有五音行（清音／濁音），無法組成一行揃い。</p>
+                    )}
                   </div>
-                  <div className="yaku-score">{rowScore.base} / {rowUniform} 點</div>
+                  <div className="yaku-score">
+                    {rowAvailable ? `${rowScore.base} / ${rowUniform} 點` : '本局不成役'}
+                  </div>
                 </div>
 
               </div>
@@ -233,7 +242,15 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose }: Props) {
                 <ul className="rule-list">
                   <li>
                     <span className="dot dot-hira" />
-                    <strong>一行揃い純色（5張）</strong>：全平假名 / 全片假名 / 全單字，得分提升至 <strong>{rowUniform.toLocaleString('zh-Hant')} 點</strong>
+                    {rowAvailable ? (
+                      <>
+                        <strong>一行揃い純色（5張）</strong>：全平假名 / 全片假名 / 全單字，得分提升至 <strong>{rowUniform.toLocaleString('zh-Hant')} 點</strong>
+                      </>
+                    ) : (
+                      <>
+                        <strong>一行揃い純色（5張）</strong>：本局沒有五音行，無法成役。
+                      </>
+                    )}
                   </li>
                   <li>
                     <span className="dot dot-vocab" />

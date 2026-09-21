@@ -68,7 +68,9 @@ export function delayFor(
       return fast ? 800 : 1600
     case 'discardFlight':
       return fast ? 420 : 820
-    default:
-      return 400
+    default: {
+      const unexpected: never = kind
+      return unexpected
+    }
   }
 }

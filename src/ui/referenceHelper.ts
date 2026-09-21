@@ -1,8 +1,7 @@
 import type { CardType, KanaCard } from '../data/cards'
 import { ROW_COLOR, ROW_LABEL, soundsForRows, type RowId } from '../data/kana'
+import { COPIES_PER_CARD_TYPE } from '../engine/deck'
 import type { GameState } from '../engine/types'
-
-export const DEFAULT_COPIES_PER_TYPE = 3
 
 export interface TypeStat {
   cardType: CardType
@@ -94,7 +93,7 @@ export function visibleCardsFingerprint(state: GameState, myPlayerId?: string): 
 export function computeRowCardStats(
   rows: readonly RowId[],
   visibleCards: KanaCard[],
-  copiesPerType = DEFAULT_COPIES_PER_TYPE,
+  copiesPerType = COPIES_PER_CARD_TYPE,
   deckManifest?: Readonly<Record<string, number>>,
 ): RowCardStat[] {
   // 建立快速計數字典：`${sound}_${cardType}` -> seen count

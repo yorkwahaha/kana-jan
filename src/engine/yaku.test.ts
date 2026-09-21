@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { makeTargetBonus, type BonusMission } from '../data/bonuses'
 import { getCardById, type KanaCard } from '../data/cards'
 import { getSound } from '../data/kana'
-import { findNearYaku, findYaku, missionBonusFor, typeBonusFor } from './yaku'
+import { findNearYaku, findYaku, missionBonusFor, sameRowScoreTable, typeBonusFor } from './yaku'
 
 const noBonus: BonusMission = makeTargetBonus(getSound('ne'), 0)
 
@@ -388,6 +388,23 @@ describe('抄牌與聽牌判定', () => {
     expect(full[0]?.baseScore).toBe(480)
     expect(full[0]?.typeBonus).toBe(1320)
     expect(full[0]?.totalScore).toBe(1800)
+  })
+
+  it('沒有五音行時一行揃い分數表為不成役，引擎只給三音行揃い', () => {
+    expect(sameRowScoreTable(0)).toEqual({ base: 0, uniformBonus: 0 })
+    expect(sameRowScoreTable(undefined)).toEqual({ base: 480, uniformBonus: 1320 })
+    const hand = cards(
+      'ya-hiragana',
+      'yu-hiragana',
+      'yo-hiragana',
+      'wa-hiragana',
+      'wo-hiragana',
+      'n-hiragana',
+    )
+    const found = findYaku(hand, noBonus, { activeRows: ['ya', 'wa'] })
+    expect(found.some((yaku) => yaku.kind === 'sameRow')).toBe(false)
+    expect(found.some((yaku) => yaku.kind === 'sameYoon' && yaku.row === 'ya')).toBe(true)
+    expect(found.some((yaku) => yaku.kind === 'sameYoon' && yaku.row === 'wa')).toBe(true)
   })
 
   it('行揃い只使用該行定義的五個讀音，不把異常第六音算入', () => {

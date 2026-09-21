@@ -47,8 +47,9 @@ export function fiveSoundRowCount(activeRows?: readonly RowId[]): number | undef
   return activeRows.filter((row) => !isThreeSoundRow(row)).length
 }
 
-/** 登場五音行越少，一行揃い越容易，分數隨行數調降。 */
+/** 登場五音行越少，一行揃い越容易，分數隨行數調降。零行表示本局無法成役。 */
 export function sameRowScoreTable(fiveSoundRows?: number): { base: number; uniformBonus: number } {
+  if (fiveSoundRows === 0) return { base: 0, uniformBonus: 0 }
   if (fiveSoundRows === 1) return { base: 180, uniformBonus: 300 }
   if (fiveSoundRows === 2) return { base: 300, uniformBonus: 660 }
   return { base: BASE_SCORE.sameRow, uniformBonus: 1320 }

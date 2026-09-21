@@ -72,6 +72,31 @@ describe('防禦性狀態清理', () => {
   })
 })
 
+describe('牌庫耗盡且無人得分', () => {
+  it('四人金幣與分數相同時記為並列優勝，而不是座位最前者獨占優勝', () => {
+    let state = startGame({
+      seed: 3,
+      skipPreview: true,
+      startPlayerIndex: 0,
+      hands: [
+        cards('a-hiragana', 'i-hiragana', 'u-hiragana', 'e-hiragana', 'ka-hiragana', 'ki-hiragana', 'ku-hiragana'),
+        cards('sa-hiragana', 'shi-hiragana', 'su-hiragana', 'se-hiragana', 'so-hiragana', 'ta-hiragana', 'chi-hiragana'),
+        cards('na-hiragana', 'ni-hiragana', 'nu-hiragana', 'ne-hiragana', 'no-hiragana', 'ha-hiragana', 'hi-hiragana'),
+        cards('ma-hiragana', 'mi-hiragana', 'mu-hiragana', 'me-hiragana', 'mo-hiragana', 'ra-hiragana', 'ri-hiragana'),
+      ],
+      deck: [],
+    })
+    state = reduce(state, { type: 'DEAL_DONE' })
+    state = reduce(state, { type: 'DRAW' })
+    state = reduce(state, { type: 'SKIP_YAKU' })
+    expect(state.phase).toBe('gameOver')
+    expect(state.gameOverReason).toBe('deck')
+    expect(state.rankings?.every((rank) => rank.place === 1 && rank.gold === INITIAL_GOLD)).toBe(true)
+    expect(state.events.some((event) => event.text.startsWith('並列優勝：'))).toBe(true)
+    expect(state.events.some((event) => event.text.startsWith('優勝：'))).toBe(false)
+  })
+})
+
 describe('seed 可重現', () => {
   it('相同 seed 產生相同起始玩家、Bonus 與牌庫', () => {
     const a = startGame({ seed: 42 })
@@ -583,7 +608,8 @@ describe('連鎖和牌 (Combo 機制)', () => {
     expect(state.phase).toBe('playerAction')
     expect(state.currentPlayerIndex).toBe(0)
     expect(state.players[0]!.hand).toHaveLength(7)
-    expect(state.events.some((e) => e.text.includes('連鎖'))).toBe(true)
+    expect(state.comboCount).toBe(1)
+    expect(state.events.some((e) => e.text.includes('下一手為 Combo 2'))).toBe(true)
 
     // 第二次連鎖和牌：打出 a-row 同一行
     const aRowYaku = findYaku(state.players[0]!.hand, state.bonus, { activeRows: state.activeRows }).find(

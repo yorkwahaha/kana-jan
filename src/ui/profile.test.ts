@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { INITIAL_PROFILE, settleMatch } from './profile'
+import { INITIAL_PROFILE, loadProfile, settleMatch } from './profile'
 
 const memory = new Map<string, string>()
 
@@ -45,5 +45,29 @@ describe('settleMatch', () => {
     expect(next.place).toBe(2)
     expect(next.netGold).toBe(20)
     expect(next.prevGold).toBe(INITIAL_PROFILE.gold + 50)
+  })
+
+  it('並列第一名不發冠軍獎金、不加勝場，並保留連勝', () => {
+    settleMatch(1, 'win-1')
+    const tied = settleMatch(1, 'tie-2', { tiedForFirst: true })
+    expect(tied.netGold).toBe(0)
+    expect(tied.nextGold).toBe(INITIAL_PROFILE.gold + 50)
+    expect(tied.nextStreak).toBe(1)
+
+    const profile = loadProfile()
+    expect(profile.wins).toBe(1)
+    expect(profile.streak).toBe(1)
+    expect(profile.gamesPlayed).toBe(2)
+    expect(profile.gold).toBe(INITIAL_PROFILE.gold + 50)
+  })
+
+  it('開局即平手時不會把第一名獎金灌進個人檔', () => {
+    const tied = settleMatch(1, 'opening-tie', { tiedForFirst: true })
+    expect(tied.netGold).toBe(0)
+    expect(tied.nextStreak).toBe(0)
+    const profile = loadProfile()
+    expect(profile.wins).toBe(0)
+    expect(profile.gold).toBe(INITIAL_PROFILE.gold)
+    expect(profile.gamesPlayed).toBe(1)
   })
 })

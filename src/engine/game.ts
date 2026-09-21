@@ -149,10 +149,13 @@ function goGameOver(state: GameState, reason: 'gold' | 'deck'): GameState {
     rankings: ranked,
     pendingScore: state.pendingScore ?? null,
   }
-  const winner = ranked[0]
   const reasonText = reason === 'gold' ? '有人金幣歸零' : '牌庫耗盡'
   next = pushEvent(next, `遊戲結束（${reasonText}）`)
-  if (winner) {
+  const champions = ranked.filter((rank) => rank.place === 1)
+  if (champions.length > 1) {
+    next = pushEvent(next, `並列優勝：${champions.map((rank) => rank.name).join('、')}`)
+  } else if (champions[0]) {
+    const winner = champions[0]
     next = pushEvent(next, `優勝：${winner.name}（${winner.score} 分／${winner.gold} 枚金幣）`)
   }
   return next
@@ -405,7 +408,7 @@ function applyRefill(state: GameState): GameState {
         currentPlayerIndex: nextCurrentIndex,
       }
       const nextComboNum = next.comboCount + 1
-      next = pushEvent(next, `${player.name} 補牌達成連鎖，可繼續宣告（Combo ${nextComboNum}）！`)
+      next = pushEvent(next, `${player.name} 補牌達成連鎖，可繼續宣告（下一手為 Combo ${nextComboNum}）！`)
       return next
     }
   }

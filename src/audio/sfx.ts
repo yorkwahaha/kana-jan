@@ -33,7 +33,7 @@ const BASE = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) |
 const ROOT = BASE.endsWith('/') ? BASE : `${BASE}/`
 const AUDIO_BASE = `${ROOT}audio/`
 
-export const SFX_PATHS: Record<string, string> = {
+export const SFX_PATHS: Record<SfxKind, string> = {
   click: `${AUDIO_BASE}sfx/click.mp3`,
   draw: `${AUDIO_BASE}sfx/draw.mp3`,
   discard: `${AUDIO_BASE}sfx/discard.mp3`,

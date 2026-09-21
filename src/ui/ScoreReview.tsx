@@ -238,8 +238,9 @@ export function ScoreReview({
     const me = profilePlayerForSeat(state.players, mySeat)
     const myRank = rankings.find((r) => r.playerId === me?.id)
     if (!myRank || !me) return
+    const tiedForFirst = rankings.filter((rank) => rank.place === 1).length > 1
     const matchId = `${state.matchId ?? state.seed}:${me.id}:${rankings.map((r) => `${r.playerId}=${r.gold}`).join(',')}`
-    settleMatch(myRank.place, matchId)
+    settleMatch(myRank.place, matchId, { tiedForFirst: myRank.place === 1 && tiedForFirst })
   }, [isGameOver, rankings, state.players, state.seed, state.matchId, mySeat])
 
   // 音效播放（配合金幣飛行與籌碼滾動節奏）

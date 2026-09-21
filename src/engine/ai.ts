@@ -57,6 +57,26 @@ function isDangerousDiscard(card: KanaCard, state: GameState, selfId: string): n
   return danger
 }
 
+const DISCARD_SCORE_BAND = 0.75
+/** 普通難度看到低分同音、又接近高役時，略過這手的機率。 */
+const LOW_YAKU_HOLD_CHANCE = 0.28
+
+function discardScore(
+  card: KanaCard,
+  player: PlayerState,
+  state: GameState,
+  best: { distance: number; cardIds: Set<string> },
+): number {
+  const remaining = player.hand.filter((candidate) => candidate.id !== card.id)
+  const after = minDistance(remaining)
+  return (
+    (after.distance - best.distance) * 8 +
+    (best.cardIds.has(card.id) ? 6 : 0) +
+    keepValue(card, player.hand) +
+    isDangerousDiscard(card, state, player.id)
+  )
+}
+
 function pickDiscard(player: PlayerState, state: GameState, rng: Rng): string {
   if (player.hand.length === 0) throw new Error('Empty hand')
   if (player.aiDifficulty === 'easy') {
@@ -64,19 +84,10 @@ function pickDiscard(player: PlayerState, state: GameState, rng: Rng): string {
   }
 
   const best = minDistance(player.hand)
-  const scored = player.hand.map((card) => {
-    const remaining = player.hand.filter((c) => c.id !== card.id)
-    const after = minDistance(remaining)
-    const keep = keepValue(card, player.hand)
-    const inTarget = best.cardIds.has(card.id) ? 6 : 0
-    const danger = isDangerousDiscard(card, state, player.id)
-    const progressHurt = after.distance - best.distance
-    const score = progressHurt * 8 + inTarget + keep + danger
-    return { id: card.id, score }
-  })
+  const scored = player.hand.map((card) => ({ id: card.id, score: discardScore(card, player, state, best) }))
   scored.sort((a, b) => a.score - b.score)
   const floor = scored[0]!.score
-  const candidates = scored.filter((s) => s.score <= floor + 0.75)
+  const candidates = scored.filter((s) => s.score <= floor + DISCARD_SCORE_BAND)
   return rng.pick(candidates).id
 }
 
@@ -85,16 +96,7 @@ export function pickSafeTimeoutDiscard(player: PlayerState, state: GameState): s
   if (player.hand.length === 0) throw new Error('Empty hand')
   const best = minDistance(player.hand)
   return player.hand
-    .map((card) => {
-      const remaining = player.hand.filter((candidate) => candidate.id !== card.id)
-      const after = minDistance(remaining)
-      const score =
-        (after.distance - best.distance) * 8 +
-        (best.cardIds.has(card.id) ? 6 : 0) +
-        keepValue(card, player.hand) +
-        isDangerousDiscard(card, state, player.id)
-      return { id: card.id, score }
-    })
+    .map((card) => ({ id: card.id, score: discardScore(card, player, state, best) }))
     .sort((a, b) => a.score - b.score || a.id.localeCompare(b.id))[0]!.id
 }
 
@@ -109,7 +111,7 @@ function shouldDelayLowYaku(
   const near = findNearYaku(hand, state.activeRows)
   const high = near.find((n) => n.kind !== 'sameSound')
   if (!high) return false
-  return rng.next() < 0.28
+  return rng.next() < LOW_YAKU_HOLD_CHANCE
 }
 
 function decideAction(state: GameState, rng: Rng): GameAction {

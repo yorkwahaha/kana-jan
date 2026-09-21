@@ -47,7 +47,11 @@ export interface MatchSettlementResult {
 
 const LAST_SETTLED_KEY = 'kana-jan-last-settled-v1'
 
-export function settleMatch(place: number, matchId?: string): MatchSettlementResult {
+export function settleMatch(
+  place: number,
+  matchId?: string,
+  options?: { tiedForFirst?: boolean },
+): MatchSettlementResult {
   if (matchId) {
     try {
       const raw = localStorage.getItem(LAST_SETTLED_KEY)
@@ -68,7 +72,12 @@ export function settleMatch(place: number, matchId?: string): MatchSettlementRes
   let streakBonus = 0
   let nextStreak = 0
 
-  if (place === 1) {
+  if (place === 1 && options?.tiedForFirst) {
+    // 並列第一不是單獨冠軍：不發第一名獎金、不加勝場，連勝保留。
+    baseGold = 0
+    streakBonus = 0
+    nextStreak = prevStreak
+  } else if (place === 1) {
     baseGold = 50
     // 每連勝 1 場額外 +20 金幣，最高採計 5 場 (+100)
     streakBonus = Math.min(prevStreak, 5) * 20

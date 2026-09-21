@@ -136,7 +136,11 @@ export interface StartConfig {
   startPlayerIndex?: number
   /** 測試用：指定 bonus */
   bonus?: BonusMission
-  /** 測試用：指定完整牌庫順序（由上往下抽，index 0 先抽） */
+  /**
+   * 指定抽牌順序（index 0 先抽）。
+   * 未提供 hands 時這是完整牌庫，會從中發牌。
+   * 同時提供 hands 時這是發牌後的牌山；張數清單會把手牌與牌山相加，同一張牌不要放進兩邊。
+   */
   deck?: KanaCard[]
   /** 測試用：指定各玩家起始手牌，略過發牌 */
   hands?: KanaCard[][]

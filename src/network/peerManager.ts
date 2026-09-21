@@ -431,10 +431,6 @@ export class HostManager {
     return this.roomState
   }
 
-  public getCurrentGameState(): GameState | null {
-    return this.currentGameState
-  }
-
   public destroy() {
     for (const conn of this.connections.values()) {
       try {

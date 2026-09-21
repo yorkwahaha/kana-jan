@@ -20,7 +20,6 @@ export function makeHiddenCard(id: string): KanaCard {
     image: '',
     icon: '🎴',
     color: '#888',
-    styleVariant: 'hiragana',
   }
 }
 

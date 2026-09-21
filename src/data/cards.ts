@@ -21,7 +21,6 @@ export interface KanaCard {
   image: string
   icon: string
   color: string
-  styleVariant: CardType
   confusable?: KanaSound['confusable']
 }
 
@@ -71,7 +70,6 @@ export function buildCard(sound: KanaSound, cardType: CardType): KanaCard {
     image: sound.image,
     icon: sound.icon,
     color: sound.color,
-    styleVariant: cardType,
     confusable: sound.confusable,
   }
 }
