@@ -65,7 +65,7 @@ describe('假名資料完整性', () => {
     expect(spelling('chu')).toEqual(['chu', 'u', 'sha'])
     expect(spelling('nyu')).toEqual(['nyu', 'u', 'ga', 'ku'])
     expect(spelling('nyo')).toEqual(['nyo', 'ro', 'nyo', 'ro'])
-    expect(spelling('hyu')).toEqual(['hyu', 'u', 'ga'])
+    expect(spelling('hyu')).toEqual(['hyu', 'ma', 'n'])
     expect(spelling('myu')).toEqual(['myu', 'ji', 'ku'])
     expect(spelling('myo')).toEqual(['myo', 'u', 'ji'])
   })

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" role="img" aria-label="">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff9caf"/>
+      <stop offset="0.4" stop-color="#ff526b"/>
+      <stop offset="0.75" stop-color="#e6243f"/>
+      <stop offset="1" stop-color="#a90f2c"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="150%" height="150%">
+      <feDropShadow dx="5" dy="0" stdDeviation="5" flood-color="#16060b" flood-opacity=".52"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 18C22 126 50 180 126 180" fill="none" stroke="#fff" stroke-width="24"/>
+    <path d="M22 18C22 126 50 180 126 180" fill="none" stroke="url(#body)" stroke-width="15"/>
+    <path d="M119 143Q116 139 116 145V215Q116 222 123 218L191 186Q201 181 191 176L124 143Q120 140 119 143Z" fill="url(#body)" stroke="#fff" stroke-width="7"/>
+  </g>
+  <path d="M17 25C17 123 43 166 112 169" fill="none" stroke="#fff" stroke-opacity=".42" stroke-width="5" stroke-linecap="round"/>
+  <path d="M29 25C29 117 49 155 109 158" fill="none" stroke="#ffcad3" stroke-opacity=".42" stroke-width="4" stroke-linecap="round"/>
+</svg>

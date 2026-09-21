@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   availableYakuFor,
   currentPlayer,
@@ -6,8 +6,9 @@ import {
   reactionActor,
 } from '../engine/game'
 import { computeRankings } from '../engine/scoring'
-import { findNearYaku } from '../engine/yaku'
+import { findNearYaku, findYaku, type NearYakuHint } from '../engine/yaku'
 import type { GameState, YakuCandidate } from '../engine/types'
+import { getCardById, type CardType, type KanaCard } from '../data/cards'
 import { getSound } from '../data/kana'
 import type { Settings } from './settings'
 import { playersByPerspective, tablePosition } from './seats'
@@ -50,6 +51,61 @@ function fanCount(n: number) {
   return Math.min(n, 8)
 }
 
+const WAIT_CARD_TYPES: CardType[] = ['hiragana', 'katakana', 'vocabulary']
+
+interface TenpaiWait {
+  sound: string
+  card: KanaCard
+  minScore: number
+  maxScore: number
+}
+
+function buildTenpaiWaits(
+  hand: KanaCard[],
+  hints: NearYakuHint[],
+  state: Pick<GameState, 'activeRows' | 'bonus'>,
+): TenpaiWait[] {
+  const waits = new Map<string, TenpaiWait>()
+
+  for (const hint of hints) {
+    for (const sound of hint.missingSounds) {
+      const waitSound = getSound(sound)
+      const scores = WAIT_CARD_TYPES.flatMap((cardType, typeIndex) => {
+        const card = getCardById(`${sound}-${cardType}-$${900 + typeIndex}`)
+        return findYaku([...hand, card], state.bonus, {
+          activeRows: state.activeRows,
+          mustIncludeCardId: card.id,
+        })
+          .filter((yaku) => {
+            if (yaku.kind !== hint.kind) return false
+            if (hint.kind === 'sameSound') return yaku.sound === sound
+            return yaku.row === waitSound.row
+          })
+          .map((yaku) => yaku.totalScore)
+      })
+      if (scores.length === 0) continue
+
+      const minScore = Math.min(...scores)
+      const maxScore = Math.max(...scores)
+      const current = waits.get(sound)
+      waits.set(sound, {
+        sound,
+        card: getCardById(`${sound}-hiragana`),
+        minScore: current ? Math.min(current.minScore, minScore) : minScore,
+        maxScore: current ? Math.max(current.maxScore, maxScore) : maxScore,
+      })
+    }
+  }
+
+  return [...waits.values()]
+}
+
+function waitScoreLabel(wait: TenpaiWait): string {
+  return wait.minScore === wait.maxScore
+    ? `${wait.maxScore}`
+    : `${wait.minScore}–${wait.maxScore}`
+}
+
 export function GameTable({
   state,
   settings,
@@ -86,7 +142,6 @@ export function GameTable({
     settings.highlightNear && settings.learningHints
       ? findNearYaku(human.hand, state.activeRows)
       : []
-  const nearIds = new Set(nearHints.flatMap((hint) => hint.cardIds))
   const availableClaimYakus = yakus.length > 0 ? yakus : reactionYakus
   const hasClaimDecision = availableClaimYakus.length > 0
   const targetClaimYaku = hoverYaku ?? availableClaimYakus[0] ?? null
@@ -98,6 +153,24 @@ export function GameTable({
   const placeOf = (id: string) => rankings.find((r) => r.playerId === id)?.place ?? 4
   const [showLog, setShowLog] = useState(false)
   const [showReference, setShowReference] = useState(false)
+  const [showNearPanel, setShowNearPanel] = useState(true)
+  const [nearCycleIndex, setNearCycleIndex] = useState(0)
+  const nearCycleKey = nearHints
+    .map((hint) => `${hint.kind}:${hint.cardIds.join(',')}:${hint.missingSounds.join(',')}`)
+    .join('|')
+
+  useEffect(() => {
+    if (nearHints.length <= 1 || settings.animation === 'off') return
+    const interval = window.setInterval(() => {
+      setNearCycleIndex((index) => (index + 1) % nearHints.length)
+    }, settings.animation === 'fast' ? 1200 : 1800)
+    return () => window.clearInterval(interval)
+  }, [nearCycleKey, nearHints.length, settings.animation])
+
+  const activeNearIndex = nearHints.length > 0 ? nearCycleIndex % nearHints.length : 0
+  const activeNearHint = nearHints[activeNearIndex]
+  const nearIds = new Set(activeNearHint?.cardIds ?? [])
+  const tenpaiWaits = buildTenpaiWaits(human.hand, nearHints, state)
   const hudFor = (player: typeof human) => ({
     player,
     place: placeOf(player.id),
@@ -125,9 +198,10 @@ export function GameTable({
           <span className="fab-text">說明</span>
         </button>
         <button
-          className="chrome-fab highlight-fab"
+          className={`chrome-fab highlight-fab ${showReference ? 'is-open' : ''}`}
           onClick={() => setShowReference((v) => !v)}
           aria-label="牌況與役種"
+          aria-expanded={showReference}
           title="牌況與役種"
         >
           <span className="fab-icon">🎴</span>
@@ -147,13 +221,6 @@ export function GameTable({
                 ? `等待 ${current.name} 行動中...`
                 : '高點を取れ · かなジャン'}
       </p>
-      {nearHints.length > 0 && (
-        <p className="near-yaku-hint" aria-live="polite">
-          聽牌：{nearHints.slice(0, 2).map((hint) =>
-            `${hint.label} 等 ${hint.missingSounds.map((sound) => getSound(sound).hiragana).join('・')}`,
-          ).join('／')}
-        </p>
-      )}
       <button className="chrome-fab top-right" onClick={onOpenSettings} aria-label="遊戲設定" title="遊戲設定">
         <span className="fab-icon">⚙️</span>
         <span className="fab-text">設定</span>
@@ -245,6 +312,50 @@ export function GameTable({
 
         <div className="human-seat-corner">
           <SeatHud {...hudFor(human)} />
+          {nearHints.length > 0 && (
+            <div className={`tenpai-assist ${showNearPanel ? 'is-open' : 'is-collapsed'}`}>
+              {showNearPanel ? (
+                <section className="tenpai-assist-panel" aria-label="聽牌提示" aria-live="polite">
+                  <header className="tenpai-assist-head">
+                    <span className="tenpai-assist-title" aria-hidden="true"><b>聴</b></span>
+                    <button
+                      type="button"
+                      className="tenpai-toggle"
+                      onClick={() => setShowNearPanel(false)}
+                      aria-label="收合聽牌提示"
+                      title="收合"
+                    >
+                      −
+                    </button>
+                  </header>
+                  <div className="tenpai-waits">
+                    {tenpaiWaits.map((wait) => {
+                      const score = waitScoreLabel(wait)
+                      return (
+                        <div
+                          key={wait.sound}
+                          className="tenpai-wait-item"
+                          aria-label={`${wait.card.hiragana} 等待牌，和牌 ${score} 點`}
+                        >
+                          <CardView card={wait.card} size="sm" />
+                          <span className="tenpai-score">🪙{score}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+              ) : (
+                <button
+                  type="button"
+                  className="tenpai-toggle tenpai-reopen"
+                  onClick={() => setShowNearPanel(true)}
+                  aria-label="展開聽牌提示"
+                >
+                  <b>聴</b><span>聽牌</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {hasClaimDecision && (

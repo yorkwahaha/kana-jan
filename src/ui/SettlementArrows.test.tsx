@@ -41,7 +41,7 @@ describe('SettlementArrows (圖三重新設計)', () => {
     expect(html).toBe('')
   })
 
-  it('renders all three incoming arrows for tsumo win (参照圖三：上方直箭頭、左右兩側外圍弧線箭頭)', () => {
+  it('renders all three incoming arrows for tsumo win (上方直箭頭、左右兩側先向下再向內)', () => {
     // p1 (left), p2 (top), p3 (right) 支付給 p0 (human)
     const transfers = [
       { fromId: 'p2', toId: 'p0', amount: 160 },
@@ -63,7 +63,8 @@ describe('SettlementArrows (圖三重新設計)', () => {
     expect(html).toContain(left.coinPath)
     expect(html).toContain(right.coinPath)
     expect(html).toContain('/assets/ui/settlement-arrow-straight.svg')
-    expect(html).toContain('/assets/ui/settlement-arrow-curve.svg')
+    expect(html).toContain('/assets/ui/settlement-arrow-side-corner.svg')
+    expect(html).not.toContain('/assets/ui/settlement-arrow-curve.svg')
     expect(html.match(/class="settlement-arrow-art"/g)).toHaveLength(3)
     expect(html).not.toContain('<marker')
     expect(html).not.toContain('<polygon')
@@ -109,23 +110,32 @@ describe('SettlementArrows (圖三重新設計)', () => {
     expect(across.arrowAsset).toBe('/assets/ui/settlement-arrow-arc.svg')
   })
 
-  it('keeps top/bottom-to-side arrows in the outer corridors', () => {
+  it('keeps every adjacent-seat arrow in the outer corridors with direction-specific turns', () => {
     const topToLeft = getSettlementArrowGeom('top', 'left')!
     const humanToLeft = getSettlementArrowGeom('human', 'left')!
     const topToRight = getSettlementArrowGeom('top', 'right')!
     const humanToRight = getSettlementArrowGeom('human', 'right')!
+    const leftToTop = getSettlementArrowGeom('left', 'top')!
+    const leftToHuman = getSettlementArrowGeom('left', 'human')!
+    const rightToTop = getSettlementArrowGeom('right', 'top')!
+    const rightToHuman = getSettlementArrowGeom('right', 'human')!
 
     // The center result window occupies roughly x=380..620 in the 1000-unit viewBox.
-    // 左側圖稿經 translate(570) + scale(-1) 翻轉，顯示後右緣為 570 - x。
-    expect(570 - topToLeft.arrowBox.x).toBeLessThanOrEqual(380)
-    expect(570 - humanToLeft.arrowBox.x).toBeLessThanOrEqual(380)
+    expect(topToLeft.arrowBox.x + topToLeft.arrowBox.width).toBeLessThanOrEqual(380)
+    expect(humanToLeft.arrowBox.x + humanToLeft.arrowBox.width).toBeLessThanOrEqual(380)
     expect(topToRight.arrowBox.x).toBeGreaterThanOrEqual(620)
     expect(humanToRight.arrowBox.x).toBeGreaterThanOrEqual(620)
 
-    expect(topToLeft.arrowAsset).toBe('/assets/ui/settlement-arrow-outer-corner.svg')
-    expect(humanToLeft.arrowAsset).toBe('/assets/ui/settlement-arrow-outer-corner.svg')
-    expect(topToRight.arrowAsset).toBe('/assets/ui/settlement-arrow-outer-corner.svg')
-    expect(humanToRight.arrowAsset).toBe('/assets/ui/settlement-arrow-outer-corner.svg')
+    for (const geom of [topToLeft, humanToLeft, topToRight, humanToRight]) {
+      expect(geom.arrowAsset).toBe('/assets/ui/settlement-arrow-outer-corner.svg')
+      expect(geom.arrowBox.width).toBe(124)
+      expect(geom.arrowBox.height).toBe(118)
+    }
+    for (const geom of [leftToTop, leftToHuman, rightToTop, rightToHuman]) {
+      expect(geom.arrowAsset).toBe('/assets/ui/settlement-arrow-side-corner.svg')
+      expect(geom.arrowBox.width).toBe(118)
+      expect(geom.arrowBox.height).toBe(124)
+    }
 
     expect(firstLinePoint(topToLeft.coinPath).x).toBeLessThan(500)
     expect(firstLinePoint(humanToLeft.coinPath).x).toBeLessThan(500)
@@ -138,25 +148,32 @@ describe('SettlementArrows (圖三重新設計)', () => {
     expect(lastLinePoint(topToRight.coinPath)).toEqual({ x: 775, y: 315 })
     expect(lastLinePoint(humanToRight.coinPath)).toEqual({ x: 775, y: 385 })
     expect(topToRight.arrowBox.transform).toBeUndefined()
-    expect(humanToRight.arrowBox.transform).toBe('translate(0 950) scale(1 -1)')
+    expect(humanToRight.arrowBox.transform).toBe('translate(0 1042) scale(1 -1)')
   })
 
-  it('shrinks the four outer-corner arrows by 20% and moves them toward their corners', () => {
+  it('centers both directions on the same four corner anchors', () => {
     const topLeft = getSettlementArrowGeom('top', 'left')!
     const bottomLeft = getSettlementArrowGeom('human', 'left')!
     const topRight = getSettlementArrowGeom('top', 'right')!
     const bottomRight = getSettlementArrowGeom('human', 'right')!
+    const reverseTopLeft = getSettlementArrowGeom('left', 'top')!
+    const reverseBottomLeft = getSettlementArrowGeom('left', 'human')!
+    const reverseTopRight = getSettlementArrowGeom('right', 'top')!
+    const reverseBottomRight = getSettlementArrowGeom('right', 'human')!
 
-    for (const geom of [topLeft, bottomLeft, topRight, bottomRight]) {
-      expect(geom.arrowBox.width).toBe(152)
-      expect(geom.arrowBox.height).toBe(144)
-    }
+    expect(topLeft.arrowBox).toMatchObject({ x: 138, y: 88 })
+    expect(bottomLeft.arrowBox).toMatchObject({ x: 138, y: 462 })
+    expect(topRight.arrowBox).toMatchObject({ x: 718, y: 88 })
+    expect(bottomRight.arrowBox).toMatchObject({ x: 718, y: 462 })
 
-    // 1000-unit viewBox 在參考圖寬度下，20 units 約等於 30 CSS px。
-    expect(topLeft.arrowBox).toMatchObject({ x: 248, y: 115 })
-    expect(bottomLeft.arrowBox).toMatchObject({ x: 248, y: 401 })
-    expect(topRight.arrowBox).toMatchObject({ x: 640, y: 115 })
-    expect(bottomRight.arrowBox).toMatchObject({ x: 640, y: 401 })
+    const centerOf = (box: { x: number; y: number; width: number; height: number }) => ({
+      x: box.x + box.width / 2,
+      y: box.y + box.height / 2,
+    })
+    expect(centerOf(reverseTopLeft.arrowBox)).toEqual(centerOf(topLeft.arrowBox))
+    expect(centerOf(reverseBottomLeft.arrowBox)).toEqual(centerOf(bottomLeft.arrowBox))
+    expect(centerOf(reverseTopRight.arrowBox)).toEqual(centerOf(topRight.arrowBox))
+    expect(centerOf(reverseBottomRight.arrowBox)).toEqual(centerOf(bottomRight.arrowBox))
   })
 
   it('uses one-piece SVG artwork instead of a stroked line plus marker head', () => {

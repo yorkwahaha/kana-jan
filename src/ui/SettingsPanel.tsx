@@ -80,7 +80,7 @@ export function SettingsPanel({ settings, onChange, onClose, onRestart, canResta
             </label>
             <label className="toggle">
               <input type="checkbox" checked={settings.highlightNear} onChange={() => toggle('highlightNear')} />
-              高亮接近完成的牌型
+              顯示聽牌提示與高亮
             </label>
           </fieldset>
         </div>

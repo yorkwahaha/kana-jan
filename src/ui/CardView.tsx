@@ -102,6 +102,7 @@ export function CardView({
           !
         </span>
       )}
+      {hinted && <span className="card-near-sheen" aria-hidden="true" />}
     </>
   )
 
