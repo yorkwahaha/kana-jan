@@ -88,6 +88,7 @@ export function GameTable({
       : []
   const nearIds = new Set(nearHints.flatMap((hint) => hint.cardIds))
   const availableClaimYakus = yakus.length > 0 ? yakus : reactionYakus
+  const hasClaimDecision = availableClaimYakus.length > 0
   const targetClaimYaku = hoverYaku ?? availableClaimYakus[0] ?? null
   const yakuHighlight = new Set((targetClaimYaku?.cards ?? []).map((c) => c.id))
   const canDiscard = state.phase === 'discard' && humanTurn && !locked
@@ -246,7 +247,7 @@ export function GameTable({
           <SeatHud {...hudFor(human)} />
         </div>
 
-        {(yakus.length > 0 || reactionYakus.length > 0) && (
+        {hasClaimDecision && (
           <div
             className="compact-claim-dock"
             role="region"
@@ -283,7 +284,7 @@ export function GameTable({
                   aria-label={`和牌 ${y.label} ${y.totalScore} 點`}
                 >
                   <span className="compact-claim-badge">🪙 {y.totalScore}</span>
-                  <span className="compact-claim-title">{y.label}</span>
+                  <span className="compact-claim-title">和牌</span>
                 </button>
               ))}
             </div>
@@ -297,7 +298,9 @@ export function GameTable({
                 humanTurn &&
                 human.hand.length === 8 &&
                 (state.lastDrawnCardId === card.id || idx === human.hand.length - 1)
-              const showTimer = isDrawn && !!turnTimer?.active
+              // 和牌決策列已有同一回合的倒數；避免自摸時同時渲染兩個計時器，
+              // 也避免兩份 countdown 各自觸發一次 onTimeout。
+              const showTimer = isDrawn && !!turnTimer?.active && !hasClaimDecision
 
               return (
                 <div key={card.id} className={`hand-card-slot ${isDrawn ? 'is-drawn-slot' : ''}`}>

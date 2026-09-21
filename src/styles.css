@@ -2547,8 +2547,8 @@ button.kana-card { appearance: none; }
   color: #ffffff;
   border: 2px solid #93c5fd;
   border-radius: 999px;
-  padding: 7px 22px;
-  font-size: 1rem;
+  padding: 5px 14px;
+  font-size: 0.9rem;
   font-weight: 900;
   cursor: pointer;
   box-shadow: 0 4px 18px rgba(37, 99, 235, 0.6), 0 0 16px rgba(56, 189, 248, 0.5);
@@ -2557,7 +2557,7 @@ button.kana-card { appearance: none; }
   align-items: center;
   gap: 2px;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
-  min-width: 156px;
+  min-width: 110px;
 }
 .btn-compact-claim:hover {
   transform: scale(1.05);
@@ -2576,8 +2576,8 @@ button.kana-card { appearance: none; }
 }
 
 .compact-claim-title {
-  max-width: 180px;
-  font-size: 0.72rem;
+  max-width: 110px;
+  font-size: 0.78rem;
   line-height: 1.15;
   letter-spacing: 0.02em;
   text-align: center;
@@ -4241,9 +4241,19 @@ button.kana-card { appearance: none; }
   }
 }
 
-/* 平板橫向：沿用手機版的側家透視，但保留平板較寬鬆的尺寸與桌面留白。
-   側家牌河必須位於手牌的桌心側，並顯示在手牌之上，避免被直疊手牌吞掉。 */
+/* 平板橫向：以參考桌面為座標基準，四家手牌與牌河各自保留獨立軌道。
+   上家手牌／牌河不交疊，左右手牌共用同一水平基準，自家手牌避開左下 HUD。 */
 @media (orientation: landscape) and (min-height: 561px) and (max-width: 1280px) {
+  .table-prompt {
+    right: 148px;
+    max-width: 48vw;
+  }
+
+  .chrome-fab.top-right {
+    top: 16px;
+    right: 18px;
+  }
+
   .seat-hud.pos-left {
     left: 0.5%;
     top: 16%;
@@ -4259,8 +4269,12 @@ button.kana-card { appearance: none; }
     top: 7%;
   }
 
+  .human-seat-corner {
+    left: 0;
+  }
+
   .hand-fan.pos-top {
-    top: 7%;
+    top: 3.5%;
     left: 52.5%;
   }
 
@@ -4280,35 +4294,35 @@ button.kana-card { appearance: none; }
   }
 
   .hand-fan.pos-left {
-    left: 14.5%;
-    top: 34.1%;
-    transform: translate(-50%, -50%) rotate(5deg);
+    left: calc(14.5% - 15px);
+    top: 23.5%;
+    transform: translateX(-50%) rotate(5deg);
   }
 
   .hand-fan.pos-right {
-    left: 86.5%;
+    left: calc(85.5% + 15px);
     right: auto;
-    top: 39%;
-    transform: translate(-50%, -50%) rotate(-5deg);
+    top: 23.5%;
+    transform: translateX(-50%) rotate(-5deg);
   }
 
   .hand-fan.pos-left .mini-back,
   .hand-fan.pos-right .mini-back {
-    width: 74px;
-    height: 78px;
+    width: 68px;
+    height: 74px;
     margin-right: 0;
     border-radius: 5px;
   }
 
   .hand-fan.pos-left .mini-back {
-    margin-bottom: -55px;
+    margin-bottom: -51px;
     transform: rotateY(52deg);
     transform-origin: left center;
     box-shadow: 9px 8px 15px rgba(0, 0, 0, 0.52);
   }
 
   .hand-fan.pos-right .mini-back {
-    margin-bottom: -50px;
+    margin-bottom: -51px;
     transform: rotateY(-52deg);
     transform-origin: right center;
     box-shadow: -9px 8px 15px rgba(0, 0, 0, 0.52);
@@ -4324,38 +4338,85 @@ button.kana-card { appearance: none; }
     z-index: 5;
   }
 
+  .discard-river.pos-top {
+    top: 16%;
+    z-index: 5;
+  }
+
+  .discard-river.pos-left .kana-card.size-river,
+  .discard-river.pos-right .kana-card.size-river {
+    width: 42px;
+    min-width: 42px;
+    height: 58px;
+  }
+
+  .discard-river.pos-left .river-column,
+  .discard-river.pos-right .river-column {
+    width: 42px;
+    height: 58px;
+  }
+
   .discard-river.pos-left {
-    left: 23.5%;
-    top: 27%;
-    transform: rotate(95deg) scale(0.95);
+    left: 22.5%;
+    top: 28%;
+    transform: rotate(95deg) scale(0.9);
   }
 
   .discard-river.pos-right {
-    right: 20.5%;
-    top: 48%;
-    transform: rotate(-95deg) scale(0.95);
+    right: 22.5%;
+    top: 28%;
+    transform: rotate(-95deg) scale(0.9);
   }
 
   .discard-river.pos-human {
-    left: 41%;
+    left: 50%;
+    bottom: 26%;
   }
 
   .center-board {
-    left: 53%;
+    left: 50%;
+    top: 40%;
   }
 
   .human-hand-area {
-    left: 45%;
-    bottom: 4%;
-    max-width: 68vw;
+    left: 15.5%;
+    bottom: 2%;
+    transform: none;
+    max-width: none;
+    align-items: flex-start;
+  }
+
+  .human-hand-area .hand-row {
+    width: 628px;
+    gap: 4px;
+    justify-content: flex-start;
   }
 
   .human-hand-area .kana-card,
   .human-hand-area .kana-card.size-lg {
-    width: 76px;
-    min-width: 76px;
-    height: 106px;
+    width: 74px;
+    min-width: 74px;
+    height: 110px;
     font-size: 13px;
+  }
+
+  .hand-card-slot.is-drawn-slot {
+    margin-left: 8px;
+  }
+
+  .compact-claim-dock {
+    right: 4%;
+    bottom: 25%;
+    gap: 8px;
+  }
+
+  .compact-claim-buttons {
+    gap: 6px;
+  }
+
+  .btn-compact-skip {
+    padding: 4px 14px;
+    font-size: 0.82rem;
   }
 }
 
