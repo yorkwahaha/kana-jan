@@ -26,8 +26,8 @@ export function Tutorial({ onClose }: Props) {
             </div>
           </section>
           <section>
-            <h3>2. 三音行揃い（拗音／や／わ） · 180 / 480 點</h3>
-            <p>同一拗音行的 3 個不同讀音（如 きゃ・きゅ・きょ，180 點）。<strong>や行（やゆよ）與 わ行（わをん）</strong>同樣是三音揃い。三張全同類型總計 <strong>480 點（+300）</strong>。</p>
+            <h3>2. 三音揃い（拗音／や行／わ・を・ん組） · 180 / 480 點</h3>
+            <p>同一拗音行的 3 個不同讀音（如 きゃ・きゅ・きょ，180 點）。<strong>や行（やゆよ）與遊戲用的 わ・を・ん組</strong>同樣是三音揃い；「ん」不是一般五十音的わ行成員。三張全同類型總計 <strong>480 點（+300）</strong>。</p>
             <div className="tutorial-cards">
               <CardView card={getCardById('kya-hiragana')} size="sm" />
               <CardView card={getCardById('kyu-katakana')} size="sm" />
@@ -36,7 +36,7 @@ export function Tutorial({ onClose }: Props) {
           </section>
           <section>
             <h3>3. 一行揃い（滿貫大牌 5 張）· 480 / 1800 點</h3>
-            <p>清音／濁音同一行的 5 個不同讀音（480 點）。全同類型享有高達 <strong>1,800 點純色滿貫大牌</strong>！單行或兩行教學關會依登場行數調降（單行 180／480、兩行 300／960），實際點數以牌況面板為準。</p>
+            <p>清音／濁音／半濁音同一五音行的 5 個不同讀音（480 點）。全同類型享有高達 <strong>1,800 點純色滿貫大牌</strong>！單行或兩行教學關會依登場行數調降（單行 180／480、兩行 300／960），實際點數以牌況面板為準。</p>
             <div className="tutorial-cards">
               <CardView card={getCardById('ka-hiragana')} size="sm" />
               <CardView card={getCardById('ki-katakana')} size="sm" />
@@ -49,6 +49,7 @@ export function Tutorial({ onClose }: Props) {
             <h3>4. Bonus 與連鎖（Combo）</h3>
             <p>牌型中只要包含 BONUS 讀音的平假名、片假名或單字牌，都額外 +90 點。</p>
             <p>完成牌型並補滿 7 張後，若手牌仍有合法牌型，可繼續宣告自摸直到無法成牌或主動略過。抄牌後同樣可以連鎖。連鎖結束後輪到原棄牌者的下一家；若下家就是抄牌者，則再順延一家，避免抄牌後立刻再摸打一次。</p>
+            <p>「できた！」判定看的是抽牌後的整副手牌：合法牌型<strong>不必包含剛摸到的那張牌</strong>。這是本遊戲的明確規則，不採麻將必須以進張完成牌型的限制。</p>
           </section>
           <section>
             <h3>5. 自己抽到 vs 使用別人的棄牌</h3>

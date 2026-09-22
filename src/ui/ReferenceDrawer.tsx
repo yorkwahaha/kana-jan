@@ -62,7 +62,7 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose, initialTab
               className={`drawer-tab ${activeTab === 'remaining' ? 'is-active' : ''}`}
               onClick={() => setActiveTab('remaining')}
             >
-              剩餘卡牌
+              未見牌
             </button>
             <button
               type="button"
@@ -85,11 +85,12 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose, initialTab
         </header>
 
         <div className="drawer-body">
-          {/* 分頁 1：剩餘卡牌 */}
+          {/* 分頁 1：未見牌（公開初始構成 - 已看見牌） */}
           {activeTab === 'remaining' && (
             <div className="tab-pane remaining-pane">
               <div className="remaining-summary">
                 <span>牌山剩餘：<strong>{state.deck.length}</strong> 張</span>
+                <span className="summary-note">未見牌＝公開初始構成－已公開／自己看見的牌</span>
                 <span className="summary-legend">
                   <i className="dot dot-hira" />平
                   <i className="dot dot-kata" />片
@@ -186,7 +187,7 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose, initialTab
                 <div className="yaku-item-card">
                   <div className="yaku-info">
                     <strong>三音行揃い（快攻首選）</strong>
-                    <p>同一拗音、や行或わ行的 3 個相異讀音（混色 180 / 純色 480）</p>
+                    <p>同一拗音、や行或わ・を・ん組的 3 個相異讀音（混色 180 / 純色 480）</p>
                   </div>
                   <div className="yaku-score">180 / 480 點</div>
                 </div>
@@ -197,11 +198,11 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose, initialTab
                     <strong>一行揃い（滿貫大牌 5 張）</strong>
                     {rowAvailable ? (
                       <p>
-                        清音／濁音同一行 5 個相異讀音（混色 {rowScore.base} / 純色 {rowUniform}）
+                        清音／濁音／半濁音同一五音行 5 個相異讀音（混色 {rowScore.base} / 純色 {rowUniform}）
                         {rowScoreScaled ? '。本局登場行較少，分數已調降' : ''}
                       </p>
                     ) : (
-                      <p>本局沒有五音行（清音／濁音），無法組成一行揃い。</p>
+                      <p>本局沒有五音行（清音／濁音／半濁音），無法組成一行揃い。</p>
                     )}
                   </div>
                   <div className="yaku-score">
@@ -257,7 +258,7 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose, initialTab
                     <strong>同音純色（3張）</strong>：同讀音 3 張皆為同一字形，得分提升至 <strong>840 點</strong>
                   </li>
                   <li>
-                    <strong>三音行純色（3張）</strong>：拗音、や行或わ行 3 音同字形，得分提升至 <strong>480 點</strong>
+                    <strong>三音組純色（3張）</strong>：拗音、や行或わ・を・ん組 3 音同字形，得分提升至 <strong>480 點</strong>
                   </li>
                 </ul>
               </section>

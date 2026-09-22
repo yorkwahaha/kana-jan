@@ -1,4 +1,6 @@
 export const ROOM_PREFIX = 'KANA-'
+export const ROOM_CODE_CHARS = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'
+const ROOM_BODY_RE = /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}$/
 
 function randomIndex(max: number): number {
   if (max <= 0) return 0
@@ -12,23 +14,25 @@ function randomIndex(max: number): number {
 
 /** 產生短房號，如 KANA-7X89（優先使用 CSPRNG） */
 export function generateRoomCode(): string {
-  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ' // 去除易混淆字元 0, 1, I, O
   let code = ''
   for (let i = 0; i < 4; i++) {
-    code += chars.charAt(randomIndex(chars.length))
+    code += ROOM_CODE_CHARS.charAt(randomIndex(ROOM_CODE_CHARS.length))
   }
   return `${ROOM_PREFIX}${code}`
 }
 
-/** 正規化房號輸入，自動補上 KANA- 前綴並轉為大寫 */
+/** 正規化並嚴格驗證房號。只接受 4 碼、且排除 0/1/I/O。 */
+export function tryParseRoomCode(input: string): string | null {
+  let body = input.trim().toUpperCase()
+  if (body.startsWith(ROOM_PREFIX)) body = body.slice(ROOM_PREFIX.length)
+  if (!ROOM_BODY_RE.test(body)) return null
+  return `${ROOM_PREFIX}${body}`
+}
+
 export function parseRoomCode(input: string): string {
-  let cleaned = input.trim().toUpperCase()
-  if (cleaned.startsWith(ROOM_PREFIX)) {
-    cleaned = cleaned.slice(ROOM_PREFIX.length)
-  }
-  // 移除非英數字
-  cleaned = cleaned.replace(/[^A-Z0-9]/g, '')
-  return `${ROOM_PREFIX}${cleaned}`
+  const parsed = tryParseRoomCode(input)
+  if (!parsed) throw new Error('Invalid Kana Jan room code')
+  return parsed
 }
 
 /** 取得完整的房間分享網址 */
@@ -44,7 +48,7 @@ export function getRoomFromUrl(search: string = typeof window !== 'undefined' ? 
   const params = new URLSearchParams(search)
   const room = params.get('room')
   if (!room) return null
-  return parseRoomCode(room)
+  return tryParseRoomCode(room)
 }
 
 /** 複製文字至剪貼簿 */

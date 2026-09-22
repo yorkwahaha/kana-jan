@@ -270,13 +270,13 @@ describe('拗音牌型', () => {
     expect(yoon?.label).toContain('や行揃い')
   })
 
-  it('わ行三音（わ／を／ん）判定為三音揃い', () => {
+  it('わ・を・ん組判定為三音揃い', () => {
     const hand = cards('wa-hiragana', 'wo-katakana', 'n-vocabulary')
     const found = findYaku(hand, noBonus, { activeRows: ['ya', 'wa'] })
     const yoon = found.find((y) => y.kind === 'sameYoon' && y.row === 'wa')
     expect(yoon).toBeTruthy()
     expect(yoon?.baseScore).toBe(180)
-    expect(yoon?.label).toContain('わ行揃い')
+    expect(yoon?.label).toContain('わ・を・ん組揃い')
   })
 
   it('拗音三張全同類型享 +300 純色加成（共 480 分）', () => {

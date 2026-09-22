@@ -238,7 +238,7 @@ export function findYaku(
     const expectedSounds = soundsForRows([rowId]).map((kana) => kana.sound)
 
     if (isThreeSoundRow(rowId)) {
-      // 三音行（拗音／や行／わ行）：3 個不同讀音湊齊即成牌型
+      // 三音組（拗音／や行／わ・を・ん組）：3 個不同讀音湊齊即成牌型
       const soundsInRow = groupBy(group, (c) => c.sound)
       if (expectedSounds.every((sound) => soundsInRow.has(sound))) {
         for (const picked of pickCardSetsForSounds(soundsInRow, expectedSounds, mustId)) {
@@ -257,7 +257,7 @@ export function findYaku(
         }
       }
     } else {
-      // 清音 / 濁音行：5 個音
+      // 清音 / 濁音 / 半濁音五音行：5 個音
       const soundsInRow = groupBy(group, (c) => c.sound)
       if (expectedSounds.every((sound) => soundsInRow.has(sound))) {
         for (const picked of pickCardSetsForSounds(soundsInRow, expectedSounds, mustId)) {

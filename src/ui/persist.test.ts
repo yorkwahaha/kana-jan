@@ -25,6 +25,30 @@ describe('對局存檔版本', () => {
     expect(loadGame()?.players[0]?.gold).toBe(70)
   })
 
+  it('拒絕牌 ID 與牌面內容不一致的竄改存檔', () => {
+    const state = startGame({ seed: 15, skipPreview: true })
+    state.deck[0] = { ...state.deck[0]!, id: 'a-hiragana' }
+    localStorage.setItem('kana-jan-save-v1', JSON.stringify({ version: 2, state }))
+    expect(loadGame()).toBeNull()
+  })
+
+  it('拒絕負數數值、重複座位與非法登場行', () => {
+    const state = startGame({ seed: 16, skipPreview: true })
+    state.players[0]!.gold = -10
+    localStorage.setItem('kana-jan-save-v1', JSON.stringify({ version: 2, state }))
+    expect(loadGame()).toBeNull()
+
+    const duplicateSeat = startGame({ seed: 17, skipPreview: true })
+    duplicateSeat.players[1]!.seat = 0
+    localStorage.setItem('kana-jan-save-v1', JSON.stringify({ version: 2, state: duplicateSeat }))
+    expect(loadGame()).toBeNull()
+
+    const badRows = startGame({ seed: 18, skipPreview: true })
+    badRows.activeRows = ['a', 'a']
+    localStorage.setItem('kana-jan-save-v1', JSON.stringify({ version: 2, state: badRows }))
+    expect(loadGame()).toBeNull()
+  })
+
   it('未標版本的舊 20/25 點制存檔仍會被拒絕', () => {
     const state = startGame({ seed: 7, skipPreview: true })
     state.players[0]!.gold = 20

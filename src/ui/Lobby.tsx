@@ -180,7 +180,7 @@ export function Lobby({
                     <input
                       className="room-code-input"
                       value={joinCode}
-                      placeholder="例如 KANA-7821"
+                      placeholder="例如 KANA-7X89"
                       maxLength={10}
                       onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                       onKeyDown={(e) => {

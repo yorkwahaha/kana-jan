@@ -16,11 +16,27 @@ export const INITIAL_PROFILE: UserProfile = {
   wins: 0,
 }
 
+function safeCounter(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isInteger(value) && Number.isFinite(value) && value >= 0
+    ? value
+    : fallback
+}
+
 export function loadProfile(): UserProfile {
   try {
     const raw = localStorage.getItem(PROFILE_KEY)
     if (!raw) return { ...INITIAL_PROFILE }
-    return { ...INITIAL_PROFILE, ...JSON.parse(raw) }
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { ...INITIAL_PROFILE }
+    const streak = safeCounter(parsed.streak, INITIAL_PROFILE.streak)
+    const bestStreak = Math.max(streak, safeCounter(parsed.bestStreak, INITIAL_PROFILE.bestStreak))
+    return {
+      gold: safeCounter(parsed.gold, INITIAL_PROFILE.gold),
+      streak,
+      bestStreak,
+      gamesPlayed: safeCounter(parsed.gamesPlayed, INITIAL_PROFILE.gamesPlayed),
+      wins: safeCounter(parsed.wins, INITIAL_PROFILE.wins),
+    }
   } catch {
     return { ...INITIAL_PROFILE }
   }

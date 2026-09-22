@@ -29,6 +29,23 @@ describe('settleMatch', () => {
     memory.clear()
   })
 
+  it('讀取個人檔時會忽略負數、非整數與錯誤型態欄位', () => {
+    localStorage.setItem('kana-jan-profile-v1', JSON.stringify({
+      gold: -999,
+      streak: '3',
+      bestStreak: 1.5,
+      gamesPlayed: 12,
+      wins: 4,
+    }))
+    expect(loadProfile()).toEqual({
+      gold: INITIAL_PROFILE.gold,
+      streak: INITIAL_PROFILE.streak,
+      bestStreak: INITIAL_PROFILE.bestStreak,
+      gamesPlayed: 12,
+      wins: 4,
+    })
+  })
+
   it('同一 matchId 重複呼叫不會再發放金幣', () => {
     const first = settleMatch(1, 'match-a')
     expect(first.netGold).toBe(50)

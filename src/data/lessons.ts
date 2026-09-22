@@ -1,4 +1,4 @@
-import { DAKUON_ROWS, ROW_ORDER, SEION_ROWS, YOON_ROWS, type RowId } from './kana'
+import { DAKUON_HANDAKUON_ROWS, ROW_ORDER, SEION_ROWS, YOON_ROWS, type RowId } from './kana'
 
 export interface Lesson {
   id: string
@@ -9,9 +9,9 @@ export interface Lesson {
 }
 
 export const LESSONS: Lesson[] = [
-  { id: 'random-4', label: '隨機 4 行', detail: '清・濁・拗全隨機 4 行對局', rows: [], isRandom: true },
+  { id: 'random-4', label: '隨機 4 行', detail: '清音・濁音/半濁音・拗音混合 4 組對局', rows: [], isRandom: true },
   { id: 'seion-4', label: '清音隨機 4 行', detail: '從あ〜ら基礎行隨機抽選 4 行', rows: [], isRandom: true },
-  { id: 'dakuon-4', label: '濁音混成 4 行', detail: '清音 2 行 ＋ 濁音 2 行', rows: [], isRandom: true },
+  { id: 'dakuon-4', label: '濁音・半濁音混成 4 行', detail: '清音 2 行 ＋ 濁音/半濁音 2 行', rows: [], isRandom: true },
   { id: 'yoon-4', label: '拗音挑戰 4 行', detail: '清音 2 行 ＋ 拗音 2 行', rows: [], isRandom: true },
   { id: 'a', label: 'あ行', detail: '先學會あいうえお', rows: ['a'] },
   { id: 'a-ka', label: 'あ・か行', detail: '加上かきくけこ', rows: ['a', 'ka'] },
@@ -19,7 +19,7 @@ export const LESSONS: Lesson[] = [
   { id: 'a-ta', label: 'あ〜た行', detail: '加入たちつてと', rows: ['a', 'ka', 'sa', 'ta'] },
   { id: 'a-na', label: 'あ〜な行', detail: '前五行（あ・か・さ・た・な）', rows: ['a', 'ka', 'sa', 'ta', 'na'] },
   { id: 'a-ra', label: 'あ〜ら行', detail: '前八行清音（不含や・わ）', rows: ['a', 'ka', 'sa', 'ta', 'na', 'ha', 'ma', 'ra'] },
-  { id: 'ya-wa', label: 'や・わ行', detail: 'やゆよ 與 わをん，三音揃い', rows: ['ya', 'wa'] },
+  { id: 'ya-wa', label: 'や行・わをん組', detail: 'やゆよ 與 わ・を・ん，三音揃い', rows: ['ya', 'wa'] },
 ]
 
 export const DEFAULT_LESSON_ID = 'random-4'
@@ -33,7 +33,7 @@ export function pickLessonRows(
   shuffle: <T>(items: readonly T[]) => T[],
 ): RowId[] {
   if (lessonId === 'random-4') {
-    const seionAndDakuon: RowId[] = [...SEION_ROWS, ...DAKUON_ROWS]
+    const seionAndDakuon: RowId[] = [...SEION_ROWS, ...DAKUON_HANDAKUON_ROWS]
     const pickedSeionDakuon = shuffle(seionAndDakuon).slice(0, 2)
     const pickedYoon = shuffle(YOON_ROWS).slice(0, 1)
     const alreadyPicked = new Set<RowId>([...pickedSeionDakuon, ...pickedYoon])
@@ -46,7 +46,7 @@ export function pickLessonRows(
   }
   if (lessonId === 'dakuon-4') {
     const s = shuffle(SEION_ROWS).slice(0, 2)
-    const d = shuffle(DAKUON_ROWS).slice(0, 2)
+    const d = shuffle(DAKUON_HANDAKUON_ROWS).slice(0, 2)
     return [...s, ...d]
   }
   if (lessonId === 'yoon-4') {

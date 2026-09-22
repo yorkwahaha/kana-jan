@@ -44,11 +44,15 @@ describe('假名資料完整性', () => {
     expect(getCardById('ja-vocabulary').writtenForm).toBe('馬鈴薯')
   })
 
-  it('所有單字拼字中的讀音均存在於 KANA_SOUNDS 中', () => {
+  it('所有單字拼字中的一般讀音均存在於 KANA_SOUNDS，特殊單位只允許促音或長音', () => {
     const allSoundIds = new Set(KANA_SOUNDS.map((k) => k.sound))
     for (const kana of KANA_SOUNDS) {
-      for (const mora of kana.spelling) {
-        expect(allSoundIds.has(mora)).toBe(true)
+      for (const unit of kana.spelling) {
+        if (typeof unit === 'string') {
+          expect(allSoundIds.has(unit)).toBe(true)
+        } else {
+          expect(['sokuon', 'choon']).toContain(unit.type)
+        }
       }
     }
   })
@@ -59,14 +63,17 @@ describe('假名資料完整性', () => {
     expect(KANA_SOUNDS.find((k) => k.sound === 'ya')?.hiragana).toBe('や')
   })
 
-  it('長音與重複音節不會從單字學習資料中遺失', () => {
+  it('長音、促音與重複音節不會從單字學習資料中遺失', () => {
     const spelling = (sound: string) => KANA_SOUNDS.find((k) => k.sound === sound)?.spelling
+    expect(spelling('ke')).toEqual(['ke', { type: 'choon' }, 'ki'])
+    expect(spelling('ga')).toEqual(['ga', { type: 'sokuon' }, 'ko', 'u'])
+    expect(spelling('za')).toEqual(['za', { type: 'sokuon' }, 'shi'])
     expect(spelling('kyu')).toEqual(['kyu', 'u', 'ri'])
     expect(spelling('chu')).toEqual(['chu', 'u', 'sha'])
     expect(spelling('nyu')).toEqual(['nyu', 'u', 'ga', 'ku'])
     expect(spelling('nyo')).toEqual(['nyo', 'ro', 'nyo', 'ro'])
-    expect(spelling('hyu')).toEqual(['hyu', 'ma', 'n'])
-    expect(spelling('myu')).toEqual(['myu', 'ji', 'ku'])
+    expect(spelling('hyu')).toEqual(['hyu', { type: 'choon' }, 'ma', 'n'])
+    expect(spelling('myu')).toEqual(['myu', { type: 'choon' }, 'ji', { type: 'sokuon' }, 'ku'])
     expect(spelling('myo')).toEqual(['myo', 'u', 'ji'])
   })
 })

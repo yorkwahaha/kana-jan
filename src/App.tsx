@@ -20,7 +20,7 @@ import { DEFAULT_LESSON_ID } from './data/lessons'
 import { authorizeClientAction, generateResumeToken, restoreDisconnectedPlayer } from './network/authorize'
 import { GuestManager, HostManager } from './network/peerManager'
 import { clearResume, loadResume } from './network/resume'
-import { generateRoomCode, getRoomFromUrl, parseRoomCode } from './network/roomCode'
+import { generateRoomCode, getRoomFromUrl, tryParseRoomCode } from './network/roomCode'
 import type { RoomState } from './network/types'
 import { CatalogModal } from './ui/CatalogModal'
 import { GameTable } from './ui/GameTable'
@@ -464,9 +464,14 @@ export function App() {
   const handleJoinRoom = useCallback(
     (code: string) => {
       playSfx('click', settings.sfx)
+      const normalized = tryParseRoomCode(code)
+      if (!normalized) {
+        setNetError('房號格式不正確：請輸入 4 碼房號，並避免 0、1、I、O。')
+        return
+      }
+      setNetError(null)
       cleanupNetwork()
       clearGame()
-      const normalized = parseRoomCode(code)
       if (typeof window !== 'undefined') {
         window.history.replaceState({}, '', `?room=${normalized}`)
       }

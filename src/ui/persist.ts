@@ -1,7 +1,7 @@
 import { createLobbyState } from '../engine/game'
 import { makeTargetBonus } from '../data/bonuses'
-import { CARD_CATALOG, type KanaCard } from '../data/cards'
-import { getSound } from '../data/kana'
+import { getCardById, type KanaCard } from '../data/cards'
+import { getSound, ROW_ORDER } from '../data/kana'
 import type { GameState } from '../engine/types'
 
 const KEY = 'kana-jan-save-v1'
@@ -16,29 +16,69 @@ const VALID_PHASES = new Set([
   'lobby', 'preview', 'dealing', 'playerDraw', 'playerAction', 'discard', 'reaction',
   'scoring', 'review', 'refill', 'nextTurn', 'gameOver',
 ])
-const VALID_CARD_SHAPES = new Set(CARD_CATALOG.map((card) => `${card.sound}:${card.cardType}:${card.row}`))
 
 function isValidCard(card: unknown): card is KanaCard {
   if (!card || typeof card !== 'object') return false
   const candidate = card as Partial<KanaCard>
-  return typeof candidate.id === 'string' &&
-    VALID_CARD_SHAPES.has(`${candidate.sound}:${candidate.cardType}:${candidate.row}`)
+  if (typeof candidate.id !== 'string') return false
+  try {
+    const canonical = getCardById(candidate.id)
+    return candidate.sound === canonical.sound &&
+      candidate.romaji === canonical.romaji &&
+      candidate.hiragana === canonical.hiragana &&
+      candidate.katakana === canonical.katakana &&
+      candidate.row === canonical.row &&
+      candidate.column === canonical.column &&
+      candidate.cardType === canonical.cardType &&
+      candidate.vocabulary === canonical.vocabulary &&
+      candidate.writtenForm === canonical.writtenForm
+  } catch {
+    return false
+  }
+}
+
+function isNonNegativeFinite(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+}
+
+function hasValidManifest(manifest: unknown): boolean {
+  if (manifest === undefined) return true
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) return false
+  return Object.values(manifest).every((count) => Number.isInteger(count) && isNonNegativeFinite(count))
 }
 
 function hasValidCoreState(state: GameState): boolean {
   if (!VALID_PHASES.has(state.phase)) return false
   if (!Array.isArray(state.players) || state.players.length !== 4) return false
   if (!Number.isInteger(state.currentPlayerIndex) || state.currentPlayerIndex < 0 || state.currentPlayerIndex >= state.players.length) return false
+  if (!Number.isInteger(state.startPlayerIndex) || state.startPlayerIndex < 0 || state.startPlayerIndex >= state.players.length) return false
+  if (!Number.isInteger(state.seed) || !Number.isInteger(state.rngState)) return false
+  if (!Array.isArray(state.activeRows) || state.activeRows.length === 0) return false
+  if (new Set(state.activeRows).size !== state.activeRows.length) return false
+  if (!state.activeRows.every((row) => ROW_ORDER.includes(row))) return false
   if (!Array.isArray(state.deck) || !state.deck.every(isValidCard)) return false
+  if (!Array.isArray(state.discardPile) || !state.discardPile.every(isValidCard)) return false
   if (state.currentDiscard !== null && !isValidCard(state.currentDiscard)) return false
+  if (!hasValidManifest(state.deckManifest)) return false
+
+  const ids = state.players.map((player) => player.id)
+  const seats = state.players.map((player) => player.seat).sort((a, b) => a - b)
+  if (new Set(ids).size !== 4 || ids.some((id) => typeof id !== 'string' || !id)) return false
+  if (seats.join(',') !== '0,1,2,3') return false
+  const playerIds = new Set(ids)
+  if (!Array.isArray(state.reactionOptions) || !state.reactionOptions.every((option) => playerIds.has(option.playerId))) return false
+
   if (state.pendingScore) {
     const pending = state.pendingScore
-    if (!state.players.some((player) => player.id === pending.playerId)) return false
+    if (!playerIds.has(pending.playerId)) return false
     if (!Array.isArray(pending.yaku?.cards) || !pending.yaku.cards.every(isValidCard)) return false
     if (pending.claimedCard && !isValidCard(pending.claimedCard)) return false
-    if (pending.fromPlayerId && !state.players.some((player) => player.id === pending.fromPlayerId)) return false
+    if (pending.fromPlayerId && !playerIds.has(pending.fromPlayerId)) return false
   }
   return state.players.every((player) =>
+    typeof player.name === 'string' &&
+    isNonNegativeFinite(player.gold) &&
+    isNonNegativeFinite(player.score) &&
     Number.isInteger(player.seat) &&
     Array.isArray(player.hand) && player.hand.every(isValidCard) &&
     Array.isArray(player.discards ?? []) && (player.discards ?? []).every(isValidCard) &&
