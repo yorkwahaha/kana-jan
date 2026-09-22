@@ -1,10 +1,7 @@
 import { getCardById, type KanaCard } from './cards'
 import { getSound, type KanaSound } from './kana'
 
-export type BonusKind = 'targetSound'
-
 export interface BonusMission {
-  kind: BonusKind
   sound: string
   cardId: string
   label: string
@@ -17,7 +14,6 @@ export const DEFAULT_MISSION_POINTS = 90
 export function makeTargetBonus(kana: KanaSound, points = DEFAULT_MISSION_POINTS): BonusMission {
   const cardId = `${kana.sound}-hiragana`
   return {
-    kind: 'targetSound',
     sound: kana.sound,
     cardId,
     label: kana.hiragana,
