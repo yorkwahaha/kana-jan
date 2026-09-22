@@ -11,7 +11,6 @@ export interface Settings {
   showRow: boolean
   showColumn: boolean
   highlightNear: boolean
-  recallQuiz: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -25,7 +24,6 @@ export const DEFAULT_SETTINGS: Settings = {
   showRow: false,
   showColumn: false,
   highlightNear: true,
-  recallQuiz: false,
 }
 
 const KEY = 'kana-jan-settings-v1'
