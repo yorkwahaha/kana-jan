@@ -894,3 +894,162 @@ describe('連鎖和牌 (Combo 機制)', () => {
   })
 })
 
+describe('榮和後的下一家', () => {
+  const discardCard = getCardById('ka-vocabulary')
+
+  function neutralHand(ids: string[]): KanaCard[] {
+    return fillHand([], ids)
+  }
+
+  function discarderHand(): KanaCard[] {
+    return fillHand(
+      [discardCard],
+      ['sa-hiragana', 'shi-hiragana', 'ta-hiragana', 'chi-hiragana', 'na-hiragana', 'ha-hiragana'],
+    )
+  }
+
+  function claimerHand(): KanaCard[] {
+    return [
+      getCardById('ka-hiragana'),
+      getCardById('ka-katakana'),
+      ...cards('su-hiragana', 'se-hiragana', 'ni-hiragana', 'hi-hiragana', 'mi-hiragana'),
+    ]
+  }
+
+  function ronThenDraw(claimerIndex: number) {
+    const others = [
+      neutralHand(['so-hiragana', 'to-hiragana', 'ne-hiragana', 'fu-hiragana', 'mu-hiragana', 'ra-hiragana', 'ri-hiragana']),
+      neutralHand(['tsu-hiragana', 'te-hiragana', 'no-hiragana', 'he-hiragana', 'me-hiragana', 'ru-hiragana', 're-hiragana']),
+    ]
+    const hands = [0, 1, 2, 3].map((index) => {
+      if (index === 0) return discarderHand()
+      if (index === claimerIndex) return claimerHand()
+      return others.pop()!
+    })
+    let state = startGame({
+      seed: 1100 + claimerIndex,
+      startPlayerIndex: 0,
+      skipPreview: true,
+      bonus,
+      hands,
+      deck: cards('a-hiragana', 'i-hiragana', 'u-hiragana', 'e-hiragana', 'o-hiragana'),
+    })
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    state = play(state, { type: 'SKIP_YAKU' })
+    state = play(state, { type: 'DISCARD', cardId: discardCard.id })
+    expect(state.phase).toBe('reaction')
+    expect(state.reactionOptions.map((option) => option.playerId)).toEqual([`p${claimerIndex}`])
+    const yaku = findYaku([...state.players[claimerIndex]!.hand, state.currentDiscard!], state.bonus, {
+      mustIncludeCardId: discardCard.id,
+      activeRows: state.activeRows,
+    })[0]!
+    state = play(state, { type: 'CLAIM_YAKU', yakuId: yaku.id })
+    state = play(state, { type: 'FINISH_REVIEW' })
+    return state
+  }
+
+  it('下家榮和且不連鎖時，下一家是再下家', () => {
+    const state = ronThenDraw(1)
+    expect(state.phase).toBe('playerDraw')
+    expect(state.currentPlayerIndex).toBe(2)
+    expect(state.turnOwnerIndex).toBe(2)
+  })
+
+  it('對家榮和且不連鎖時，下一家仍是棄牌者的下家', () => {
+    const state = ronThenDraw(2)
+    expect(state.phase).toBe('playerDraw')
+    expect(state.currentPlayerIndex).toBe(1)
+    expect(state.turnOwnerIndex).toBe(1)
+  })
+
+  it('上家榮和且不連鎖時，下一家仍是棄牌者的下家', () => {
+    const state = ronThenDraw(3)
+    expect(state.phase).toBe('playerDraw')
+    expect(state.currentPlayerIndex).toBe(1)
+    expect(state.turnOwnerIndex).toBe(1)
+  })
+
+  it('下家榮和並連鎖宣告後，下一家仍是再下家', () => {
+    let state = startGame({
+      seed: 1104,
+      startPlayerIndex: 0,
+      skipPreview: true,
+      bonus,
+      hands: [
+        discarderHand(),
+        [
+          getCardById('ka-hiragana'),
+          getCardById('ka-katakana'),
+          getCardById('a-hiragana'),
+          getCardById('a-katakana'),
+          getCardById('sa-hiragana'),
+          getCardById('ta-hiragana'),
+          getCardById('na-hiragana'),
+        ],
+        neutralHand(['so-hiragana', 'to-hiragana', 'ne-hiragana', 'fu-hiragana', 'mu-hiragana', 'ra-hiragana', 'ri-hiragana']),
+        neutralHand(['tsu-hiragana', 'te-hiragana', 'no-hiragana', 'he-hiragana', 'me-hiragana', 'ru-hiragana', 're-hiragana']),
+      ],
+      deck: cards(
+        'i-hiragana',
+        'a-vocabulary',
+        'chi-vocabulary',
+        'ha-hiragana',
+        'ma-hiragana',
+        'ra-katakana',
+        'ro-hiragana',
+      ),
+    })
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    state = play(state, { type: 'SKIP_YAKU' })
+    state = play(state, { type: 'DISCARD', cardId: discardCard.id })
+    const yaku = findYaku([...state.players[1]!.hand, state.currentDiscard!], state.bonus, {
+      mustIncludeCardId: discardCard.id,
+      activeRows: state.activeRows,
+    })[0]!
+    state = play(state, { type: 'CLAIM_YAKU', yakuId: yaku.id })
+    state = play(state, { type: 'FINISH_REVIEW' })
+    expect(state.phase).toBe('playerAction')
+    expect(state.currentPlayerIndex).toBe(1)
+    const chain = findYaku(state.players[1]!.hand, state.bonus, { activeRows: state.activeRows }).find(
+      (candidate) => candidate.sound === 'a',
+    )!
+    state = play(state, { type: 'CHOOSE_YAKU', yakuId: chain.id })
+    state = play(state, { type: 'FINISH_REVIEW' })
+    expect(state.phase).toBe('playerDraw')
+    expect(state.currentPlayerIndex).toBe(2)
+    expect(state.turnOwnerIndex).toBe(2)
+  })
+
+  it('牌庫無法再補、手牌不足 7 張時，剩餘手牌裡的完整牌型仍可連鎖', () => {
+    let state = startGame({
+      seed: 1105,
+      startPlayerIndex: 0,
+      skipPreview: true,
+      bonus,
+      hands: [
+        [
+          ...cards('a-hiragana', 'i-hiragana', 'u-hiragana', 'e-hiragana', 'o-hiragana'),
+          getCardById('ka-hiragana'),
+          getCardById('ka-katakana'),
+        ],
+        neutralHand(['sa-hiragana', 'shi-hiragana', 'su-hiragana', 'se-hiragana', 'so-hiragana', 'ta-hiragana', 'chi-hiragana']),
+        neutralHand(['na-hiragana', 'ni-hiragana', 'nu-hiragana', 'ne-hiragana', 'no-hiragana', 'ha-hiragana', 'hi-hiragana']),
+        neutralHand(['ma-hiragana', 'mi-hiragana', 'mu-hiragana', 'me-hiragana', 'mo-hiragana', 'ra-hiragana', 'ri-hiragana']),
+      ],
+      deck: [getCardById('ka-vocabulary')],
+    })
+    state = play(state, { type: 'DEAL_DONE' })
+    state = play(state, { type: 'DRAW' })
+    const kaYaku = findYaku(state.players[0]!.hand, state.bonus, { activeRows: state.activeRows }).find(
+      (candidate) => candidate.sound === 'ka',
+    )!
+    state = play(state, { type: 'CHOOSE_YAKU', yakuId: kaYaku.id })
+    state = play(state, { type: 'FINISH_REVIEW' })
+    expect(state.deck).toHaveLength(0)
+    expect(state.players[0]!.hand).toHaveLength(5)
+    expect(state.phase).toBe('playerAction')
+  })
+})
+
