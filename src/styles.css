@@ -3868,8 +3868,6 @@ button.kana-card { appearance: none; }
 
 @media (max-width: 900px) {
   .felt-oval { height: min(92dvh, 760px); width: min(99vw, 1280px); margin: 8px auto; border-width: 12px; }
-  .human-side { display: none; }
-  .turn-status { bottom: 25%; font-size: 0.95rem; }
   .center-board { width: fit-content; max-width: min(380px, 42vw); }
 }
 
@@ -4279,16 +4277,6 @@ button.kana-card { appearance: none; }
     font-size: clamp(1.8rem, 5vw, 2.6rem);
   }
 
-  .action-bar {
-    padding: 3px 8px;
-    margin: 0 0 3px;
-    gap: 5px;
-    border-radius: 8px;
-  }
-  .action-bar p {
-    font-size: 0.7rem;
-    margin: 0 0 1px;
-  }
   .human-hand-area .btn {
     min-height: 26px;
     padding: 0.2rem 0.55rem;
@@ -4477,7 +4465,6 @@ button.kana-card { appearance: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .sakura-container { display: none !important; }
-  .mascot.mood-cheer { animation: none; }
   .kana-card, .btn { transition: none !important; animation: none !important; }
   .card-near-sheen { display: none !important; }
   .discard-river.is-flying { z-index: 3; }
@@ -4638,14 +4625,6 @@ button.kana-card { appearance: none; }
 
 .multiplayer-panel .lobby-actions {
   margin-top: 4px;
-}
-
-.multiplayer-panel .seats-note {
-  margin-top: 2px;
-}
-
-.full-width {
-  width: 100%;
 }
 
 /* 房間等待大廳 (Room Lobby) */
@@ -4872,13 +4851,6 @@ button.kana-card { appearance: none; }
   animation: pulse 2s infinite ease-in-out;
 }
 
-.room-tip-note {
-  margin: 0;
-  text-align: center;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
 /* 回合思考倒數計時元件 (Turn Timer Widget) */
 .turn-timer-widget {
   position: relative;
@@ -4906,16 +4878,6 @@ button.kana-card { appearance: none; }
   white-space: nowrap;
   padding: 2px 7px;
   gap: 5px;
-}
-
-/* 置於吃碰操作列內 */
-.turn-timer-widget.timer-in-action-bar {
-  position: static;
-  transform: none;
-  display: inline-flex;
-  margin-left: 6px;
-  vertical-align: middle;
-  padding: 2px 8px;
 }
 
 .timer-inner {
@@ -4953,20 +4915,6 @@ button.kana-card { appearance: none; }
   letter-spacing: 0.02em;
 }
 
-.timer-bar-track {
-  width: 38px;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.timer-bar-fill {
-  height: 100%;
-  background: var(--gold);
-  transition: width 0.3s ease;
-}
-
 .turn-timer-widget.urgent {
   border-color: var(--vermillion-light);
   box-shadow: 0 0 14px var(--vermillion-glow);
@@ -4977,21 +4925,9 @@ button.kana-card { appearance: none; }
   color: #ff9d93;
 }
 
-.turn-timer-widget.urgent .timer-bar-fill {
-  background: var(--vermillion-light);
-}
-
 @keyframes urgentPulse {
   from { transform: translateX(-50%) scale(1); }
   to { transform: translateX(-50%) scale(1.08); }
-}
-
-.turn-timer-widget.timer-in-action-bar.urgent {
-  animation: urgentPulseActionBar 0.9s infinite alternate ease-in-out;
-}
-@keyframes urgentPulseActionBar {
-  from { transform: scale(1); }
-  to { transform: scale(1.06); }
 }
 
 /* 連線錯誤提示浮動條 */

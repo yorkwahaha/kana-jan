@@ -1,13 +1,8 @@
 /**
  * 日文語音播放模組。
  *
- * 採用三層高音質語音策略：
- * 1. 本地實體音檔優先（/audio/words/{sound}.mp3 與 /audio/kana/{sound}.mp3）：
- *    零延遲、高音質（Google Cloud TTS Neural2 錄製）；已備妥的音檔可完全離線播放。
- * 2. 雲端 Google Cloud TTS Proxy（ja-JP-Neural2-B，連線至 JPAPP 專屬 Worker）：
- *    若本地未命中則動態請求 Google Neural2 自然高傳真日語語音，並進行記憶體 Blob 快取。
- * 3. 系統 Web Speech API 保底：
- *    若前兩者皆不可用時自動無縫 fallback 到瀏覽器語音合成，絕不阻斷遊戲。
+ * 1. 本地實體音檔優先（/audio/words/{sound}.mp3 與 /audio/kana/{sound}.mp3）。
+ * 2. 本地音檔失敗時，改用系統 speechSynthesis，不阻斷遊戲。
  */
 
 import { KANA_SOUNDS } from '../data/kana'
@@ -16,10 +11,6 @@ const BASE = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) |
 const ROOT = BASE.endsWith('/') ? BASE : `${BASE}/`
 const WORDS_BASE = `${ROOT}audio/words/`
 const KANA_BASE = `${ROOT}audio/kana/`
-
-const TTS_SESSION_URL = 'https://jpapp-tts-proxy.yorkwahaha.workers.dev/session'
-const TTS_PROXY_URL = 'https://jpapp-tts-proxy.yorkwahaha.workers.dev/tts'
-const DEFAULT_TTS_VOICE = 'ja-JP-Neural2-B'
 
 const VOCAB_MAP = new Map<string, string>()
 const KANA_MAP = new Map<string, string>()
@@ -33,12 +24,6 @@ for (const k of KANA_SOUNDS) {
 }
 
 let currentAudio: HTMLAudioElement | null = null
-let sessionToken: string | null = null
-let sessionExp = 0
-let sessionPromise: Promise<string | null> | null = null
-
-const cloudAudioCache = new Map<string, string>()
-const MAX_CLOUD_AUDIO_CACHE = 32
 const FAILED_URL_TTL_MS = 60_000
 const failedUrls = new Map<string, number>()
 
@@ -54,19 +39,6 @@ function isFailedUrl(url: string): boolean {
     return false
   }
   return true
-}
-
-function cacheCloudAudio(text: string, url: string): void {
-  const previous = cloudAudioCache.get(text)
-  if (previous && previous !== url) URL.revokeObjectURL(previous)
-  cloudAudioCache.delete(text)
-  cloudAudioCache.set(text, url)
-  while (cloudAudioCache.size > MAX_CLOUD_AUDIO_CACHE) {
-    const oldest = cloudAudioCache.entries().next().value as [string, string] | undefined
-    if (!oldest) break
-    cloudAudioCache.delete(oldest[0])
-    URL.revokeObjectURL(oldest[1])
-  }
 }
 
 export function stopSpeech(): void {
@@ -124,63 +96,6 @@ async function playAudioUrl(url: string): Promise<boolean> {
   })
 }
 
-async function getSessionToken(): Promise<string | null> {
-  if (sessionToken && sessionExp > Date.now() + 5000) {
-    return sessionToken
-  }
-  if (!sessionPromise) {
-    sessionPromise = (async () => {
-      try {
-        const res = await fetch(TTS_SESSION_URL)
-        if (!res.ok) return null
-        const data = await res.json()
-        sessionToken = data.token
-        sessionExp = Number(data.exp) || 0
-        return sessionToken
-      } catch {
-        return null
-      } finally {
-        sessionPromise = null
-      }
-    })()
-  }
-  return sessionPromise
-}
-
-async function speakCloudTts(text: string): Promise<boolean> {
-  const cachedUrl = cloudAudioCache.get(text)
-  if (cachedUrl) {
-    return playAudioUrl(cachedUrl)
-  }
-
-  const token = await getSessionToken()
-  if (!token) return false
-
-  try {
-    const res = await fetch(TTS_PROXY_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Session-Token': token,
-      },
-      body: JSON.stringify({
-        text,
-        voice: DEFAULT_TTS_VOICE,
-        rate: '1.0',
-        pitch: 'default',
-      }),
-    })
-
-    if (!res.ok) return false
-    const blob = await res.blob()
-    const blobUrl = URL.createObjectURL(blob)
-    cacheCloudAudio(text, blobUrl)
-    return playAudioUrl(blobUrl)
-  } catch {
-    return false
-  }
-}
-
 function speakWebSpeech(text: string): Promise<void> {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return Promise.resolve()
   try {
@@ -214,7 +129,6 @@ export async function speakJapanese(text: string, enabled: boolean): Promise<voi
   if (!enabled || !text) return
   stopSpeech()
 
-  // 1. 本地實體音檔優先（/audio/words/ 與 /audio/kana/）
   const clean = text.trim()
   let localSound = VOCAB_MAP.get(clean)
   let isVocab = true
@@ -230,10 +144,5 @@ export async function speakJapanese(text: string, enabled: boolean): Promise<voi
     if (played) return
   }
 
-  // 2. 雲端 Google Cloud TTS (連線至 JPAPP 專屬 Worker Proxy，Neural2-B 聲線)
-  const cloudPlayed = await speakCloudTts(clean)
-  if (cloudPlayed) return
-
-  // 3. 系統 Web Speech 語音合成保底
   await speakWebSpeech(clean)
 }

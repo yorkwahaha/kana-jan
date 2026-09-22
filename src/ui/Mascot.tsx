@@ -1,10 +1,4 @@
-export function Mascot({ mood = 'idle' }: { mood?: 'idle' | 'cheer' | 'think' }) {
-  const mouth =
-    mood === 'think'
-      ? 'M56 72 H64'
-      : mood === 'cheer'
-        ? 'M52 70 Q60 80 68 70'
-        : 'M54 72 Q60 76 66 72'
+export function Mascot({ mood = 'idle' }: { mood?: 'idle' }) {
   return (
     <svg className={`mascot mood-${mood}`} viewBox="0 0 120 120" aria-hidden>
       <ellipse cx="60" cy="110" rx="22" ry="5" fill="rgba(0,0,0,0.16)" />
@@ -15,7 +9,7 @@ export function Mascot({ mood = 'idle' }: { mood?: 'idle' | 'cheer' | 'think' })
       <path d="M78 34 L86 18 L70 32" fill="#f7f1e8" />
       <circle cx="48" cy="62" r="3.4" fill="#2a1c16" />
       <circle cx="72" cy="62" r="3.4" fill="#2a1c16" />
-      <path d={mouth} fill="none" stroke="#5c4033" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M54 72 Q60 76 66 72" fill="none" stroke="#5c4033" strokeWidth="2.2" strokeLinecap="round" />
       <text x="60" y="54" textAnchor="middle" fontSize="13" fontFamily="Shippori Mincho, serif" fill="#b42318">
         あ
       </text>

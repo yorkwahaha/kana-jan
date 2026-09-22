@@ -79,7 +79,7 @@ export function missionBonusFor(
   cards: KanaCard[],
   bonus: BonusMission,
 ): number {
-  if (bonus.kind !== 'targetSound' || bonus.points <= 0) return 0
+  if (bonus.points <= 0) return 0
   const hitsTarget = cards.some((c) => c.sound === bonus.sound)
   return hitsTarget ? bonus.points : 0
 }
