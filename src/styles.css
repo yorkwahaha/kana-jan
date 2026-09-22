@@ -4465,7 +4465,6 @@ button.kana-card { appearance: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .sakura-container { display: none !important; }
-  .mascot.mood-cheer { animation: none; }
   .kana-card, .btn { transition: none !important; animation: none !important; }
   .card-near-sheen { display: none !important; }
   .discard-river.is-flying { z-index: 3; }
