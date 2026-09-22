@@ -51,26 +51,11 @@ export function getRoomFromUrl(search: string = typeof window !== 'undefined' ? 
   return tryParseRoomCode(room)
 }
 
-/** 複製文字至剪貼簿 */
+/** 複製文字至剪貼簿。失敗時回傳 false，不拋出例外。 */
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
-    if (navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text)
-      return true
-    }
-  } catch {
-    // fallback
-  }
-  try {
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    textarea.style.position = 'fixed'
-    textarea.style.opacity = '0'
-    document.body.appendChild(textarea)
-    textarea.select()
-    const successful = document.execCommand('copy')
-    document.body.removeChild(textarea)
-    return successful
+    await navigator.clipboard.writeText(text)
+    return true
   } catch {
     return false
   }
