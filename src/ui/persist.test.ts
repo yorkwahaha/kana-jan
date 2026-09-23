@@ -115,4 +115,26 @@ describe('對局存檔版本', () => {
     localStorage.setItem('kana-jan-save-v1', JSON.stringify({ version: 2, state }))
     expect(loadGame()).toBeNull()
   })
+
+  it('拒絕同一實體牌同時存在於兩個 ownership zone', () => {
+    const state = startGame({ seed: 21, skipPreview: true })
+    state.deck[0] = state.players[0]!.hand[0]!
+    localStorage.setItem('kana-jan-save-v1', JSON.stringify({ version: 2, state }))
+    expect(loadGame()).toBeNull()
+  })
+
+  it('拒絕不可能的 reaction index 與被竄改的 deck manifest', () => {
+    const reaction = startGame({ seed: 22, skipPreview: true })
+    reaction.phase = 'reaction'
+    reaction.reactionOptions = []
+    reaction.reactionIndex = 0
+    localStorage.setItem('kana-jan-save-v1', JSON.stringify({ version: 2, state: reaction }))
+    expect(loadGame()).toBeNull()
+
+    const manifest = startGame({ seed: 23, skipPreview: true })
+    const key = Object.keys(manifest.deckManifest ?? {})[0]!
+    manifest.deckManifest![key] = (manifest.deckManifest![key] ?? 0) + 1
+    localStorage.setItem('kana-jan-save-v1', JSON.stringify({ version: 2, state: manifest }))
+    expect(loadGame()).toBeNull()
+  })
 })

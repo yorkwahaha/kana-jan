@@ -32,7 +32,20 @@ export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return { ...DEFAULT_SETTINGS }
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) }
+    const parsed = JSON.parse(raw) as unknown
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { ...DEFAULT_SETTINGS }
+    const candidate = parsed as Record<string, unknown>
+    const next = { ...DEFAULT_SETTINGS }
+    const booleanKeys: Array<keyof Omit<Settings, 'animation'>> = [
+      'bgm', 'sfx', 'speech', 'learningHints', 'showRomaji', 'showMeaning', 'showRow', 'showColumn', 'highlightNear',
+    ]
+    for (const key of booleanKeys) {
+      if (typeof candidate[key] === 'boolean') next[key] = candidate[key]
+    }
+    if (candidate.animation === 'off' || candidate.animation === 'fast' || candidate.animation === 'normal') {
+      next.animation = candidate.animation
+    }
+    return next
   } catch {
     return { ...DEFAULT_SETTINGS }
   }

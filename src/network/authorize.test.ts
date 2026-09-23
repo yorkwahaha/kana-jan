@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getCardById } from '../data/cards'
 import { drainAuto, reduce, startGame } from '../engine/game'
-import { authorizeClientAction, sanitizeChatText, sanitizePlayerName } from './authorize'
+import { authorizeClientAction, generateResumeToken, sanitizeChatText, sanitizePlayerName } from './authorize'
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('authorizeClientAction', () => {
   it('拒絕重開牌局、抽牌與同步亂數', () => {
@@ -84,5 +86,11 @@ describe('sanitize', () => {
     expect(sanitizePlayerName('  あいうえおかきくけこさしすせそたち  ')).toHaveLength(16)
     expect(sanitizeChatText('a'.repeat(500))).toHaveLength(200)
     expect(sanitizePlayerName('   ')).toBe('玩家')
+  })
+
+  it('resume token 使用 128-bit CSPRNG，安全亂數不可用時 fail closed', () => {
+    expect(generateResumeToken()).toMatch(/^[a-f0-9]{32}$/)
+    vi.stubGlobal('crypto', undefined)
+    expect(() => generateResumeToken()).toThrow('Secure random source unavailable')
   })
 })

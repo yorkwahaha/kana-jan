@@ -16,19 +16,21 @@ export function loadResume(roomCode: string): ResumeSeat | null {
     const raw = sessionStorage.getItem(storageKey(roomCode))
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<ResumeSeat>
+    const seat = parsed.seat
     if (
       typeof parsed.playerId !== 'string' ||
       typeof parsed.name !== 'string' ||
-      typeof parsed.seat !== 'number' ||
+      !Number.isInteger(seat) ||
+      seat! < 0 || seat! > 3 ||
       typeof parsed.token !== 'string' ||
-      !parsed.token
+      !/^[a-f0-9]{32}$/.test(parsed.token)
     ) {
       return null
     }
     return {
       playerId: parsed.playerId,
       name: parsed.name,
-      seat: parsed.seat,
+      seat: seat!,
       token: parsed.token,
     }
   } catch {

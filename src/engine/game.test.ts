@@ -493,6 +493,19 @@ describe('連線玩家設定 (playerConfigs)', () => {
     expect(state.players[3]!.aiDifficulty).toBe('easy')
     expect(state.players.every((p) => p.hand.length === HAND_SIZE)).toBe(true)
   })
+
+  it('拒絕空 activeRows、非法起始座位與重複 player config', () => {
+    expect(() => startGame({ activeRows: [] })).toThrow('activeRows')
+    expect(() => startGame({ startPlayerIndex: 4 })).toThrow('startPlayerIndex')
+    expect(() => startGame({
+      playerConfigs: [
+        { id: 'p0', name: 'A', kind: 'human', seat: 0 },
+        { id: 'p0', name: 'B', kind: 'remote', seat: 1 },
+        { id: 'p2', name: 'C', kind: 'ai', seat: 2 },
+        { id: 'p3', name: 'D', kind: 'ai', seat: 3 },
+      ],
+    })).toThrow('playerConfigs')
+  })
 })
 
 describe('金幣總額與讓渡 (4000 點制)', () => {

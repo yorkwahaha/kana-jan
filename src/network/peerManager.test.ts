@@ -24,6 +24,8 @@ type TestHost = {
   handleGuestMessage: (conn: DataConnection, msg: ClientMessage) => void
   handleGuestDisconnect: (conn: DataConnection) => void
   getRoomState: () => ReturnType<HostManager['getRoomState']>
+  resumeTokens: Map<number, string>
+  roomState: { started: boolean }
 }
 
 function createHost(): TestHost {
@@ -79,5 +81,28 @@ describe('HostManager connection identity', () => {
     host.handleGuestDisconnect(first)
     expect(host.getRoomState().slots[1]?.connected).toBe(false)
     expect(host.getRoomState().slots[2]?.connected).toBe(true)
+  })
+
+  it('成功重連後會旋轉 resume token，舊 token 不再是現行憑證', () => {
+    const host = createHost()
+    const first = connection('peer-a')
+    host.handleGuestMessage(first, { type: 'JOIN', name: 'A', peerId: 'peer-a' })
+    const oldToken = host.resumeTokens.get(1)
+    expect(oldToken).toMatch(/^[a-f0-9]{32}$/)
+
+    host.roomState.started = true
+    host.handleGuestDisconnect(first)
+    const reconnected = connection('peer-a-new')
+    host.handleGuestMessage(reconnected, {
+      type: 'JOIN',
+      name: 'A',
+      peerId: 'peer-a-new',
+      resumePlayerId: 'p1',
+      resumeToken: oldToken,
+    })
+
+    const rotated = host.resumeTokens.get(1)
+    expect(rotated).toMatch(/^[a-f0-9]{32}$/)
+    expect(rotated).not.toBe(oldToken)
   })
 })

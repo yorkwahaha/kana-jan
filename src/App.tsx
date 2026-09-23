@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getGameOverSfxKind, playSfx, startBgm, stopBgm, type BgmTrack } from './audio/sfx'
 import { speakJapanese } from './audio/speech'
 import { speechText } from './data/cards'
-import { decideAi, needsHumanInput, pickSafeTimeoutDiscard } from './engine/ai'
+import { decideAi, needsHumanInput } from './engine/ai'
 import {
   availableYakuFor,
   createLobbyState,
@@ -18,7 +18,7 @@ import { createRngFromExactState } from './engine/rng'
 import { INITIAL_GOLD, type AiDifficulty, type GameState, type PlayerConfig, type YakuCandidate } from './engine/types'
 import { DEFAULT_LESSON_ID } from './data/lessons'
 import { authorizeClientAction, generateResumeToken, restoreDisconnectedPlayer } from './network/authorize'
-import { GuestManager, HostManager } from './network/peerManager'
+import type { GuestManager, HostManager } from './network/peerManager'
 import { clearResume, loadResume } from './network/resume'
 import { generateRoomCode, getRoomFromUrl, tryParseRoomCode } from './network/roomCode'
 import type { RoomState } from './network/types'
@@ -33,10 +33,11 @@ import { Tutorial } from './ui/Tutorial'
 import { WinAnnouncement } from './ui/WinAnnouncement'
 import { tablePosition } from './ui/seats'
 import { recordSounds } from './ui/mastery'
-import { clearGame, initialState, loadGame, saveGame } from './ui/persist'
+import { clearGame, initialState, loadGame } from './ui/persist'
 import { forfeitGame } from './ui/profile'
 import { delayFor, loadSettings, saveSettings, type Settings } from './ui/settings'
-import { followUpDiscardAfterExpiredClock, turnClockKey } from './ui/TurnTimer'
+import { useGamePersistence } from './ui/useGamePersistence'
+import { useTurnOrchestration, type NetworkMode } from './ui/useTurnOrchestration'
 
 function reduceWithPresentationPause(state: GameState, action: GameAction): GameState {
   const next = reduce(state, action)
@@ -58,13 +59,10 @@ export function App() {
   const [locked, setLocked] = useState(false)
   const lockRef = useRef(false)
   const pendingDiscardIdRef = useRef<string | null>(null)
-  const pendingSaveRef = useRef<GameState | null>(null)
-  const saveTimerRef = useRef(0)
-  const handleTurnTimeoutRef = useRef<() => void>(() => undefined)
-  const turnClockExpiredRef = useRef(false)
+  const committedSideEffectStateRef = useRef<GameState | null>(null)
 
   // 連線對戰狀態
-  const [networkMode, setNetworkMode] = useState<'none' | 'host' | 'guest'>('none')
+  const [networkMode, setNetworkMode] = useState<NetworkMode>('none')
   const [roomState, setRoomState] = useState<RoomState | null>(null)
   const [mySeat, setMySeat] = useState<number>(0)
   const [netError, setNetError] = useState<string | null>(null)
@@ -77,6 +75,7 @@ export function App() {
   const gameOverPlayedRef = useRef<boolean>(false)
   const [announcementStage, setAnnouncementStage] = useState<'idle' | 'gun' | 'cutin' | 'settlement'>('idle')
   const lastAnnouncedScoreKeyRef = useRef<string | null>(null)
+  const scheduleSave = useGamePersistence()
 
   // 清理 Peer 連線
   const cleanupNetwork = useCallback(() => {
@@ -98,58 +97,22 @@ export function App() {
     }
   }, [])
 
-  const flushPendingSave = useCallback(() => {
-    if (saveTimerRef.current) {
-      window.clearTimeout(saveTimerRef.current)
-      saveTimerRef.current = 0
-    }
-    const pending = pendingSaveRef.current
-    pendingSaveRef.current = null
-    if (pending) saveGame(pending)
-  }, [])
-
-  const scheduleSave = useCallback(
-    (next: GameState) => {
-      pendingSaveRef.current = next
-      if (next.phase === 'lobby' || next.phase === 'review' || next.phase === 'gameOver') {
-        flushPendingSave()
-        return
-      }
-      window.clearTimeout(saveTimerRef.current)
-      saveTimerRef.current = window.setTimeout(() => {
-        saveTimerRef.current = 0
-        const pending = pendingSaveRef.current
-        pendingSaveRef.current = null
-        if (pending) saveGame(pending)
-      }, 300)
+  // reducer updater 保持純函式；存檔與網路同步只在 React commit 後執行。
+  const apply = useCallback(
+    (updater: (s: GameState) => GameState) => {
+      setState((prev) => updater(prev))
     },
-    [flushPendingSave],
+    [],
   )
 
   useEffect(() => {
-    const onHide = () => flushPendingSave()
-    window.addEventListener('pagehide', onHide)
-    return () => {
-      window.removeEventListener('pagehide', onHide)
-      flushPendingSave()
-    }
-  }, [flushPendingSave])
-
-  // 狀態更新並存檔／同步廣播至所有 Guest
-  const apply = useCallback(
-    (updater: (s: GameState) => GameState) => {
-      setState((prev) => {
-        const next = updater(prev)
-        if (next === prev) return prev
-        const host = hostManagerRef.current
-        const guest = guestManagerRef.current
-        if (host) host.syncGameState(next)
-        else if (!guest) scheduleSave(next)
-        return next
-      })
-    },
-    [scheduleSave],
-  )
+    if (committedSideEffectStateRef.current === state) return
+    committedSideEffectStateRef.current = state
+    const host = hostManagerRef.current
+    const guest = guestManagerRef.current
+    if (host) host.syncGameState(state)
+    else if (!guest) scheduleSave(state)
+  }, [state, scheduleSave])
 
   const dispatch = useCallback(
     (action: GameAction) => {
@@ -393,12 +356,11 @@ export function App() {
         lessonId: nextLesson,
       }),
     )
-    saveGame(next)
     setState(next)
   }
 
   // 多人連線：開房（Host）
-  const handleCreateRoom = useCallback(() => {
+  const handleCreateRoom = useCallback(async () => {
     playSfx('click', settings.sfx)
     cleanupNetwork()
     clearGame()
@@ -407,6 +369,7 @@ export function App() {
       window.history.replaceState({}, '', `?room=${code}`)
     }
 
+    const { HostManager } = await import('./network/peerManager')
     const host = new HostManager(code, playerName, DEFAULT_LESSON_ID, {
       onRoomChange: (r) => setRoomState({ ...r }),
       onClientAction: (seat, action) => {
@@ -426,6 +389,7 @@ export function App() {
           restoreDisconnectedPlayer(authoritativeState, seat),
           `玩家 ${(player?.name ?? '').replace(/\s*\(AI\)$/, '')} 已重新連線接管操作`,
         )
+        committedSideEffectStateRef.current = restored
         setState(restored)
         return restored
       },
@@ -462,7 +426,7 @@ export function App() {
 
   // 多人連線：加入房間（Guest）
   const handleJoinRoom = useCallback(
-    (code: string) => {
+    async (code: string) => {
       playSfx('click', settings.sfx)
       const normalized = tryParseRoomCode(code)
       if (!normalized) {
@@ -477,6 +441,7 @@ export function App() {
       }
 
       const resume = loadResume(normalized)
+      const { GuestManager } = await import('./network/peerManager')
       const guest = new GuestManager(
         normalized,
         playerName,
@@ -531,6 +496,7 @@ export function App() {
     )
 
     hostManagerRef.current.startGame(initial)
+    committedSideEffectStateRef.current = initial
     setState(initial)
   }, [roomState, networkMode, difficulty, settings.sfx])
 
@@ -570,75 +536,9 @@ export function App() {
 
   const hasSave = useMemo(() => !roomState && !!loadGame() && state.phase === 'lobby', [state.phase, roomState])
 
-  // 判斷當前輪到操作的玩家
-  const currentActor =
-    state.phase === 'lobby' || state.players.length === 0
-      ? null
-      : state.phase === 'reaction'
-        ? (reactionActor(state) ?? state.players[state.currentPlayerIndex] ?? null)
-        : (state.players[state.currentPlayerIndex] ?? null)
-  const isMyTurn = !spectating && currentActor ? currentActor.seat === mySeat : false
-  const isTurnActive =
-    !spectating &&
-    (state.phase === 'playerAction' || state.phase === 'discard' || state.phase === 'reaction')
-
-  // 回合思考超時自動託管
-  const handleTurnTimeout = useCallback(() => {
-    if (!isTurnActive || !currentActor) return
-
-    // 只有輪到自己（或房主代管）才送出超時處置
-    if (isMyTurn || (networkMode === 'host' && currentActor?.kind === 'remote')) {
-      if (state.phase === 'playerAction') {
-        dispatch({ type: 'SKIP_YAKU' })
-      } else if (state.phase === 'discard') {
-        const actorPlayer = state.players.find((p) => p.seat === currentActor.seat)
-        if (actorPlayer && actorPlayer.hand.length > 0) {
-          dispatch({ type: 'DISCARD', cardId: pickSafeTimeoutDiscard(actorPlayer, state) })
-        }
-      } else if (state.phase === 'reaction') {
-        dispatch({ type: 'PASS_CLAIM' })
-      }
-    }
-  }, [isTurnActive, isMyTurn, networkMode, currentActor, state, dispatch])
-  handleTurnTimeoutRef.current = handleTurnTimeout
-
-  const clockKey = turnClockKey({
-    turnNumber: state.turnNumber,
-    phase: state.phase,
-    actorId: currentActor?.id,
-    comboCount: state.comboCount,
-    reactionIndex: state.reactionIndex,
+  const { isMyTurn, isTurnActive, clockKey, handleTurnTimeout } = useTurnOrchestration({
+    state, networkMode, mySeat, spectating, dispatch,
   })
-  const hostTimeoutMs = state.phase === 'reaction' ? 14000 : 20000
-  const hostShouldTimeout =
-    networkMode === 'host' &&
-    isTurnActive &&
-    (state.phase === 'reaction' ? reactionActor(state) : currentPlayer(state))?.kind === 'remote'
-
-  useEffect(() => {
-    turnClockExpiredRef.current = false
-  }, [clockKey])
-
-  // 房主統御權威回合計時器：防範遠端真人玩家背景化或網路封包遺失卡住牌局（執行單次回合摸切／略過，絕不將玩家篡改為 AI）
-  useEffect(() => {
-    if (!hostShouldTimeout) return
-    // 客端畫面倒數計時為出牌 18 秒、抄牌 12 秒。房主給予額外 2 秒網路寬限（20 秒／14 秒）
-    const timer = window.setTimeout(() => {
-      turnClockExpiredRef.current = true
-      handleTurnTimeoutRef.current()
-    }, hostTimeoutMs)
-    return () => window.clearTimeout(timer)
-  }, [hostShouldTimeout, clockKey, hostTimeoutMs])
-
-  // 遠端玩家的共用回合鐘在自摸階段耗盡後不會重開；棄牌階段必須再託管一次。
-  useEffect(() => {
-    if (!hostShouldTimeout) return
-    if (!followUpDiscardAfterExpiredClock(state.phase, turnClockExpiredRef.current)) return
-    const timer = window.setTimeout(() => {
-      handleTurnTimeoutRef.current()
-    }, 280)
-    return () => window.clearTimeout(timer)
-  }, [hostShouldTimeout, state.phase, clockKey])
 
   // 1. 若處於房間等待大廳且牌局尚未開始
   if (networkMode !== 'none' && roomState && !roomState.started && state.phase === 'lobby') {

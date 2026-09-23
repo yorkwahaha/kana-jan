@@ -33,6 +33,31 @@ export type GameAction =
   | { type: 'SYNC_RNG'; rngState: number }
   | { type: 'RESTART'; config?: StartConfig }
 
+function validateStartConfig(config: StartConfig): void {
+  if (config.activeRows) {
+    if (config.activeRows.length === 0 || new Set(config.activeRows).size !== config.activeRows.length) {
+      throw new Error('activeRows must contain at least one unique row')
+    }
+  }
+  if (config.startPlayerIndex !== undefined && (!Number.isInteger(config.startPlayerIndex) || config.startPlayerIndex < 0 || config.startPlayerIndex >= PLAYER_COUNT)) {
+    throw new Error('startPlayerIndex must be a valid seat index')
+  }
+  if (config.initialGold !== undefined && (!Number.isFinite(config.initialGold) || config.initialGold < 0)) {
+    throw new Error('initialGold must be a non-negative finite number')
+  }
+  if (config.hands && config.hands.length !== PLAYER_COUNT) {
+    throw new Error(`hands must contain exactly ${PLAYER_COUNT} seats`)
+  }
+  if (config.playerConfigs) {
+    if (config.playerConfigs.length !== PLAYER_COUNT) throw new Error(`playerConfigs must contain exactly ${PLAYER_COUNT} seats`)
+    const seats = config.playerConfigs.map((player) => player.seat).sort((a, b) => a - b)
+    const ids = config.playerConfigs.map((player) => player.id)
+    if (seats.join(',') !== '0,1,2,3' || new Set(ids).size !== PLAYER_COUNT || ids.some((id) => !id)) {
+      throw new Error('playerConfigs must use unique ids and seats 0..3')
+    }
+  }
+}
+
 export function createLobbyState(): GameState {
   return {
     phase: 'lobby',
@@ -166,6 +191,7 @@ function afterDeclare(state: GameState): GameState {
 }
 
 export function startGame(config: StartConfig = {}): GameState {
+  validateStartConfig(config)
   const seed = config.seed ?? (Date.now() ^ 0x9e3779b9) >>> 0
   const rng = createRng(seed)
   const lesson = getLesson(config.lessonId)
@@ -203,8 +229,9 @@ export function startGame(config: StartConfig = {}): GameState {
   const startPlayerIndex =
     config.startPlayerIndex !== undefined ? config.startPlayerIndex : rng.nextInt(PLAYER_COUNT)
 
-  const players: PlayerState[] = config.playerConfigs
-    ? config.playerConfigs.map((cfg, idx) => ({
+  const playerConfigs = config.playerConfigs ? [...config.playerConfigs].sort((a, b) => a.seat - b.seat) : null
+  const players: PlayerState[] = playerConfigs
+    ? playerConfigs.map((cfg) => ({
         id: cfg.id,
         name: cfg.name,
         kind: cfg.kind,
@@ -212,7 +239,7 @@ export function startGame(config: StartConfig = {}): GameState {
         aiDifficulty: cfg.aiDifficulty ?? difficulty,
         gold,
         score: 0,
-        hand: sortHandByGojuon(hands[idx] ?? []),
+        hand: sortHandByGojuon(hands[cfg.seat] ?? []),
         discards: [],
         completed: [],
       }))
@@ -648,8 +675,22 @@ const CLIENT_ACTION_TYPES: ReadonlySet<GameAction['type']> = new Set([
 ])
 
 /** 客端允許送出的動作。START／抽牌／計分等由房主狀態機推進，避免客端重開牌局或竄改亂數。 */
-export function isClientAction(action: GameAction): boolean {
-  return CLIENT_ACTION_TYPES.has(action.type)
+export function isClientAction(action: unknown): action is GameAction {
+  if (!action || typeof action !== 'object' || Array.isArray(action)) return false
+  const record = action as Record<string, unknown>
+  if (typeof record.type !== 'string' || !CLIENT_ACTION_TYPES.has(record.type as GameAction['type'])) return false
+  switch (record.type) {
+    case 'CHOOSE_YAKU':
+    case 'CLAIM_YAKU':
+      return typeof record.yakuId === 'string'
+    case 'DISCARD':
+      return typeof record.cardId === 'string'
+    case 'SKIP_YAKU':
+    case 'PASS_CLAIM':
+      return true
+    default:
+      return false
+  }
 }
 
 /** 自動推進不需玩家決策的階段（發牌結束、計分、補牌、換回合） */

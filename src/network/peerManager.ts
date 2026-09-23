@@ -270,6 +270,7 @@ export class HostManager {
     )
     if (!slot) return false
     if (this.resumeTokens.get(slot.seat) !== resumeToken) return false
+    this.resumeTokens.set(slot.seat, generateResumeToken())
 
     const old = this.connections.get(slot.seat)
     if (old && old !== conn) {

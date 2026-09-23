@@ -9,6 +9,7 @@ describe('PeerJS protocol runtime validation', () => {
     expect(parseClientMessage({ type: 'CHAT', text: {} })).toBeNull()
     expect(parseClientMessage({ type: 'ACTION' })).toBeNull()
     expect(parseClientMessage({ type: 'ACTION', action: { type: 'START' } })).toBeNull()
+    expect(parseClientMessage({ type: 'ACTION', action: { type: 'DISCARD', cardId: 123 } })).toBeNull()
   })
 
   it('接受合法客端動作', () => {
@@ -26,5 +27,12 @@ describe('PeerJS protocol runtime validation', () => {
     expect(parseHostMessage({ type: 'GAME_SYNC', state: {} })).toBeNull()
     const state = maskStateForPlayer(startGame({ seed: 7, skipPreview: true }), 0)
     expect(parseHostMessage({ type: 'GAME_SYNC', state, spectating: false })).not.toBeNull()
+
+    const badGold = structuredClone(state) as unknown as { players: Array<{ gold: unknown }> }
+    badGold.players[0]!.gold = '1000'
+    expect(parseHostMessage({ type: 'GAME_SYNC', state: badGold, spectating: false })).toBeNull()
+
+    const badPhase = { ...state, phase: 'not-a-phase' }
+    expect(parseHostMessage({ type: 'GAME_SYNC', state: badPhase, spectating: false })).toBeNull()
   })
 })
