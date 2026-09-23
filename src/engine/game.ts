@@ -653,7 +653,11 @@ export function reduce(state: GameState, action: GameAction): GameState {
         pendingScore: null,
         reactionOptions: [],
         reactionIndex: 0,
-        lastFx: state.lastFx ?? null,
+        // NEXT_TURN is not another draw event. Drop only a stale draw marker so
+        // refill/draw animation + SFX cannot replay, while preserving a discard
+        // marker when automatic phase draining collapses discard→next turn into
+        // the same committed UI state.
+        lastFx: state.lastFx === 'draw' ? null : (state.lastFx ?? null),
         lastTransfers: [],
         comboCount: 0,
       }

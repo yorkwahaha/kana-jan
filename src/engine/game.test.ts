@@ -258,6 +258,12 @@ describe('完成牌型流程', () => {
     state = reduce(state, { type: 'REFILL' })
     expect(state.phase).toBe('nextTurn')
     expect(state.pendingScore).toBeNull()
+    // The last refill's draw marker must not leak into the next-turn event,
+    // otherwise animation/SFX observers replay a phantom extra draw.
+    state = reduce(state, { type: 'NEXT_TURN' })
+    expect(state.phase).toBe('playerDraw')
+    expect(state.lastDrawnCardId).toBeNull()
+    expect(state.lastFx).toBeNull()
   })
 })
 
@@ -967,6 +973,8 @@ describe('榮和後的下一家', () => {
     expect(state.phase).toBe('playerDraw')
     expect(state.currentPlayerIndex).toBe(2)
     expect(state.turnOwnerIndex).toBe(2)
+    expect(state.lastDrawnCardId).toBeNull()
+    expect(state.lastFx).toBeNull()
   })
 
   it('對家榮和且不連鎖時，下一家仍是棄牌者的下家', () => {
@@ -981,6 +989,8 @@ describe('榮和後的下一家', () => {
     expect(state.phase).toBe('playerDraw')
     expect(state.currentPlayerIndex).toBe(1)
     expect(state.turnOwnerIndex).toBe(1)
+    expect(state.lastDrawnCardId).toBeNull()
+    expect(state.lastFx).toBeNull()
   })
 
   it('下家榮和並連鎖宣告後，下一家仍是再下家', () => {

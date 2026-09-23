@@ -156,7 +156,7 @@ export function App() {
     if (state.eventSeq !== lastHandledEventSeqRef.current) {
       lastHandledEventSeqRef.current = state.eventSeq
 
-      if (state.lastFx === 'draw') {
+      if (state.lastFx === 'draw' && state.lastDrawnCardId) {
         playSfx('draw', settings.sfx)
       } else if (state.lastFx === 'discard') {
         playSfx('discard', settings.sfx)
@@ -184,6 +184,7 @@ export function App() {
   }, [
     state.eventSeq,
     state.lastFx,
+    state.lastDrawnCardId,
     state.phase,
     settings.sfx,
     state.pendingScore,

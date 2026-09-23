@@ -36,7 +36,9 @@ export function CardDrawFlight({ state, settings, mySeat = 0 }: Props) {
     if (state.eventSeq === lastHandledSeqRef.current) return
     lastHandledSeqRef.current = state.eventSeq
 
-    if (state.lastFx !== 'draw') {
+    // A real draw presentation must have an actual drawn-card id. Turn-boundary
+    // events may advance eventSeq but must never replay a stale draw animation.
+    if (state.lastFx !== 'draw' || !state.lastDrawnCardId) {
       setActiveFlight(null)
       return
     }
