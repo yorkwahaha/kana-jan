@@ -1,0 +1,88 @@
+.audio-review {
+  min-height: 100vh;
+  padding: 32px clamp(16px, 4vw, 56px) 64px;
+  color: #f7f2df;
+  background: radial-gradient(circle at top, #2b6258, #102d2b 42%, #081918);
+}
+
+.audio-review__header,
+.audio-review__toolbar,
+.audio-review__item {
+  width: min(1100px, 100%);
+  margin-inline: auto;
+}
+
+.audio-review__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: start;
+}
+
+.audio-review__header h1 { margin: 4px 0; font-size: clamp(2rem, 5vw, 3.5rem); }
+.audio-review__header p { margin: 0; color: #d7e8df; }
+.audio-review__eyebrow { text-transform: uppercase; letter-spacing: .14em; font-size: .75rem; }
+.audio-review__back { color: #fff4c4; }
+
+.audio-review__toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  align-items: center;
+  margin-block: 28px 16px;
+  padding: 14px 16px;
+  border: 1px solid #6fa38f;
+  border-radius: 14px;
+  background: rgb(8 25 24 / 92%);
+  backdrop-filter: blur(10px);
+}
+
+.audio-review button {
+  min-height: 42px;
+  padding: 8px 14px;
+  border: 1px solid #e0bd63;
+  border-radius: 10px;
+  color: #241b08;
+  background: #f7d77f;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.audio-review button:disabled { opacity: .45; cursor: not-allowed; }
+.audio-review button:focus-visible,
+.audio-review a:focus-visible,
+.audio-review input:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+.audio-review__list { display: grid; gap: 10px; }
+.audio-review__item {
+  display: grid;
+  grid-template-columns: 34px minmax(120px, 1fr) minmax(170px, 1.2fr) auto auto;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid #315b53;
+  border-radius: 14px;
+  background: #123632;
+}
+.audio-review__item.is-flagged { border-color: #f4b860; background: #4a351f; }
+.audio-review__index { color: #9dc0b3; font-variant-numeric: tabular-nums; }
+.audio-review__word,
+.audio-review__reading { display: grid; gap: 3px; }
+.audio-review__word strong { font-size: 1.45rem; }
+.audio-review__word span,
+.audio-review__reading code { color: #bed6cd; }
+.audio-review__reading code { font-size: .8rem; }
+.audio-review__flag { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+.audio-review__flag input { width: 20px; height: 20px; }
+.audio-review__error { grid-column: 2 / -1; color: #ffb4a9; }
+
+@media (max-width: 720px) {
+  .audio-review { padding-inline: 12px; }
+  .audio-review__header { display: grid; }
+  .audio-review__item { grid-template-columns: 28px 1fr auto; gap: 10px; }
+  .audio-review__reading { grid-column: 2 / -1; }
+  .audio-review__flag { grid-column: 2 / 3; }
+}
