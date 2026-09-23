@@ -496,7 +496,6 @@ export function ScoreReview({
                   size="md"
                   revealMeaning
                   showWrittenForm
-                  showHints={{ showRomaji: true }}
                 />
               </div>
             ))}

@@ -18,5 +18,6 @@ describe('CardView vocabulary review', () => {
     expect(html).toContain('雨')
     expect(html).toContain('<rt>あめ</rt>')
     expect(html).toContain('card-meaning')
+    expect(html).not.toContain('card-romaji')
   })
 })

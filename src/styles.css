@@ -1808,10 +1808,10 @@ body[data-anim='off'] .sakura-container {
 }
 
 /* 依字數細緻調整字級，維持全手牌視覺份量均勻，絕不斷字切開 */
-/* 2字詞彙（如：みみ、めし、あめ、いぬ、ねこ、は那）- 大字清晰，與拗音平分秋色 */
+/* 2字詞彙與 3 字詞彙統一字級，避免同一排手牌忽大忽小。 */
 .kana-card:not(.size-mini):not(.size-river).len-2 .card-word {
-  font-size: 1.9em;
-  letter-spacing: 0.02em;
+  font-size: 1.48em;
+  letter-spacing: 0.01em;
 }
 
 /* 3字詞彙（如：きつね、くるま、ごはん、すいか、さくら）- 單行舒展，不再切開 */
@@ -2864,7 +2864,7 @@ button.kana-card { appearance: none; }
 .vocab-review-header h4 {
   margin: 0;
   color: #fef08a;
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 800;
 }
 .vocab-review-grid {
@@ -2881,22 +2881,32 @@ button.kana-card { appearance: none; }
   transform: scale(1.08);
 }
 .vocab-review-modal .vocab-card-item .kana-card {
-  width: 108px;
-  min-width: 108px;
-  height: 144px;
+  width: 118px;
+  min-width: 118px;
+  height: 158px;
+  font-size: 15px;
+}
+.vocab-review-modal .kana-card .card-vocab {
+  margin-top: 0.18em;
+}
+.vocab-review-modal .card-written-form {
+  line-height: 1.28;
+  padding-top: 0.18em;
 }
 .vocab-review-modal .card-written-form .card-word {
-  font-size: 1.72em !important;
+  font-size: 1.84em !important;
 }
 .vocab-review-modal .card-written-form rt {
-  font-size: 0.58em;
+  font-size: 0.68em;
+  line-height: 1.35;
+  letter-spacing: 0.06em;
 }
 .vocab-review-modal .kana-card .card-meaning {
-  margin-top: 8px !important;
+  margin-top: 10px !important;
   color: #352519 !important;
-  font-size: 0.82em !important;
+  font-size: 0.94em !important;
   font-weight: 900 !important;
-  line-height: 1.15;
+  line-height: 1.2;
 }
 
 .settlement-yaku-header {
