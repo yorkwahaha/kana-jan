@@ -3079,6 +3079,64 @@ button.kana-card { appearance: none; }
   flex-shrink: 0;
 }
 
+/* 實戰式新手教學：每一步只留一句提示，避免遮住主要牌桌操作。 */
+.guided-tutorial {
+  position: fixed;
+  z-index: 80;
+  top: clamp(64px, 10dvh, 104px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 28px));
+  padding: 12px 14px;
+  border: 1.5px solid rgba(212, 160, 23, 0.82);
+  border-radius: 12px;
+  background: rgba(24, 19, 16, 0.94);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.36);
+  color: #fff8e7;
+  backdrop-filter: blur(8px);
+}
+.guided-tutorial-progress {
+  margin-bottom: 5px;
+  color: #f5d77f;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.guided-tutorial p {
+  margin: 0;
+  font-size: clamp(0.96rem, 2vw, 1.08rem);
+  font-weight: 700;
+  line-height: 1.5;
+}
+.guided-tutorial-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.guided-tutorial-skip {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 248, 231, 0.72);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.guided-tutorial-next {
+  min-width: 92px;
+}
+
+@media (max-width: 680px) {
+  .guided-tutorial {
+    top: 54px;
+    padding: 10px 12px;
+  }
+  .guided-tutorial-actions {
+    margin-top: 8px;
+  }
+}
+
 /* 設定面板 (Settings Panel) */
 .settings-modal {
   width: min(920px, calc(100% - 24px));
@@ -3110,6 +3168,33 @@ button.kana-card { appearance: none; }
 .settings-learning {
   align-self: stretch;
 }
+.win-screen-hold-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+.win-screen-hold-label {
+  white-space: nowrap;
+}
+.win-screen-hold-options {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: clamp(6px, 1.1vw, 12px);
+  white-space: nowrap;
+}
+.win-screen-hold-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
+}
+.win-screen-hold-options input {
+  margin: 0;
+}
 .settings-body legend {
   padding: 0 8px;
   font-size: 0.88rem;
@@ -3124,6 +3209,13 @@ button.kana-card { appearance: none; }
   }
   .settings-body {
     grid-template-columns: 1fr;
+  }
+  .win-screen-hold-row {
+    gap: 6px;
+  }
+  .win-screen-hold-options {
+    gap: 6px;
+    font-size: 0.92rem;
   }
 }
 

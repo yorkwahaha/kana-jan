@@ -90,11 +90,9 @@ export function CardView({
         <span className="card-glyph">{glyph}</span>
       )}
       {showRomaji ? <span className="card-romaji">{card.romaji}</span> : null}
-      {(showHints?.showRow || showHints?.showColumn) && (
+      {showHints?.showPosition && (
         <span className="card-meta">
-          {showHints.showRow ? card.rowLabel : ''}
-          {showHints.showRow && showHints.showColumn ? ' · ' : ''}
-          {showHints.showColumn ? card.columnLabel : ''}
+          {card.rowLabel} · {card.columnLabel}
         </span>
       )}
       {card.confusable && card.cardType === 'katakana' && (

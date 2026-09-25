@@ -13,6 +13,7 @@ interface Props {
   onName: (v: string) => void
   onDifficulty: (v: AiDifficulty) => void
   onStart: () => void
+  onStartTutorial: () => void
   onContinue: () => void
   onHelp: () => void
   onCreateRoom?: () => void
@@ -29,6 +30,7 @@ export function Lobby({
   onName,
   onDifficulty,
   onStart,
+  onStartTutorial,
   onContinue,
   onHelp,
   onCreateRoom,
@@ -141,8 +143,11 @@ export function Lobby({
                 </div>
               </fieldset>
               <div className="lobby-actions">
+                <button className="btn tutorial-start" onClick={onStartTutorial}>
+                  新手教學
+                </button>
                 <button className="btn ghost" onClick={onHelp}>
-                  玩法說明
+                  詳細規則
                 </button>
                 {hasSave && (
                   <button className="btn lg" onClick={onContinue}>

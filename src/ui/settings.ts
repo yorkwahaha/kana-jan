@@ -1,15 +1,16 @@
 export type AnimationSpeed = 'off' | 'fast' | 'normal'
+export type WinScreenHold = '4s' | '8s' | 'manual'
 
 export interface Settings {
   bgm: boolean
   sfx: boolean
   speech: boolean
   animation: AnimationSpeed
+  winScreenHold: WinScreenHold
   learningHints: boolean
   showRomaji: boolean
   showMeaning: boolean
-  showRow: boolean
-  showColumn: boolean
+  showPosition: boolean
   highlightNear: boolean
 }
 
@@ -18,11 +19,11 @@ export const DEFAULT_SETTINGS: Settings = {
   sfx: true,
   speech: true,
   animation: 'normal',
+  winScreenHold: '4s',
   learningHints: true,
   showRomaji: false,
   showMeaning: false,
-  showRow: false,
-  showColumn: false,
+  showPosition: false,
   highlightNear: true,
 }
 
@@ -36,14 +37,25 @@ export function loadSettings(): Settings {
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { ...DEFAULT_SETTINGS }
     const candidate = parsed as Record<string, unknown>
     const next = { ...DEFAULT_SETTINGS }
-    const booleanKeys: Array<keyof Omit<Settings, 'animation'>> = [
-      'bgm', 'sfx', 'speech', 'learningHints', 'showRomaji', 'showMeaning', 'showRow', 'showColumn', 'highlightNear',
-    ]
+    const booleanKeys = [
+      'bgm', 'sfx', 'speech', 'learningHints', 'showRomaji', 'showMeaning', 'showPosition', 'highlightNear',
+    ] as const
     for (const key of booleanKeys) {
       if (typeof candidate[key] === 'boolean') next[key] = candidate[key]
     }
+    // v1 migration: the old UI stored row/column as two independent toggles.
+    if (typeof candidate.showPosition !== 'boolean') {
+      next.showPosition = candidate.showRow === true || candidate.showColumn === true
+    }
     if (candidate.animation === 'off' || candidate.animation === 'fast' || candidate.animation === 'normal') {
       next.animation = candidate.animation
+    }
+    if (candidate.winScreenHold === '4s' || candidate.winScreenHold === '8s' || candidate.winScreenHold === 'manual') {
+      next.winScreenHold = candidate.winScreenHold
+    } else if (candidate.winScreenHold === '5s') {
+      next.winScreenHold = '4s'
+    } else if (candidate.winScreenHold === '10s') {
+      next.winScreenHold = '8s'
     }
     return next
   } catch {

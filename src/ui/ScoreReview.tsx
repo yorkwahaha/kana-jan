@@ -110,8 +110,13 @@ const PAYER_START_MS = 350
 const PAYER_DURATION_MS = 650
 const WINNER_START_MS = 1050
 const WINNER_DURATION_MS = 750
-export const SCORE_REVIEW_AUTO_ADVANCE_MS = 4200
+export const SCORE_REVIEW_AUTO_ADVANCE_MS = 4000
 export const GAME_OVER_TRANSFER_REVEAL_MS = 4200
+
+export function scoreReviewAutoAdvanceMs(hold: Settings['winScreenHold']): number | null {
+  if (hold === 'manual') return null
+  return hold === '8s' ? 8_000 : SCORE_REVIEW_AUTO_ADVANCE_MS
+}
 
 export type SettlementPresentationStage = 'transfer' | 'summary'
 
@@ -243,13 +248,10 @@ export function ScoreReview({
     settleMatch(myRank.place, matchId, { tiedForFirst: myRank.place === 1 && tiedForFirst })
   }, [isGameOver, rankings, state.players, state.seed, state.matchId, mySeat])
 
-  // 音效播放（配合金幣飛行與籌碼滾動節奏）
+  // 音效播放（配合金幣飛行與籌碼滾動節奏）。
+  // 和牌宣告期間不自動朗讀牌面，避免與宣告語音重疊；牌面仍可由玩家自行點擊發音。
   useEffect(() => {
     if (!pending && !isGameOver) return
-    if (pending && settings.speech) {
-      const first = pending.yaku.cards[0]
-      if (first) void speakJapanese(speechText(first), true)
-    }
     if (settings.sfx && (pending || state.lastTransfers.length > 0)) {
       const timers: number[] = []
       // 1. 失分方金幣出發
@@ -262,17 +264,20 @@ export function ScoreReview({
         for (const t of timers) window.clearTimeout(t)
       }
     }
-  }, [pending, isGameOver, state.lastTransfers.length, settings.speech, settings.sfx])
+  }, [pending, isGameOver, state.lastTransfers.length, settings.sfx])
 
-  // 非對局結束時，金幣畫面約 4.2 秒自動推進；對局結束時停在畫面不自動跳過
+  // 非對局結束時依玩家設定自動推進；manual 則保留畫面直到玩家主動繼續。
   useEffect(() => {
     if (isGameOver) return
     if (!pending) return
+    if (!canFinish) return
+    const delay = scoreReviewAutoAdvanceMs(settings.winScreenHold)
+    if (delay === null) return
     const autoTimer = window.setTimeout(() => {
       onFinish?.()
-    }, SCORE_REVIEW_AUTO_ADVANCE_MS)
+    }, delay)
     return () => window.clearTimeout(autoTimer)
-  }, [isGameOver, pending, onFinish])
+  }, [isGameOver, pending, canFinish, onFinish, settings.winScreenHold])
 
   // 對局結束且有讓渡時，先完整播放 4.2 秒轉帳畫面，再揭示結算摘要
   useEffect(() => {
@@ -459,6 +464,11 @@ export function ScoreReview({
               )}
               {!canFinish && (
                 <p className="settlement-host-wait">等待房主繼續</p>
+              )}
+              {canFinish && settings.winScreenHold === 'manual' && (
+                <button type="button" className="btn primary settlement-continue-btn" onClick={onFinish}>
+                  繼續對局
+                </button>
               )}
             </>
           )

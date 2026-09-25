@@ -5,6 +5,7 @@ import {
   SCORE_REVIEW_AUTO_ADVANCE_MS,
   ScoreReview,
   profilePlayerForSeat,
+  scoreReviewAutoAdvanceMs,
   settlementPresentationStage,
   settlementStageLayers,
 } from './ScoreReview'
@@ -14,8 +15,11 @@ import { buildCard } from '../data/cards'
 import { KANA_SOUNDS } from '../data/kana'
 import { DEFAULT_BONUS } from '../data/bonuses'
 
-it('金幣讓渡畫面停留 4.2 秒', () => {
-  expect(SCORE_REVIEW_AUTO_ADVANCE_MS).toBe(4200)
+it('和牌畫面可設定 4 秒、8 秒或手動跳過', () => {
+  expect(SCORE_REVIEW_AUTO_ADVANCE_MS).toBe(4000)
+  expect(scoreReviewAutoAdvanceMs('4s')).toBe(4000)
+  expect(scoreReviewAutoAdvanceMs('8s')).toBe(8000)
+  expect(scoreReviewAutoAdvanceMs('manual')).toBeNull()
   expect(GAME_OVER_TRANSFER_REVEAL_MS).toBe(4200)
 })
 
@@ -93,6 +97,18 @@ describe('ScoreReview (金幣讓渡畫面精簡化與籌碼跳動)', () => {
     expect(html).not.toContain('繼續對局')
     expect(html).not.toContain('settlement-continue-btn')
     expect(html).not.toContain('settlement-auto-timer')
+  })
+
+  it('手動停駐模式顯示明確的繼續對局按鈕', () => {
+    const html = renderToString(
+      <ScoreReview
+        state={makeMockState()}
+        settings={{ ...DEFAULT_SETTINGS, winScreenHold: 'manual' }}
+        mySeat={0}
+      />,
+    )
+    expect(html).toContain('settlement-continue-btn')
+    expect(html).toContain('繼續對局')
   })
 
   it('does NOT render 自摸 banner or yaku header', () => {

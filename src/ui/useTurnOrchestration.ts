@@ -18,8 +18,13 @@ export interface TurnOrchestration {
   currentActor: PlayerState | null
   isMyTurn: boolean
   isTurnActive: boolean
+  turnTimeoutEnabled: boolean
   clockKey: string
   handleTurnTimeout: () => void
+}
+
+export function shouldUseTurnTimeout(actor: PlayerState | null): boolean {
+  return actor !== null && actor.aiDifficulty !== 'easy'
 }
 
 export function useTurnOrchestration({ state, networkMode, mySeat, spectating, dispatch }: Options): TurnOrchestration {
@@ -35,9 +40,10 @@ export function useTurnOrchestration({ state, networkMode, mySeat, spectating, d
   const isTurnActive =
     !spectating &&
     (state.phase === 'playerAction' || state.phase === 'discard' || state.phase === 'reaction')
+  const turnTimeoutEnabled = shouldUseTurnTimeout(currentActor)
 
   const handleTurnTimeout = useCallback(() => {
-    if (!isTurnActive || !currentActor) return
+    if (!turnTimeoutEnabled || !isTurnActive || !currentActor) return
     if (isMyTurn || (networkMode === 'host' && currentActor.kind === 'remote')) {
       if (state.phase === 'playerAction') {
         dispatch({ type: 'SKIP_YAKU' })
@@ -50,7 +56,7 @@ export function useTurnOrchestration({ state, networkMode, mySeat, spectating, d
         dispatch({ type: 'PASS_CLAIM' })
       }
     }
-  }, [isTurnActive, isMyTurn, networkMode, currentActor, state, dispatch])
+  }, [turnTimeoutEnabled, isTurnActive, isMyTurn, networkMode, currentActor, state, dispatch])
   handleTurnTimeoutRef.current = handleTurnTimeout
 
   const clockKey = turnClockKey({
@@ -62,6 +68,7 @@ export function useTurnOrchestration({ state, networkMode, mySeat, spectating, d
   })
   const hostTimeoutMs = state.phase === 'reaction' ? 14_000 : 20_000
   const hostShouldTimeout =
+    turnTimeoutEnabled &&
     networkMode === 'host' &&
     isTurnActive &&
     (state.phase === 'reaction' ? reactionActor(state) : currentPlayer(state))?.kind === 'remote'
@@ -85,5 +92,5 @@ export function useTurnOrchestration({ state, networkMode, mySeat, spectating, d
     return () => window.clearTimeout(timer)
   }, [hostShouldTimeout, state.phase, clockKey])
 
-  return { currentActor, isMyTurn, isTurnActive, clockKey, handleTurnTimeout }
+  return { currentActor, isMyTurn, isTurnActive, turnTimeoutEnabled, clockKey, handleTurnTimeout }
 }

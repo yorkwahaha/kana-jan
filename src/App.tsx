@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getGameOverSfxKind, playSfx, startBgm, stopBgm, type BgmTrack } from './audio/sfx'
-import { speakJapanese } from './audio/speech'
+import { speakJapanese, stopSpeech } from './audio/speech'
 import { speechText } from './data/cards'
 import { decideAi, needsHumanInput } from './engine/ai'
 import {
@@ -24,6 +24,7 @@ import { generateRoomCode, getRoomFromUrl, tryParseRoomCode } from './network/ro
 import type { RoomState } from './network/types'
 import { CatalogModal } from './ui/CatalogModal'
 import { GameTable } from './ui/GameTable'
+import { GuidedTutorial, GUIDED_TUTORIAL_STEPS } from './ui/GuidedTutorial'
 import { Lobby } from './ui/Lobby'
 import { RoomLobby } from './ui/RoomLobby'
 import { RowPreview } from './ui/RowPreview'
@@ -54,6 +55,7 @@ export function App() {
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
   const [hoverYaku, setHoverYaku] = useState<YakuCandidate | null>(null)
   const [showTutorial, setShowTutorial] = useState(false)
+  const [guidedTutorialStep, setGuidedTutorialStep] = useState<number | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [showCatalog, setShowCatalog] = useState(false)
   const [locked, setLocked] = useState(false)
@@ -212,6 +214,9 @@ export function App() {
     }
     lastAnnouncedScoreKeyRef.current = scoreKey
 
+    // 和牌宣告具有最高語音優先權：先停止選牌／牌面朗讀，避免兩條人聲同時播放。
+    stopSpeech()
+
     // 1. 放槍牌／成牌發亮 1 秒（搭配 ron 放槍震撼音效或自摸提示音）
     setAnnouncementStage('gun')
     if (state.pendingScore.source === 'ron') {
@@ -345,7 +350,12 @@ export function App() {
   }, [state, settings, dispatch, apply, showTutorial, showSettings, networkMode, announcementStage])
 
   // 單人遊戲開始
-  const startSingle = (seed?: number, nextLesson = DEFAULT_LESSON_ID) => {
+  const startSingle = (
+    seed?: number,
+    nextLesson = DEFAULT_LESSON_ID,
+    nextDifficulty = difficulty,
+    skipPreview = false,
+  ) => {
     playSfx('click', settings.sfx)
     cleanupNetwork()
     clearGame()
@@ -353,11 +363,18 @@ export function App() {
       startGame({
         seed,
         playerName,
-        aiDifficulty: difficulty,
+        aiDifficulty: nextDifficulty,
         lessonId: nextLesson,
+        skipPreview,
       }),
     )
     setState(next)
+  }
+
+  const startGuidedTutorial = () => {
+    setDifficulty('easy')
+    setGuidedTutorialStep(0)
+    startSingle(undefined, DEFAULT_LESSON_ID, 'easy', true)
   }
 
   // 多人連線：開房（Host）
@@ -518,6 +535,7 @@ export function App() {
     if (roomState) clearResume(roomState.roomId)
     clearGame()
     cleanupNetwork()
+    setGuidedTutorialStep(null)
     setState(createLobbyState())
   }
 
@@ -537,7 +555,7 @@ export function App() {
 
   const hasSave = useMemo(() => !roomState && !!loadGame() && state.phase === 'lobby', [state.phase, roomState])
 
-  const { isMyTurn, isTurnActive, clockKey, handleTurnTimeout } = useTurnOrchestration({
+  const { isMyTurn, isTurnActive, turnTimeoutEnabled, clockKey, handleTurnTimeout } = useTurnOrchestration({
     state, networkMode, mySeat, spectating, dispatch,
   })
 
@@ -594,6 +612,7 @@ export function App() {
           onName={setPlayerName}
           onDifficulty={setDifficulty}
           onStart={() => startSingle()}
+          onStartTutorial={startGuidedTutorial}
           onContinue={() => {
             const saved = loadGame()
             if (saved) setState(saved)
@@ -636,7 +655,7 @@ export function App() {
         mySeat={spectating ? 0 : mySeat}
         isRonHighlight={announcementStage === 'gun' || announcementStage === 'cutin'}
         turnTimer={{
-          active: isTurnActive && isMyTurn,
+          active: turnTimeoutEnabled && isTurnActive && isMyTurn,
           seconds: state.phase === 'reaction' ? 12 : 18,
           turnKey: clockKey,
           onTimeout: handleTurnTimeout,
@@ -685,6 +704,23 @@ export function App() {
           setShowCatalog(true)
         }}
       />
+
+      {guidedTutorialStep !== null &&
+        state.phase !== 'preview' &&
+        state.phase !== 'dealing' &&
+        state.phase !== 'scoring' &&
+        state.phase !== 'review' &&
+        state.phase !== 'gameOver' && (
+          <GuidedTutorial
+            step={guidedTutorialStep}
+            onNext={() =>
+              setGuidedTutorialStep((step) =>
+                step === null ? null : Math.min(step + 1, GUIDED_TUTORIAL_STEPS.length - 1),
+              )
+            }
+            onExit={() => setGuidedTutorialStep(null)}
+          />
+        )}
 
       {state.phase === 'preview' && (
         <RowPreview

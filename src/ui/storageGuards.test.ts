@@ -23,6 +23,24 @@ describe('localStorage runtime guards', () => {
     expect(loadSettings()).toEqual({ ...DEFAULT_SETTINGS, sfx: false, showRomaji: true })
   })
 
+  it('舊版行／段設定會合併遷移，並接受合法和牌停駐時間', () => {
+    localStorage.setItem('kana-jan-settings-v1', JSON.stringify({
+      showRow: false,
+      showColumn: true,
+      winScreenHold: '10s',
+    }))
+    expect(loadSettings()).toEqual({
+      ...DEFAULT_SETTINGS,
+      showPosition: true,
+      winScreenHold: '8s',
+    })
+  })
+
+  it('前一版 5 秒停駐設定會遷移為新的 4 秒', () => {
+    localStorage.setItem('kana-jan-settings-v1', JSON.stringify({ winScreenHold: '5s' }))
+    expect(loadSettings()).toEqual({ ...DEFAULT_SETTINGS, winScreenHold: '4s' })
+  })
+
   it('熟練度會丟棄未知音與非法 counter，損壞 shape 不會讓 recordSounds crash', () => {
     localStorage.setItem('kana-jan-mastery-v1', JSON.stringify({ sounds: { a: 2, bad: 99, i: -1, u: 1.5 } }))
     expect(loadMastery()).toEqual({ sounds: { a: 2 } })

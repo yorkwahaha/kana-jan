@@ -220,8 +220,11 @@ export function playSfx(kind: SfxKind, enabled: boolean) {
             missingAudioPaths.add(path)
             playFallbackTone(kind)
           })
-          return
         }
+        // Some browsers return void from HTMLMediaElement.play().
+        // Playback has still been requested, so do not also start the fallback
+        // tone or both sounds can overlap.
+        return
       }
     } catch {
       missingAudioPaths.add(path)

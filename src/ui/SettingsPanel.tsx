@@ -71,17 +71,29 @@ export function SettingsPanel({ settings, onChange, onClose, onRestart, canResta
               單字卡顯示中文
             </label>
             <label className="toggle">
-              <input type="checkbox" checked={settings.showRow} onChange={() => toggle('showRow')} />
-              顯示所屬行
-            </label>
-            <label className="toggle">
-              <input type="checkbox" checked={settings.showColumn} onChange={() => toggle('showColumn')} />
-              顯示所屬段
+              <input type="checkbox" checked={settings.showPosition} onChange={() => toggle('showPosition')} />
+              顯示所屬行／段
             </label>
             <label className="toggle">
               <input type="checkbox" checked={settings.highlightNear} onChange={() => toggle('highlightNear')} />
               顯示聽牌提示與高亮
             </label>
+            <div className="win-screen-hold-row">
+              <span className="win-screen-hold-label">和牌停駐</span>
+              <div className="win-screen-hold-options" role="radiogroup" aria-label="和牌畫面停駐時間">
+                {(['4s', '8s', 'manual'] as const).map((v) => (
+                  <label key={v}>
+                    <input
+                      type="radio"
+                      name="win-screen-hold"
+                      checked={settings.winScreenHold === v}
+                      onChange={() => onChange({ ...settings, winScreenHold: v })}
+                    />
+                    {v === '4s' ? '4 秒' : v === '8s' ? '8 秒' : '手動跳過'}
+                  </label>
+                ))}
+              </div>
+            </div>
           </fieldset>
         </div>
         <footer className="modal-foot">
