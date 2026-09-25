@@ -109,7 +109,8 @@ export function getSettlementArrowGeom(from: TablePosition, to: TablePosition): 
     case 'right->left':
       return {
         arrowAsset: '/assets/ui/settlement-arrow-arc.svg',
-        arrowBox: { x: 300, y: 174, width: 400, height: 140 },
+        // 左右家互給只需要方向提示；箭頭縮短置中，金幣仍沿原本完整軌道飛行。
+        arrowBox: { x: 415, y: 190, width: 170, height: 64 },
         coinPath: 'M 714,350 C 686,218 314,218 286,350',
       }
 
@@ -128,7 +129,7 @@ export function getSettlementArrowGeom(from: TablePosition, to: TablePosition): 
     case 'left->right':
       return {
         arrowAsset: '/assets/ui/settlement-arrow-arc.svg',
-        arrowBox: { x: 300, y: 174, width: 400, height: 140, transform: 'translate(1000 0) scale(-1 1)' },
+        arrowBox: { x: 415, y: 190, width: 170, height: 64, transform: 'translate(1000 0) scale(-1 1)' },
         coinPath: 'M 286,350 C 314,218 686,218 714,350',
       }
 

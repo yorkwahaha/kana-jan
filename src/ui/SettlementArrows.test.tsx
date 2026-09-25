@@ -123,6 +123,13 @@ describe('SettlementArrows (圖三重新設計)', () => {
     expect(acrossStart).toEqual({ x: 714, y: 350 })
     expect(acrossEnd).toEqual({ x: 286, y: 350 })
     expect(across.arrowAsset).toBe('/assets/ui/settlement-arrow-arc.svg')
+    expect(across.arrowBox).toMatchObject({ x: 415, y: 190, width: 170, height: 64 })
+
+    const reverseAcross = getSettlementArrowGeom('left', 'right')!
+    expect(firstLinePoint(reverseAcross.coinPath)).toEqual({ x: 286, y: 350 })
+    expect(lastLinePoint(reverseAcross.coinPath)).toEqual({ x: 714, y: 350 })
+    expect(reverseAcross.arrowBox).toMatchObject({ x: 415, y: 190, width: 170, height: 64 })
+    expect(reverseAcross.arrowBox.transform).toBe('translate(1000 0) scale(-1 1)')
   })
 
   it('keeps every adjacent-seat arrow in the outer corridors with direction-specific turns', () => {

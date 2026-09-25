@@ -3810,13 +3810,13 @@ button.kana-card { appearance: none; }
     padding-bottom: 3px;
   }
   .preview-header h2 {
-    font-size: 1.15rem;
+    font-size: 1.28rem;
   }
   .preview-badge {
-    font-size: 0.75rem;
+    font-size: 0.84rem;
   }
   .preview-skip-btn {
-    font-size: 0.85rem;
+    font-size: 0.94rem;
     padding: 3px 12px;
   }
   .preview-main-grid {
@@ -3835,8 +3835,14 @@ button.kana-card { appearance: none; }
     height: clamp(70px, 8.8vh, 90px);
   }
   .preview-row-tag {
-    font-size: 0.92rem;
+    font-size: 1rem;
     padding: 3px 10px;
+  }
+  .preview-flipper .kana-card .card-type-tag {
+    font-size: clamp(10px, 2.2vh, 12px);
+    font-weight: 800;
+    color: #51392b;
+    opacity: 0.95;
   }
   .bonus-flipper {
     width: clamp(100px, 12vw, 136px);
@@ -3853,14 +3859,14 @@ button.kana-card { appearance: none; }
     gap: 3px;
   }
   .bonus-point-pill {
-    font-size: 0.85rem;
+    font-size: 0.92rem;
     padding: 2px 8px;
   }
   .bonus-mission-title {
-    font-size: 0.98rem;
+    font-size: 1.08rem;
   }
   .bonus-mission-desc {
-    font-size: 0.88rem;
+    font-size: 0.96rem;
     line-height: 1.3;
   }
 }
@@ -4093,21 +4099,24 @@ button.kana-card { appearance: none; }
   }
 
   .seat-hud {
-    gap: 6px;
+    gap: 7px;
   }
   .seat-hud.is-active,
   .seat-hud.is-claiming { transform: none; }
   .seat-avatar {
-    width: 40px;
-    height: 40px;
-    font-size: 1.05rem;
+    width: 44px;
+    height: 44px;
+    font-size: 1.15rem;
     border-width: 2px;
   }
-  .seat-name { font-size: 0.82rem; max-width: 92px; }
-  .chip-badge { font-size: 0.78rem; }
-  .chip-badge::before { font-size: 0.8rem; }
-  .seat-place { font-size: 1.15rem; }
-  .kind { font-size: 0.58rem; padding: 0 4px; }
+  .seat-name { font-size: 0.95rem; max-width: 108px; }
+  .chip-badge { font-size: 0.9rem; }
+  .chip-badge::before { font-size: 0.88rem; }
+  .seat-place { font-size: 1.3rem; }
+  .kind { font-size: 0.68rem; padding: 1px 5px; }
+  .active-turn-tag { font-size: 0.68rem; }
+  .delta-up,
+  .delta-down { font-size: 0.96rem; }
 
   .seat-hud.pos-top {
     top: 3.5%;
@@ -4328,33 +4337,81 @@ button.kana-card { appearance: none; }
   .human-hand-area .kana-card.size-lg {
     width: clamp(62px, 7.4vw, 82px);
     min-width: clamp(62px, 7.4vw, 82px);
-    height: clamp(86px, 24vh, 114px);
+    height: clamp(92px, 25vh, 118px);
     font-size: clamp(11px, 2.2vh, 14px);
     margin-right: 0;
     padding: 0.32em 0.22em 0.28em;
+    row-gap: 3px;
+  }
+  .human-hand-area .kana-card .card-vocab {
+    gap: 3px;
+    margin-top: 0;
+  }
+  .human-hand-area .kana-card .card-word {
+    line-height: 1.12;
   }
   .human-hand-area .card-type-tag {
-    font-size: 0.62em;
+    font-size: clamp(9px, 1.9vh, 10.5px);
+    color: #51392b;
+    opacity: 0.95;
     padding: 0 3px;
+  }
+  .human-hand-area .card-row-mark {
+    font-size: clamp(9px, 1.9vh, 10.5px);
+  }
+  .human-hand-area .kana-card:not(.size-mini):not(.size-river) .card-romaji,
+  .settlement-center .kana-card:not(.size-mini):not(.size-river) .card-romaji {
+    font-size: clamp(9.5px, 2.15vh, 11px);
+    line-height: 1.12;
+    letter-spacing: 0.04em;
+    color: #59483b;
+    font-weight: 700;
+    margin-top: 0;
+  }
+  .human-hand-area .kana-card:not(.size-mini):not(.size-river) .card-meta,
+  .settlement-center .kana-card:not(.size-mini):not(.size-river) .card-meta {
+    font-size: clamp(9px, 2vh, 10.5px);
+    line-height: 1.12;
+    color: #59483b;
+    font-weight: 700;
+  }
+  .human-hand-area .kana-card:not(.size-mini):not(.size-river) .card-meaning,
+  .settlement-center .kana-card:not(.size-mini):not(.size-river) .card-meaning {
+    font-size: clamp(9px, 2vh, 10.5px);
+    line-height: 1.12;
+    color: #59483b;
+    font-weight: 700;
+    margin-top: 0;
   }
   .hand-card-slot.is-drawn-slot {
     margin-left: clamp(6px, 0.8vw, 10px);
   }
 
   .compact-claim-dock {
-    right: 18px;
-    bottom: 18px;
-    max-width: min(72vw, 680px);
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    max-width: none;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
   }
   .compact-claim-buttons {
-    flex-flow: row-reverse wrap;
-    justify-content: flex-start;
+    flex-flow: column nowrap;
+    justify-content: flex-end;
     align-items: flex-end;
     gap: 6px;
   }
   .btn-compact-claim {
-    min-width: 138px;
+    min-width: 128px;
     padding: 5px 14px;
+  }
+  .btn-compact-skip {
+    min-width: 112px;
+    justify-content: center;
+  }
+  .compact-timer-display {
+    align-self: center;
+    font-size: clamp(1.7rem, 5vw, 2.3rem);
   }
   .tenpai-assist {
     left: 0;
@@ -4383,6 +4440,47 @@ button.kana-card { appearance: none; }
     min-height: 26px;
     padding: 0.2rem 0.55rem;
     font-size: 0.72rem;
+  }
+
+  /* 手機結算畫面：保留四角留白，只放大真正需要閱讀的玩家資訊。 */
+  .settlement-player-name {
+    font-size: 1.05rem;
+    max-width: 140px;
+    color: #4b5563;
+  }
+  .settlement-human-tag {
+    font-size: 0.76rem;
+  }
+  .settlement-badge-avatar {
+    width: 46px;
+    height: 46px;
+    font-size: 1.25rem;
+  }
+  .settlement-rank {
+    font-size: clamp(1.95rem, 4.2vh, 2.25rem);
+  }
+  .settlement-delta,
+  .settlement-coins {
+    font-size: 1.36rem;
+  }
+  .settlement-coins .coin-icon {
+    font-size: 1.18rem;
+  }
+
+  /* 本局學會單字：手機橫向保留 ruby 與主字的呼吸空間，中文翻譯再放大一級。 */
+  .vocab-review-modal .card-written-form {
+    line-height: 1.42;
+    padding-top: 0.28em;
+  }
+  .vocab-review-modal .card-written-form rt {
+    font-size: 0.72em;
+    line-height: 1.08;
+    transform: translateY(-2px);
+  }
+  .vocab-review-modal .kana-card .card-meaning {
+    margin-top: 12px !important;
+    font-size: 1.08em !important;
+    line-height: 1.28;
   }
 }
 
