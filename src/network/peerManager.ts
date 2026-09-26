@@ -51,6 +51,7 @@ export interface GuestCallbacks {
 export const MAX_SPECTATORS = 8
 const INBOUND_WINDOW_MS = 2000
 const MAX_INBOUND_MESSAGES_PER_WINDOW = 40
+const GAME_SYNC_MIN_INTERVAL_MS = 60
 const RESUME_TOKEN_TTL_MS = 6 * 60 * 60 * 1000
 
 export class HostManager {
@@ -64,6 +65,8 @@ export class HostManager {
   private currentGameState: GameState | null = null
   private destroyed = false
   private inboundWindows = new Map<DataConnection, { startedAt: number; count: number }>()
+  private gameSyncTimer: ReturnType<typeof setTimeout> | null = null
+  private lastGameSyncAt = 0
 
   constructor(roomCode: string, hostName: string, lessonId: string, callbacks: HostCallbacks) {
     this.callbacks = callbacks
@@ -198,8 +201,15 @@ export class HostManager {
         return
       }
       if (this.roomState.started) {
+        const expiredResumeCredential = this.hasExpiredResumeCredential(msg.resumePlayerId, msg.resumeToken)
         if (this.tryReconnect(conn, msg.resumePlayerId, msg.resumeToken)) return
         this.addSpectator(conn, name)
+        if (expiredResumeCredential) {
+          conn.send({
+            type: 'ERROR',
+            message: '你的玩家重連憑證已超過 6 小時有效期，因此只能以觀戰者加入這一局。',
+          } satisfies HostMessage)
+        }
         return
       }
 
@@ -311,6 +321,15 @@ export class HostManager {
       yourSeat: seat,
       resumeToken: this.resumeTokens.get(seat),
     } satisfies HostMessage)
+  }
+
+  private hasExpiredResumeCredential(resumePlayerId?: string, resumeToken?: string): boolean {
+    if (!resumePlayerId || !resumeToken) return false
+    const slot = this.roomState.slots.find(
+      (candidate) => !candidate.isHost && candidate.kind !== 'ai' && candidate.playerId === resumePlayerId,
+    )
+    if (!slot || this.resumeTokens.get(slot.seat) !== resumeToken) return false
+    return (this.resumeTokenExpiresAt.get(slot.seat) ?? 0) < Date.now()
   }
 
   private tryReconnect(conn: DataConnection, resumePlayerId?: string, resumeToken?: string): boolean {
@@ -516,8 +535,7 @@ export class HostManager {
     return true
   }
 
-  public syncGameState(state: GameState) {
-    this.currentGameState = state
+  private broadcastGameSync(state: GameState) {
     for (const [seat, conn] of this.connections.entries()) {
       if (conn.open) {
         conn.send({
@@ -536,6 +554,24 @@ export class HostManager {
         } satisfies HostMessage)
       }
     }
+  }
+
+  public syncGameState(state: GameState) {
+    this.currentGameState = state
+    const now = Date.now()
+    const remaining = GAME_SYNC_MIN_INTERVAL_MS - (now - this.lastGameSyncAt)
+    if (this.gameSyncTimer === null && remaining <= 0) {
+      this.lastGameSyncAt = now
+      this.broadcastGameSync(state)
+      return
+    }
+    if (this.gameSyncTimer !== null) return
+    this.gameSyncTimer = setTimeout(() => {
+      this.gameSyncTimer = null
+      if (this.destroyed || !this.currentGameState) return
+      this.lastGameSyncAt = Date.now()
+      this.broadcastGameSync(this.currentGameState)
+    }, Math.max(0, remaining))
   }
 
   private broadcastMessage(msg: HostMessage) {
@@ -577,6 +613,10 @@ export class HostManager {
     this.inboundWindows.clear()
     this.resumeTokens.clear()
     this.resumeTokenExpiresAt.clear()
+    if (this.gameSyncTimer !== null) {
+      clearTimeout(this.gameSyncTimer)
+      this.gameSyncTimer = null
+    }
     if (this.peer) {
       try {
         this.peer.destroy()

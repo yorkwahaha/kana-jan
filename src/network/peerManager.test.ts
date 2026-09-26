@@ -27,7 +27,10 @@ type TestHost = {
   getRoomState: () => ReturnType<HostManager['getRoomState']>
   resumeTokens: Map<number, string>
   roomState: { started: boolean }
+  connections: Map<number, DataConnection>
+  resumeTokenExpiresAt: Map<number, number>
   startGame: HostManager['startGame']
+  syncGameState: HostManager['syncGameState']
 }
 
 function createHost(): TestHost {
@@ -40,6 +43,7 @@ function createHost(): TestHost {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.useRealTimers()
   vi.unstubAllGlobals()
 })
 
@@ -147,6 +151,54 @@ describe('HostManager connection identity', () => {
     expect(reconnect.close).toHaveBeenCalled()
     expect(host.resumeTokens.get(1)).toBe(oldToken)
     expect(host.getRoomState().slots[1]?.connected).toBe(false)
+  })
+
+  it('GAME_SYNC 會合併高頻狀態，只送出最新狀態且保持低於 guest 限流', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(1000)
+    const host = createHost()
+    const conn = connection('peer-a')
+    host.handleGuestMessage(conn, { type: 'JOIN', name: 'A', peerId: 'peer-a' })
+    vi.mocked(conn.send).mockClear()
+    const base = startGame({ seed: 31, skipPreview: true })
+
+    host.syncGameState({ ...base, turnNumber: 1 })
+    for (let turnNumber = 2; turnNumber <= 20; turnNumber++) {
+      host.syncGameState({ ...base, turnNumber })
+    }
+
+    expect(vi.mocked(conn.send).mock.calls.filter(([msg]) => (msg as { type?: string }).type === 'GAME_SYNC')).toHaveLength(1)
+    vi.advanceTimersByTime(60)
+    const syncCalls = vi.mocked(conn.send).mock.calls
+      .map(([msg]) => msg as { type?: string; state?: { turnNumber?: number } })
+      .filter((msg) => msg.type === 'GAME_SYNC')
+    expect(syncCalls).toHaveLength(2)
+    expect(syncCalls.at(-1)?.state?.turnNumber).toBe(20)
+  })
+
+  it('過期的玩家重連憑證會明確說明降級為觀戰者', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(10_000)
+    const host = createHost()
+    const first = connection('peer-a')
+    host.handleGuestMessage(first, { type: 'JOIN', name: 'A', peerId: 'peer-a' })
+    const state = startGame({ seed: 32, skipPreview: true })
+    expect(host.startGame(state)).toBe(true)
+    const token = host.resumeTokens.get(1)!
+    host.resumeTokenExpiresAt.set(1, 9_999)
+    host.handleGuestDisconnect(first)
+
+    const reconnect = connection('peer-new')
+    host.handleGuestMessage(reconnect, {
+      type: 'JOIN',
+      name: 'A',
+      peerId: 'peer-new',
+      resumePlayerId: 'p1',
+      resumeToken: token,
+    })
+
+    const messages = vi.mocked(reconnect.send).mock.calls.map(([msg]) => msg as { type?: string; spectating?: boolean; message?: string })
+    expect(messages.some((msg) => msg.type === 'GAME_START' && msg.spectating === true)).toBe(true)
+    expect(messages.at(-1)).toEqual(expect.objectContaining({ type: 'ERROR', message: expect.stringContaining('超過 6 小時') }))
   })
 
   it('guest 端也限制房主短時間大量訊息', () => {

@@ -19,10 +19,6 @@ for (const k of KANA_SOUNDS) {
   VOCAB_MAP.set(k.vocabulary, k.sound)
   KANA_MAP.set(k.hiragana, k.sound)
   KANA_MAP.set(k.katakana, k.sound)
-  KANA_MAP.set(k.sound, k.sound)
-  // Hepburn has deliberate collisions (じ/ぢ => ji, ず/づ => zu).
-  // Never let a later romanization alias overwrite a canonical sound id.
-  if (!KANA_MAP.has(k.romaji)) KANA_MAP.set(k.romaji, k.sound)
 }
 
 let currentAudio: HTMLAudioElement | null = null

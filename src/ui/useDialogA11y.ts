@@ -34,6 +34,10 @@ export function useDialogA11y(active: boolean, onEscape?: () => void) {
     first.focus()
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return
+      const activeItem = document.activeElement
+      const focusInsideDialog = activeItem instanceof Node && dialog.contains(activeItem)
+
       if (event.key === 'Escape' && onEscapeRef.current) {
         event.preventDefault()
         event.stopPropagation()
@@ -51,8 +55,7 @@ export function useDialogA11y(active: boolean, onEscape?: () => void) {
       }
       const firstItem = items[0]!
       const lastItem = items[items.length - 1]!
-      const activeItem = document.activeElement
-      if (!items.includes(activeItem as HTMLElement)) {
+      if (!focusInsideDialog || activeItem === dialog) {
         event.preventDefault()
         ;(event.shiftKey ? lastItem : firstItem).focus()
       } else if (event.shiftKey && activeItem === firstItem) {
@@ -64,9 +67,9 @@ export function useDialogA11y(active: boolean, onEscape?: () => void) {
       }
     }
 
-    dialog.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keydown', handleKeyDown)
     return () => {
-      dialog.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keydown', handleKeyDown)
       if (previousFocus?.isConnected) previousFocus.focus()
     }
   }, [active])

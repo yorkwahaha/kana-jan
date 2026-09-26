@@ -1,5 +1,7 @@
+/** @vitest-environment node */
 import { describe, expect, it } from 'vitest'
 import { readdirSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { CARD_CATALOG, getCardById } from './cards'
 import { KANA_SOUNDS } from './kana'
 
@@ -12,8 +14,10 @@ describe('getCardById', () => {
 
   it('KANA_SOUNDS 與 kana/words 音檔雙向一致', () => {
     const expected = [...KANA_SOUNDS.map((kana) => `${kana.sound}.mp3`)].sort()
-    const kanaFiles = readdirSync('public/audio/kana').filter((name) => name.endsWith('.mp3')).sort()
-    const wordFiles = readdirSync('public/audio/words').filter((name) => name.endsWith('.mp3')).sort()
+    const kanaDir = fileURLToPath(new URL('../../public/audio/kana/', import.meta.url))
+    const wordsDir = fileURLToPath(new URL('../../public/audio/words/', import.meta.url))
+    const kanaFiles = readdirSync(kanaDir).filter((name) => name.endsWith('.mp3')).sort()
+    const wordFiles = readdirSync(wordsDir).filter((name) => name.endsWith('.mp3')).sort()
     expect(kanaFiles).toEqual(expected)
     expect(wordFiles).toEqual(expected)
   })

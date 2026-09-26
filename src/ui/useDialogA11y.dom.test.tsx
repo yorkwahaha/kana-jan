@@ -9,6 +9,7 @@ function DialogHarness({ onClose }: { onClose: () => void }) {
     <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true">
       <button type="button" style={{ display: 'none' }}>隱藏</button>
       <button type="button">第一個</button>
+      <div tabIndex={-1} data-testid="scroll-region">可程式化聚焦捲動區</div>
       <button type="button">最後一個</button>
     </div>
   )
@@ -40,7 +41,20 @@ describe('useDialogA11y', () => {
     fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })
     expect(document.activeElement).toBe(last)
 
-    fireEvent.keyDown(first, { key: 'Escape' })
+    const scrollRegion = view.getByTestId('scroll-region')
+    scrollRegion.focus()
+    const innerTab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+    scrollRegion.dispatchEvent(innerTab)
+    expect(innerTab.defaultPrevented).toBe(false)
+    expect(document.activeElement).toBe(scrollRegion)
+
+    document.body.tabIndex = -1
+    document.body.focus()
+    fireEvent.keyDown(document.body, { key: 'Tab' })
+    expect(document.activeElement).toBe(first)
+
+    document.body.focus()
+    fireEvent.keyDown(document.body, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 })

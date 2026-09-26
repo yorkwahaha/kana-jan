@@ -58,6 +58,7 @@ export function App() {
   const [guidedTutorialStep, setGuidedTutorialStep] = useState<number | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [showCatalog, setShowCatalog] = useState(false)
+  const [tableOverlayOpen, setTableOverlayOpen] = useState(false)
   const [locked, setLocked] = useState(false)
   const lockRef = useRef(false)
   const pendingDiscardIdRef = useRef<string | null>(null)
@@ -317,7 +318,7 @@ export function App() {
   useEffect(() => {
     if (networkMode === 'guest') return
     if (state.phase === 'lobby' || state.phase === 'gameOver') return
-    if (showTutorial || showSettings || showCatalog || guidedTutorialStep !== null) return
+    if (showTutorial || showSettings || showCatalog || tableOverlayOpen || guidedTutorialStep !== null) return
     if (state.phase === 'preview') return
 
     if (state.phase === 'dealing') {
@@ -333,13 +334,7 @@ export function App() {
     }
 
     if (state.phase === 'refill') {
-      const refillDelay = state.pendingScore
-        ? animation === 'normal'
-          ? 520
-          : animation === 'fast'
-            ? 340
-            : 40
-        : 40
+      const refillDelay = animation === 'normal' ? 520 : animation === 'fast' ? 340 : 40
       const t = window.setTimeout(() => dispatch({ type: 'REFILL' }), refillDelay)
       return () => window.clearTimeout(t)
     }
@@ -392,7 +387,7 @@ export function App() {
       })
     }, wait)
     return () => window.clearTimeout(t)
-  }, [state, animation, dispatch, apply, showTutorial, showSettings, showCatalog, guidedTutorialStep, networkMode, announcementStage])
+  }, [state, animation, dispatch, apply, showTutorial, showSettings, showCatalog, tableOverlayOpen, guidedTutorialStep, networkMode, announcementStage])
 
   // 單人遊戲開始
   const startSingle = (
@@ -632,7 +627,7 @@ export function App() {
 
   const hasSave = useMemo(() => state.phase === 'lobby' && !roomState && !!loadGame(), [state.phase, roomState])
 
-  const localOverlayOpen = showSettings || showTutorial || showCatalog || guidedTutorialStep !== null
+  const localOverlayOpen = showSettings || showTutorial || showCatalog || tableOverlayOpen || guidedTutorialStep !== null
   const { isMyTurn, isTurnActive, turnTimeoutEnabled, clockKey, handleTurnTimeout } = useTurnOrchestration({
     state, networkMode, mySeat, spectating, dispatch, paused: localOverlayOpen,
   })
@@ -784,6 +779,7 @@ export function App() {
           playSfx('click', settings.sfx)
           setShowCatalog(true)
         }}
+        onLocalOverlayChange={setTableOverlayOpen}
       />
 
       {guidedTutorialStep !== null &&

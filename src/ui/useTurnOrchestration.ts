@@ -45,7 +45,7 @@ export function useTurnOrchestration({ state, networkMode, mySeat, spectating, d
     state.phase === 'lobby' || state.players.length === 0
       ? null
       : state.phase === 'reaction'
-        ? (reactionActor(state) ?? state.players[state.currentPlayerIndex] ?? null)
+        ? (reactionActor(state) ?? null)
         : (state.players[state.currentPlayerIndex] ?? null)
   const isMyTurn = !spectating && currentActor ? currentActor.seat === mySeat : false
   const isTurnActive =

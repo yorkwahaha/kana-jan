@@ -30,5 +30,6 @@ describe('turn timeout policy', () => {
     expect(shouldScheduleHostTimeout(true, 'host', true, 'remote', false)).toBe(true)
     expect(shouldScheduleHostTimeout(true, 'host', true, 'remote', true)).toBe(false)
     expect(shouldScheduleHostTimeout(true, 'guest', true, 'remote', false)).toBe(false)
+    expect(shouldScheduleHostTimeout(true, 'host', true, undefined, false)).toBe(false)
   })
 })

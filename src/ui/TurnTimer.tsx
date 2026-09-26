@@ -37,18 +37,30 @@ export function useTurnCountdown(
   const [remaining, setRemaining] = useState(seconds)
   const onTimeoutRef = useRef(onTimeout)
   const deadlineRef = useRef(0)
+  const pausedRemainingMsRef = useRef(seconds * 1000)
   const keyRef = useRef<string | number | null>(null)
+  const activeRef = useRef(false)
 
   useEffect(() => {
     onTimeoutRef.current = onTimeout
   }, [onTimeout])
 
   useEffect(() => {
+    const now = Date.now()
     if (keyRef.current !== turnKey) {
       keyRef.current = turnKey
-      deadlineRef.current = Date.now() + seconds * 1000
+      pausedRemainingMsRef.current = seconds * 1000
+      deadlineRef.current = now + pausedRemainingMsRef.current
+    } else if (!active && activeRef.current) {
+      pausedRemainingMsRef.current = Math.max(0, deadlineRef.current - now)
+    } else if (active && !activeRef.current) {
+      deadlineRef.current = now + pausedRemainingMsRef.current
     }
-    const remainingMs = deadlineRef.current - Date.now()
+    activeRef.current = active
+
+    const remainingMs = active
+      ? Math.max(0, deadlineRef.current - now)
+      : pausedRemainingMsRef.current
     setRemaining(Math.max(0, Math.ceil(remainingMs / 1000)))
     if (!active) return
 
@@ -56,17 +68,20 @@ export function useTurnCountdown(
     const finish = () => {
       if (fired) return
       fired = true
+      pausedRemainingMsRef.current = 0
       setRemaining(0)
       onTimeoutRef.current()
     }
     const tick = () => {
-      const next = Math.max(0, Math.ceil((deadlineRef.current - Date.now()) / 1000))
+      const nextMs = Math.max(0, deadlineRef.current - Date.now())
+      pausedRemainingMsRef.current = nextMs
+      const next = Math.ceil(nextMs / 1000)
       setRemaining(next)
       if (next === 0) finish()
     }
     tick()
     const interval = window.setInterval(tick, 250)
-    const timeout = window.setTimeout(finish, Math.max(0, remainingMs))
+    const timeout = window.setTimeout(finish, remainingMs)
     return () => {
       window.clearInterval(interval)
       window.clearTimeout(timeout)

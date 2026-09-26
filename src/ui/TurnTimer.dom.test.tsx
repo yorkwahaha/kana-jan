@@ -4,8 +4,8 @@ import { renderToString } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useTurnCountdown } from './TurnTimer'
 
-function Harness({ onTimeout }: { onTimeout: () => void }) {
-  const remaining = useTurnCountdown(2, 'turn-1', true, onTimeout, 'discard')
+function Harness({ onTimeout, active = true }: { onTimeout: () => void; active?: boolean }) {
+  const remaining = useTurnCountdown(2, 'turn-1', active, onTimeout, 'discard')
   return <output data-testid="remaining">{remaining}</output>
 }
 
@@ -19,6 +19,26 @@ describe('useTurnCountdown DOM lifecycle', () => {
     const now = vi.spyOn(Date, 'now')
     renderToString(<Harness onTimeout={() => undefined} />)
     expect(now).not.toHaveBeenCalled()
+  })
+
+  it('pauses the remaining duration and resumes the same turn without instant timeout', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+    const onTimeout = vi.fn()
+    const view = render(<Harness onTimeout={onTimeout} />)
+
+    act(() => vi.advanceTimersByTime(750))
+    view.rerender(<Harness onTimeout={onTimeout} active={false} />)
+    const paused = Number(view.getByTestId('remaining').textContent)
+    act(() => vi.advanceTimersByTime(5000))
+    expect(onTimeout).not.toHaveBeenCalled()
+    expect(Number(view.getByTestId('remaining').textContent)).toBe(paused)
+
+    view.rerender(<Harness onTimeout={onTimeout} active />)
+    act(() => vi.advanceTimersByTime(1100))
+    expect(onTimeout).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersByTime(500))
+    expect(onTimeout).toHaveBeenCalledTimes(1)
   })
 
   it('does not restart the deadline when only the callback identity changes', () => {

@@ -27,12 +27,12 @@ afterEach(() => {
 })
 
 describe('speech local audio routing', () => {
-  it('canonical ji/zu sound ids are not overwritten by Hepburn aliases for ぢ/づ', async () => {
+  it('じ/ず/ぢ/づ 的實際假名播放會各自路由到正確本地音檔', async () => {
     vi.stubGlobal('Audio', SuccessfulAudio)
-    await speakJapanese('ji', true)
-    await speakJapanese('zu', true)
-    await speakJapanese('di', true)
-    await speakJapanese('du', true)
+    await speakJapanese('じ', true)
+    await speakJapanese('ず', true)
+    await speakJapanese('ぢ', true)
+    await speakJapanese('づ', true)
 
     expect(SuccessfulAudio.urls.map((url) => url.split('/').at(-1))).toEqual([
       'ji.mp3',

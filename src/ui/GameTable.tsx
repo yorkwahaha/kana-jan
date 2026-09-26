@@ -42,6 +42,7 @@ interface Props {
   onOpenSettings: () => void
   onOpenHelp: () => void
   onOpenCatalog: () => void
+  onLocalOverlayChange?: (open: boolean) => void
 }
 
 function fanCount(n: number) {
@@ -64,6 +65,7 @@ export function GameTable({
   onOpenSettings,
   onOpenHelp,
   onOpenCatalog,
+  onLocalOverlayChange,
 }: Props) {
   const perspective = playersByPerspective(state.players, mySeat)
   const human = perspective.human
@@ -96,6 +98,18 @@ export function GameTable({
   const [showReference, setShowReference] = useState(false)
   const [showNearPanel, setShowNearPanel] = useState(true)
   const [nearCycleIndex, setNearCycleIndex] = useState(0)
+  const tableOverlayOpen = showLog || showReference
+
+  useEffect(() => {
+    onLocalOverlayChange?.(tableOverlayOpen)
+    return () => {
+      if (tableOverlayOpen) onLocalOverlayChange?.(false)
+    }
+  }, [onLocalOverlayChange, tableOverlayOpen])
+
+  useEffect(() => {
+    setHoverYaku(null)
+  }, [state.phase, state.currentPlayerIndex, state.turnNumber])
   const nearCycleKey = nearHints
     .map((hint) => `${hint.kind}:${hint.cardIds.join(',')}:${hint.missingSounds.join(',')}`)
     .join('|')
@@ -317,8 +331,8 @@ export function GameTable({
             role="region"
             aria-label={yakus.length > 0 ? '自摸和牌決策' : '和牌決策'}
           >
-            {turnTimer && turnTimer.active && (
-              <CompactTurnTimer remaining={turnRemaining} active={turnTimer.active} />
+            {turnTimer && turnTimerActive && (
+              <CompactTurnTimer remaining={turnRemaining} active={turnTimerActive} />
             )}
             <div className="compact-claim-buttons">
               <button
