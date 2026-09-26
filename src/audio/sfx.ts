@@ -61,6 +61,7 @@ let currentBgmTrack: BgmTrack | null = null
 let bgmFallbackTimer: number | null = null
 let bgmRetryTimer: number | null = null
 let bgmPlayPending = false
+let bgmGestureUnlocked = false
 
 export const BGM_STARTUP_GRACE_MS = 8000
 const BGM_RETRY_DELAY_MS = 1200
@@ -344,6 +345,15 @@ export function startBgm(trackOrEnabled: BgmTrack | boolean = 'table', enabled =
     return
   }
 
+  // 冷啟動先記住使用者想要的曲目，但不要建立 Audio 或下載大型 BGM。
+  // 第一次 pointer / keyboard 手勢會由下方 unlockAudio 真正啟動播放。
+  if (!bgmGestureUnlocked && typeof window !== 'undefined') {
+    clearBgmStartupTimers()
+    stopSynthBgm()
+    currentBgmTrack = track
+    return
+  }
+
   if (currentBgmTrack === track) {
     if (currentBgmAudio) {
       if (currentBgmAudio.paused) tryPlayBgm(currentBgmAudio, BGM_PATHS[track])
@@ -361,7 +371,7 @@ export function startBgm(trackOrEnabled: BgmTrack | boolean = 'table', enabled =
       const audio = new Audio(path)
       audio.loop = true
       audio.volume = 0.35
-      audio.preload = 'auto'
+      audio.preload = 'none'
       currentBgmAudio = audio
       bgmFallbackTimer = window.setTimeout(() => fallBackFromBgm(audio, path), BGM_STARTUP_GRACE_MS)
       tryPlayBgm(audio, path)
@@ -430,13 +440,18 @@ if (typeof document !== 'undefined') {
 // 頁面任意點擊或鍵盤操作時，解鎖瀏覽器 AudioContext 並在需要時恢復/啟動 BGM
 if (typeof window !== 'undefined') {
   const unlockAudio = () => {
+    bgmGestureUnlocked = true
     if (ctx && ctx.state === 'suspended') {
       void ctx.resume()
     }
-    if (currentBgmTrack && (!currentBgmAudio || currentBgmAudio.paused)) {
-      startBgm(currentBgmTrack, true)
-    }
+    // 讓 React 的 click / keyboard action 先完成狀態切換，再播放最新曲目。
+    // 例如第一次按「開始遊戲」時直接抓 table BGM，不先浪費流量抓 lobby BGM。
+    window.setTimeout(() => {
+      if (currentBgmTrack && (!currentBgmAudio || currentBgmAudio.paused)) {
+        startBgm(currentBgmTrack, true)
+      }
+    }, 0)
   }
-  window.addEventListener('pointerdown', unlockAudio, { capture: true })
-  window.addEventListener('keydown', unlockAudio, { capture: true })
+  window.addEventListener('click', unlockAudio, { capture: false })
+  window.addEventListener('keydown', unlockAudio, { capture: false })
 }

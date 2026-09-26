@@ -58,7 +58,7 @@
 * { box-sizing: border-box; }
 html, body, #root { min-height: 100%; margin: 0; }
 body {
-  background: #181412 url('/textures/room-day.png') center / cover no-repeat fixed;
+  background: #181412 url('/textures/room-day.webp') center / cover no-repeat fixed;
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -264,7 +264,7 @@ body[data-anim='off'] .sakura-container {
   position: relative;
   background:
     radial-gradient(ellipse at 50% 30%, rgba(255, 252, 245, 0.35) 0%, rgba(20, 14, 10, 0.65) 100%),
-    url('/textures/room-day.png') center / cover no-repeat;
+    url('/textures/room-day.webp') center / cover no-repeat;
 }
 .lobby-atmosphere {
   position: absolute;
@@ -291,7 +291,7 @@ body[data-anim='off'] .sakura-container {
   grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.25fr);
   background:
     linear-gradient(180deg, rgba(255, 253, 249, 0.96), rgba(246, 239, 227, 0.96)),
-    url('/textures/card-washi.png') center / cover;
+    url('/textures/card-washi.webp') center / cover;
   border: 1.5px solid rgba(212, 160, 23, 0.65);
   border-radius: 12px;
   box-shadow:
@@ -514,7 +514,7 @@ body[data-anim='off'] .sakura-container {
   z-index: 1;
   background:
     radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.12) 0%, rgba(10, 8, 6, 0.75) 100%),
-    url('/textures/room-day.png') center / cover no-repeat fixed;
+    url('/textures/room-day.webp') center / cover no-repeat fixed;
   color: var(--ink);
   overflow: hidden;
   display: flex;
@@ -553,7 +553,7 @@ body[data-anim='off'] .sakura-container {
   overflow: visible;
   background:
     radial-gradient(ellipse at 50% 42%, rgba(255, 255, 255, 0.18) 0%, rgba(0, 0, 0, 0.28) 72%, rgba(0, 0, 0, 0.5) 100%),
-    url('/textures/table-felt-bright.png') center / cover no-repeat;
+    url('/textures/table-felt-bright.webp') center / cover no-repeat;
   background-color: var(--felt-base);
   border: 16px solid var(--wood);
   border-radius: 46% / 50%;
@@ -851,7 +851,7 @@ body[data-anim='off'] .sakura-container {
 }
 
 .mini-back {
-  background: url('/textures/card-back.png') center / cover no-repeat;
+  background: url('/textures/card-back.webp') center / cover no-repeat;
   flex-shrink: 0;
 }
 
@@ -881,7 +881,7 @@ body[data-anim='off'] .sakura-container {
   color: #f8fbff;
   background:
     linear-gradient(145deg, rgba(35, 51, 55, 0.96), rgba(20, 31, 35, 0.94)),
-    url('/textures/card-washi.png') center / cover;
+    url('/textures/card-washi.webp') center / cover;
   border: 2px solid rgba(225, 241, 244, 0.88);
   border-radius: 10px;
   box-shadow:
@@ -1117,7 +1117,7 @@ body[data-anim='off'] .sakura-container {
   padding: 8px 16px 10px;
   background:
     linear-gradient(180deg, rgba(255, 253, 249, 0.96), rgba(246, 238, 225, 0.94)),
-    url('/textures/wood-tray.png') center / cover;
+    url('/textures/wood-tray.webp') center / cover;
   border: 2px solid rgba(212, 160, 23, 0.75);
   border-radius: 999px;
   box-shadow:
@@ -1411,7 +1411,7 @@ body[data-anim='off'] .sakura-container {
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 800;
-  background: url('/textures/card-back.png') center / cover no-repeat;
+  background: url('/textures/card-back.webp') center / cover no-repeat;
   box-shadow: 0 7px 16px rgba(0, 0, 0, 0.48);
   transform-origin: center;
   will-change: transform, opacity, filter;
@@ -1628,7 +1628,7 @@ body[data-anim='off'] .sakura-container {
   border: 1px solid rgba(130, 95, 60, 0.42);
   background:
     linear-gradient(180deg, rgba(255, 253, 249, 0.96), rgba(246, 239, 226, 0.96)),
-    url('/textures/card-washi.png') center / cover no-repeat;
+    url('/textures/card-washi.webp') center / cover no-repeat;
   box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
@@ -1685,7 +1685,7 @@ body[data-anim='off'] .sakura-container {
 
 /* 牌背 (Card Back) */
 .kana-card.face-down {
-  background: url('/textures/card-back.png') center / cover no-repeat;
+  background: url('/textures/card-back.webp') center / cover no-repeat;
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: transparent;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
@@ -1697,17 +1697,17 @@ body[data-anim='off'] .sakura-container {
 .kana-card.type-hiragana {
   background-image:
     linear-gradient(180deg, rgba(255, 253, 249, 0.96), rgba(246, 239, 226, 0.96)),
-    url('/textures/card-washi.png');
+    url('/textures/card-washi.webp');
 }
 .kana-card.type-katakana {
   background-image:
     linear-gradient(180deg, rgba(238, 244, 252, 0.96), rgba(228, 238, 250, 0.96)),
-    url('/textures/card-washi.png');
+    url('/textures/card-washi.webp');
 }
 .kana-card.type-vocabulary {
   background-image:
     linear-gradient(180deg, rgba(238, 248, 240, 0.96), rgba(228, 244, 232, 0.96)),
-    url('/textures/card-washi.png');
+    url('/textures/card-washi.webp');
 }
 
 /* 行段印章徽標 (Row Seal Mark) */
@@ -3007,7 +3007,7 @@ button.kana-card { appearance: none; }
   overflow-y: auto;
   background:
     linear-gradient(180deg, rgba(255, 253, 249, 0.98), rgba(246, 238, 226, 0.98)),
-    url('/textures/card-washi.png') center / cover;
+    url('/textures/card-washi.webp') center / cover;
   border: 1.5px solid rgba(212, 160, 23, 0.65);
   border-radius: 12px;
   box-shadow:
@@ -4862,13 +4862,13 @@ button.kana-card { appearance: none; }
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
-  background: var(--felt-base) url('/textures/table-felt.png') repeat;
+  background: var(--felt-base) url('/textures/table-felt.webp') repeat;
 }
 
 .room-lobby-sheet {
   width: 100%;
   max-width: 820px;
-  background: var(--washi-warm) url('/textures/card-washi.png') repeat;
+  background: var(--washi-warm) url('/textures/card-washi.webp') repeat;
   border: 3px solid var(--gold);
   border-radius: 12px;
   box-shadow: var(--shadow-lg);
@@ -5939,8 +5939,9 @@ button.kana-card { appearance: none; }
 /* 宣告主體容器 (純 KANA JAN! 立體字與星星，無外框) */
 .announcement-cutin-box {
   position: absolute;
-  width: 380px;
-  height: 175px;
+  width: min(72vw, clamp(220px, 55dvh, 380px));
+  aspect-ratio: 76 / 35;
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6045,8 +6046,8 @@ button.kana-card { appearance: none; }
 
 /* 3D 漫畫藝術字 KANA JAN! (正面端正、無歪斜旋轉) */
 .kanajan-3d-title-wrap {
-  width: 380px;
-  height: 175px;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6142,22 +6143,27 @@ button.kana-card { appearance: none; }
   }
 }
 
-/* 手機橫向小螢幕響應式適配 */
-@media (max-width: 768px) {
+/* 和牌 Cut-in 以可用高度為基準縮放，避免現代橫向手機因寬度 > 768px 被誤判成桌面。 */
+@media (orientation: landscape) and (max-height: 560px) {
   .announcement-cutin-box {
-    padding: 10px 18px;
-    gap: 14px;
-    border-radius: 16px;
+    width: min(68vw, clamp(210px, 52dvh, 300px));
   }
 
-  .kanajan-3d-title-wrap {
-    width: 220px;
-    height: 100px;
+  .cutin-star {
+    width: clamp(18px, 5dvh, 28px);
+    height: clamp(18px, 5dvh, 28px);
+  }
+  .cutin-star.accent-top-left,
+  .cutin-star.accent-bottom-right {
+    width: clamp(30px, 8dvh, 48px);
+    height: clamp(30px, 8dvh, 48px);
   }
 
-  .kanajan-svg-text {
-    font-size: 56px;
-  }
-
+  .cutin-star.accent-top-left { top: -1%; left: 3%; }
+  .cutin-star.accent-top-right { top: 3%; right: 10%; }
+  .cutin-star.accent-mid-left { top: 41%; left: 1%; }
+  .cutin-star.accent-mid-right { top: 45%; right: 1%; }
+  .cutin-star.accent-bottom-left { bottom: 0; left: 13%; }
+  .cutin-star.accent-bottom-right { bottom: -2%; right: 4%; }
 }
 
