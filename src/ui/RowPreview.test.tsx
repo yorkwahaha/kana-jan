@@ -1,11 +1,15 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, render } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
 import { startGame } from '../engine/game'
 import { RowPreview } from './RowPreview'
 import { DEFAULT_SETTINGS } from './settings'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+  vi.useRealTimers()
+})
 
 describe('RowPreview', () => {
   it('連線訪客不顯示無權操作的略過按鈕', () => {
@@ -40,6 +44,34 @@ describe('RowPreview', () => {
       />,
     )
     expect(view.getByText(/等待房主開始/)).toBeTruthy()
+  })
+
+  it('reduced-motion 分支可由測試覆寫 matchMedia 並縮短展示流程', () => {
+    vi.useFakeTimers()
+    vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+      matches: query.includes('prefers-reduced-motion'),
+      media: query,
+      onchange: null,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => true,
+    }))
+    const onContinue = vi.fn()
+    render(
+      <RowPreview
+        state={startGame({ seed: 5 })}
+        settings={DEFAULT_SETTINGS}
+        canSkip
+        onContinue={onContinue}
+      />,
+    )
+
+    act(() => vi.advanceTimersByTime(1999))
+    expect(onContinue).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersByTime(1))
+    expect(onContinue).toHaveBeenCalledTimes(1)
   })
 
   it('訪客關閉動畫時會看到等待房主提示', () => {

@@ -1,5 +1,5 @@
-import { afterEach } from 'vitest'
-
+// Keep browser shims configurable/writable so individual tests can exercise
+// reduced-motion and media-failure branches with vi.spyOn/vi.stubGlobal.
 if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
   Object.defineProperty(window, 'matchMedia', {
     configurable: true,
@@ -57,11 +57,3 @@ if (typeof HTMLMediaElement !== 'undefined') {
     value: () => undefined,
   })
 }
-
-afterEach(() => {
-  try {
-    window.localStorage?.clear()
-  } catch {
-    // Tests that replace storage with a minimal stub own their cleanup.
-  }
-})

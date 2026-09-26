@@ -235,6 +235,9 @@ export function ScoreReview({
   onLobby,
 }: Props) {
   const pending = state.pendingScore
+  const pendingKey = pending
+    ? `${state.matchId ?? state.seed}:${state.turnNumber}:${state.comboCount}:${pending.playerId}:${pending.yaku.id}:${pending.source}`
+    : null
   const perspectiveSeat = mySeat >= 0 ? mySeat : 0
   const rankings = useMemo(() => state.rankings ?? computeRankings(state.players), [state.rankings, state.players])
   const [showVocabModal, setShowVocabModal] = useState(false)
@@ -267,8 +270,8 @@ export function ScoreReview({
   // 音效播放（配合金幣飛行與籌碼滾動節奏）。
   // 和牌宣告期間不自動朗讀牌面，避免與宣告語音重疊；牌面仍可由玩家自行點擊發音。
   useEffect(() => {
-    if (!pending && !isGameOver) return
-    if (settings.sfx && (pending || state.lastTransfers.length > 0)) {
+    if (!pendingKey && !isGameOver) return
+    if (settings.sfx && (pendingKey || state.lastTransfers.length > 0)) {
       const timers: number[] = []
       // 1. 失分方金幣出發
       timers.push(window.setTimeout(() => playSfx('coin', true), 250))
@@ -280,12 +283,12 @@ export function ScoreReview({
         for (const t of timers) window.clearTimeout(t)
       }
     }
-  }, [pending, isGameOver, state.lastTransfers.length, settings.sfx])
+  }, [pendingKey, isGameOver, state.lastTransfers.length, settings.sfx])
 
   // 非對局結束時依玩家設定自動推進；manual 則保留畫面直到玩家主動繼續。
   useEffect(() => {
     if (isGameOver) return
-    if (!pending) return
+    if (!pendingKey) return
     if (!canFinish) return
     const delay = scoreReviewAutoAdvanceMs(settings.winScreenHold)
     if (delay === null) return
@@ -293,7 +296,7 @@ export function ScoreReview({
       onFinish?.()
     }, delay)
     return () => window.clearTimeout(autoTimer)
-  }, [isGameOver, pending, canFinish, onFinish, settings.winScreenHold])
+  }, [isGameOver, pendingKey, canFinish, onFinish, settings.winScreenHold])
 
   // 對局結束且有讓渡時，先完整播放 4.2 秒轉帳畫面，再揭示結算摘要
   useEffect(() => {

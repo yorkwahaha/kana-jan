@@ -50,8 +50,11 @@ export interface GuestCallbacks {
 
 export const MAX_SPECTATORS = 8
 const INBOUND_WINDOW_MS = 2000
-const MAX_INBOUND_MESSAGES_PER_WINDOW = 40
-const GAME_SYNC_MIN_INTERVAL_MS = 60
+const MAX_INBOUND_MESSAGES_PER_WINDOW = 80
+// Fastest local presentation cadence is 40ms when animations are disabled.
+// Match that floor so coalescing still absorbs true bursts without routinely
+// dropping legitimate draw/discard presentation states.
+const GAME_SYNC_MIN_INTERVAL_MS = 40
 const RESUME_TOKEN_TTL_MS = 6 * 60 * 60 * 1000
 
 export class HostManager {

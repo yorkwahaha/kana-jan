@@ -37,6 +37,10 @@ export function useDialogA11y(active: boolean, onEscape?: () => void) {
       if (event.defaultPrevented) return
       const activeItem = document.activeElement
       const focusInsideDialog = activeItem instanceof Node && dialog.contains(activeItem)
+      // When this dialog contains another active modal, the nested modal owns
+      // keyboard handling. Otherwise both document listeners would compete and
+      // the outer trap could steal Tab/Escape before the inner dialog sees it.
+      if (dialog.querySelector('[role="dialog"][aria-modal="true"]')) return
 
       if (event.key === 'Escape' && onEscapeRef.current) {
         event.preventDefault()

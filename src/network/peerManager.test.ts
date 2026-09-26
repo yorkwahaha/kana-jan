@@ -168,12 +168,33 @@ describe('HostManager connection identity', () => {
     }
 
     expect(vi.mocked(conn.send).mock.calls.filter(([msg]) => (msg as { type?: string }).type === 'GAME_SYNC')).toHaveLength(1)
-    vi.advanceTimersByTime(60)
+    vi.advanceTimersByTime(40)
     const syncCalls = vi.mocked(conn.send).mock.calls
       .map(([msg]) => msg as { type?: string; state?: { turnNumber?: number } })
       .filter((msg) => msg.type === 'GAME_SYNC')
     expect(syncCalls).toHaveLength(2)
     expect(syncCalls.at(-1)?.state?.turnNumber).toBe(20)
+  })
+
+  it('40ms 的正常快速節奏不會被 coalescing 吃掉', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(2000)
+    const host = createHost()
+    const conn = connection('peer-fast')
+    host.handleGuestMessage(conn, { type: 'JOIN', name: 'Fast', peerId: 'peer-fast' })
+    vi.mocked(conn.send).mockClear()
+    const base = startGame({ seed: 33, skipPreview: true })
+
+    for (let turnNumber = 1; turnNumber <= 10; turnNumber++) {
+      host.syncGameState({ ...base, turnNumber })
+      vi.advanceTimersByTime(40)
+    }
+
+    const syncCalls = vi.mocked(conn.send).mock.calls
+      .map(([msg]) => msg as { type?: string; state?: { turnNumber?: number } })
+      .filter((msg) => msg.type === 'GAME_SYNC')
+    expect(syncCalls).toHaveLength(10)
+    expect(syncCalls.map((msg) => msg.state?.turnNumber)).toEqual([1,2,3,4,5,6,7,8,9,10])
   })
 
   it('過期的玩家重連憑證會明確說明降級為觀戰者', () => {
@@ -210,7 +231,7 @@ describe('HostManager connection identity', () => {
       onError: () => undefined,
     }) as unknown as { allowHostInboundMessage: () => boolean }
 
-    for (let i = 0; i < 40; i++) expect(guest.allowHostInboundMessage()).toBe(true)
+    for (let i = 0; i < 80; i++) expect(guest.allowHostInboundMessage()).toBe(true)
     expect(guest.allowHostInboundMessage()).toBe(false)
   })
 })

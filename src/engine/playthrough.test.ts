@@ -24,21 +24,49 @@ function stepAutoplay(state: GameState): GameState {
   return drainAuto(reduce(synced, action))
 }
 
+function authoritativeCardIds(state: GameState): string[] {
+  return [
+    ...state.deck,
+    ...state.players.flatMap((player) => player.hand),
+    ...state.players.flatMap((player) => player.discards),
+    ...state.players.flatMap((player) => player.completed.flatMap((entry) => entry.yaku.cards)),
+  ].map((card) => card.id)
+}
+
+function assertCardConservation(state: GameState, expectedCount: number) {
+  const ids = authoritativeCardIds(state)
+  expect(ids).toHaveLength(expectedCount)
+  expect(new Set(ids).size).toBe(expectedCount)
+}
+
+function runAutoplay(seed: number, difficulty: 'easy' | 'normal') {
+  let state = startGame({ seed, aiDifficulty: difficulty, lessonId: 'a-na', skipPreview: true })
+  const expectedCount = Object.values(state.deckManifest ?? {}).reduce((sum, count) => sum + count, 0)
+  assertCardConservation(state, expectedCount)
+
+  let guard = 0
+  while (state.phase !== 'gameOver' && guard < 800) {
+    const next = stepAutoplay(state)
+    if (next === state) break
+    expect(next.turnNumber).toBeGreaterThanOrEqual(state.turnNumber)
+    assertCardConservation(next, expectedCount)
+    state = next
+    guard += 1
+  }
+  return state
+}
+
 describe('完整自動對局', () => {
   it('完整牌庫為 285 張且 id 不重複', () => {
     expect(CARD_CATALOG).toHaveLength(285)
     expect(new Set(CARD_CATALOG.map((c) => c.id)).size).toBe(285)
   })
 
-  it('能從開局自動進行到遊戲結束並產生排名', () => {
-    let state = startGame({ seed: 20260814, aiDifficulty: 'easy', lessonId: 'a-na', skipPreview: true })
-    let guard = 0
-    while (state.phase !== 'gameOver' && guard < 800) {
-      const next = stepAutoplay(state)
-      if (next === state) break
-      state = next
-      guard += 1
-    }
+  it.each([
+    ['easy', 20260814],
+    ['normal', 20260926],
+  ] as const)('%s 難度能完整跑到終局，且全程維持牌張守恆與唯一 ID', (difficulty, seed) => {
+    const state = runAutoplay(seed, difficulty)
     expect(state.phase).toBe('gameOver')
     expect(state.rankings).toHaveLength(4)
     expect(state.rankings?.[0]?.place).toBe(1)

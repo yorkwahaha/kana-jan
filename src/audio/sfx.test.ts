@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   BGM_PATHS,
   BGM_STARTUP_GRACE_MS,
@@ -121,6 +121,59 @@ describe('audio/sfx', () => {
       expect(playCount).toBe(2)
     } finally {
       globalThis.Audio = originalAudio
+    }
+  })
+
+  it('falls back to synthesized audio when an SFX file rejects for a real media error', async () => {
+    const starts = vi.fn()
+    class FailedAudio {
+      paused = true
+      ended = false
+      volume = 1
+      currentTime = 0
+      constructor(_src?: string) {}
+      addEventListener() {}
+      pause() { this.paused = true }
+      play() {
+        const err = new Error('Unsupported audio')
+        err.name = 'NotSupportedError'
+        return Promise.reject(err)
+      }
+    }
+    class MockAudioContext {
+      state: AudioContextState = 'running'
+      currentTime = 0
+      destination = {}
+      resume() { return Promise.resolve() }
+      createOscillator() {
+        return {
+          type: 'sine' as OscillatorType,
+          frequency: { value: 0 },
+          connect: () => undefined,
+          start: starts,
+          stop: () => undefined,
+        }
+      }
+      createGain() {
+        return {
+          gain: {
+            setValueAtTime: () => undefined,
+            exponentialRampToValueAtTime: () => undefined,
+          },
+          connect: () => undefined,
+        }
+      }
+    }
+
+    vi.stubGlobal('Audio', FailedAudio)
+    vi.stubGlobal('AudioContext', MockAudioContext)
+    try {
+      playSfx('click', true)
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(starts).toHaveBeenCalled()
+    } finally {
+      vi.unstubAllGlobals()
     }
   })
 })

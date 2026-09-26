@@ -15,6 +15,20 @@ function DialogHarness({ onClose }: { onClose: () => void }) {
   )
 }
 
+function NestedDialogHarness({ onOuterClose, onInnerClose }: { onOuterClose: () => void; onInnerClose: () => void }) {
+  const outerRef = useDialogA11y(true, onOuterClose)
+  const innerRef = useDialogA11y(true, onInnerClose)
+  return (
+    <div ref={outerRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="外層">
+      <button type="button">外層按鈕</button>
+      <div ref={innerRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label="內層">
+        <button type="button">內層第一個</button>
+        <button type="button">內層最後一個</button>
+      </div>
+    </div>
+  )
+}
+
 describe('useDialogA11y', () => {
   afterEach(cleanup)
 
@@ -56,5 +70,22 @@ describe('useDialogA11y', () => {
     document.body.focus()
     fireEvent.keyDown(document.body, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('nested dialog owns Tab and Escape before its outer dialog', () => {
+    const onOuterClose = vi.fn()
+    const onInnerClose = vi.fn()
+    const view = render(<NestedDialogHarness onOuterClose={onOuterClose} onInnerClose={onInnerClose} />)
+    const first = view.getByRole('button', { name: '內層第一個' })
+    const last = view.getByRole('button', { name: '內層最後一個' })
+
+    expect(document.activeElement).toBe(first)
+    last.focus()
+    fireEvent.keyDown(last, { key: 'Tab' })
+    expect(document.activeElement).toBe(first)
+
+    fireEvent.keyDown(first, { key: 'Escape' })
+    expect(onInnerClose).toHaveBeenCalledTimes(1)
+    expect(onOuterClose).not.toHaveBeenCalled()
   })
 })

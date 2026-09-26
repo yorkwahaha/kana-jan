@@ -12,6 +12,12 @@ describe('對局規則契約', () => {
     expect(state.players.map((player) => player.seat)).toEqual([0, 1, 2, 3])
   })
 
+  it('不符合當前 phase 的動作會保持 reducer identity', () => {
+    const state = startGame({ seed: 43, lessonId: 'a-ra', skipPreview: true })
+    expect(state.phase).toBe('dealing')
+    expect(reduce(state, { type: 'PASS_CLAIM' })).toBe(state)
+  })
+
   it('摸牌後可宣告手牌既有合法役，不要求役包含剛摸到的牌', () => {
     let state = startGame({
       seed: 42,

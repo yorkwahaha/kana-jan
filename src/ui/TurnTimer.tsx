@@ -40,6 +40,7 @@ export function useTurnCountdown(
   const pausedRemainingMsRef = useRef(seconds * 1000)
   const keyRef = useRef<string | number | null>(null)
   const activeRef = useRef(false)
+  const firedKeyRef = useRef<string | number | null>(null)
 
   useEffect(() => {
     onTimeoutRef.current = onTimeout
@@ -49,6 +50,7 @@ export function useTurnCountdown(
     const now = Date.now()
     if (keyRef.current !== turnKey) {
       keyRef.current = turnKey
+      firedKeyRef.current = null
       pausedRemainingMsRef.current = seconds * 1000
       deadlineRef.current = now + pausedRemainingMsRef.current
     } else if (!active && activeRef.current) {
@@ -66,8 +68,9 @@ export function useTurnCountdown(
 
     let fired = false
     const finish = () => {
-      if (fired) return
+      if (fired || firedKeyRef.current === turnKey) return
       fired = true
+      firedKeyRef.current = turnKey
       pausedRemainingMsRef.current = 0
       setRemaining(0)
       onTimeoutRef.current()

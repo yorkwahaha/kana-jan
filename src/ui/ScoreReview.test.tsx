@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { act, cleanup, render } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
 import {
   GAME_OVER_TRANSFER_REVEAL_MS,
@@ -15,6 +16,11 @@ import { DEFAULT_SETTINGS } from './settings'
 import { buildCard } from '../data/cards'
 import { KANA_SOUNDS } from '../data/kana'
 import { DEFAULT_BONUS } from '../data/bonuses'
+
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
 it('和牌畫面可設定 4 秒、8 秒或手動跳過', () => {
   expect(SCORE_REVIEW_AUTO_ADVANCE_MS).toBe(4000)
@@ -240,6 +246,27 @@ describe('ScoreReview (金幣讓渡畫面精簡化與籌碼跳動)', () => {
     )
     expect(html).toContain('牌庫已耗盡')
     expect(html).not.toContain('點數已歸零')
+  })
+
+  it('guest-style cloned pendingScore does not restart the auto-advance timer', () => {
+    vi.useFakeTimers()
+    const onFinish = vi.fn()
+    const state = makeMockState()
+    const view = render(
+      <ScoreReview state={state} settings={DEFAULT_SETTINGS} mySeat={0} onFinish={onFinish} />,
+    )
+
+    act(() => vi.advanceTimersByTime(2000))
+    view.rerender(
+      <ScoreReview
+        state={{ ...state, pendingScore: state.pendingScore ? { ...state.pendingScore } : null }}
+        settings={DEFAULT_SETTINGS}
+        mySeat={0}
+        onFinish={onFinish}
+      />,
+    )
+    act(() => vi.advanceTimersByTime(2100))
+    expect(onFinish).toHaveBeenCalledTimes(1)
   })
 
   it('treats transfer and summary layers as mutually exclusive around the 4200ms reveal', () => {

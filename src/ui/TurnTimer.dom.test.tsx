@@ -4,8 +4,8 @@ import { renderToString } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useTurnCountdown } from './TurnTimer'
 
-function Harness({ onTimeout, active = true }: { onTimeout: () => void; active?: boolean }) {
-  const remaining = useTurnCountdown(2, 'turn-1', active, onTimeout, 'discard')
+function Harness({ onTimeout, active = true, phase = 'discard' }: { onTimeout: () => void; active?: boolean; phase?: string }) {
+  const remaining = useTurnCountdown(2, 'turn-1', active, onTimeout, phase)
   return <output data-testid="remaining">{remaining}</output>
 }
 
@@ -38,6 +38,19 @@ describe('useTurnCountdown DOM lifecycle', () => {
     act(() => vi.advanceTimersByTime(1100))
     expect(onTimeout).not.toHaveBeenCalled()
     act(() => vi.advanceTimersByTime(500))
+    expect(onTimeout).toHaveBeenCalledTimes(1)
+  })
+
+  it('fires at most once for the same turn key even when phase changes after expiry', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+    const onTimeout = vi.fn()
+    const view = render(<Harness onTimeout={onTimeout} phase="discard" />)
+
+    act(() => vi.advanceTimersByTime(2100))
+    expect(onTimeout).toHaveBeenCalledTimes(1)
+    view.rerender(<Harness onTimeout={onTimeout} phase="playerAction" />)
+    act(() => vi.advanceTimersByTime(1))
     expect(onTimeout).toHaveBeenCalledTimes(1)
   })
 
