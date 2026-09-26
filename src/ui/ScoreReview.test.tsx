@@ -4,6 +4,7 @@ import {
   GAME_OVER_TRANSFER_REVEAL_MS,
   SCORE_REVIEW_AUTO_ADVANCE_MS,
   ScoreReview,
+  canPassivelyFinishReview,
   profilePlayerForSeat,
   scoreReviewAutoAdvanceMs,
   settlementPresentationStage,
@@ -21,6 +22,9 @@ it('和牌畫面可設定 4 秒、8 秒或手動跳過', () => {
   expect(scoreReviewAutoAdvanceMs('8s')).toBe(8000)
   expect(scoreReviewAutoAdvanceMs('manual')).toBeNull()
   expect(GAME_OVER_TRANSFER_REVEAL_MS).toBe(4200)
+  expect(canPassivelyFinishReview(false, true, 'manual')).toBe(false)
+  expect(canPassivelyFinishReview(false, true, '4s')).toBe(true)
+  expect(canPassivelyFinishReview(true, true, '4s')).toBe(false)
 })
 
 function makeMockState(overrides?: Partial<GameState>): GameState {

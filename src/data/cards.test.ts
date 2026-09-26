@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { readdirSync } from 'node:fs'
 import { CARD_CATALOG, getCardById } from './cards'
 import { KANA_SOUNDS } from './kana'
 
@@ -6,6 +7,15 @@ describe('getCardById', () => {
   it('可解析只有小課程 -$ 複本後綴的卡牌 ID', () => {
     expect(getCardById('a-hiragana-$0').sound).toBe('a')
     expect(getCardById('a-hiragana-$0').id).toBe('a-hiragana-$0')
+  })
+
+
+  it('KANA_SOUNDS 與 kana/words 音檔雙向一致', () => {
+    const expected = [...KANA_SOUNDS.map((kana) => `${kana.sound}.mp3`)].sort()
+    const kanaFiles = readdirSync('public/audio/kana').filter((name) => name.endsWith('.mp3')).sort()
+    const wordFiles = readdirSync('public/audio/words').filter((name) => name.endsWith('.mp3')).sort()
+    expect(kanaFiles).toEqual(expected)
+    expect(wordFiles).toEqual(expected)
   })
 })
 
@@ -35,6 +45,11 @@ describe('假名資料完整性', () => {
     expect(KANA_SOUNDS.find((k) => k.sound === 'pa')?.spelling).toEqual(['pa', 'n'])
     expect(KANA_SOUNDS.find((k) => k.sound === 'n')?.hiragana).toBe('ん')
     expect(KANA_SOUNDS.find((k) => k.sound === 'ya')?.hiragana).toBe('や')
+  })
+
+  it('ぢ／づ 顯示 Hepburn 羅馬字但保留內部 sound id', () => {
+    expect(KANA_SOUNDS.find((k) => k.sound === 'di')?.romaji).toBe('ji')
+    expect(KANA_SOUNDS.find((k) => k.sound === 'du')?.romaji).toBe('zu')
   })
 
   it('長音、促音與重複音節不會從單字學習資料中遺失', () => {

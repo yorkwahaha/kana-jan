@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ROW_COLOR, ROW_MARK, ROW_ORDER, soundsForRows } from '../data/kana'
 import { isMastered, loadMastery } from './mastery'
+import { useDialogA11y } from './useDialogA11y'
 
 interface Props {
   onClose: () => void
@@ -8,8 +9,9 @@ interface Props {
 
 export function CatalogModal({ onClose }: Props) {
   const [mastery] = useState(() => loadMastery())
+  const dialogRef = useDialogA11y(true, onClose)
   return (
-    <div className="modal-backdrop" role="dialog" aria-labelledby="catalog-title">
+    <div ref={dialogRef} tabIndex={-1} className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="catalog-title">
       <div className="modal catalog-modal">
         <header className="modal-head">
           <h2 id="catalog-title">五十音圖鑑</h2>

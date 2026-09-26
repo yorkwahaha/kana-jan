@@ -15,12 +15,12 @@ import {
   type GameAction,
 } from './engine/game'
 import { createRngFromExactState } from './engine/rng'
-import { INITIAL_GOLD, type AiDifficulty, type GameState, type PlayerConfig, type YakuCandidate } from './engine/types'
+import { INITIAL_GOLD, type AiDifficulty, type GameState, type PlayerConfig } from './engine/types'
 import { DEFAULT_LESSON_ID } from './data/lessons'
 import { authorizeClientAction, generateResumeToken, restoreDisconnectedPlayer } from './network/authorize'
 import type { GuestManager, HostManager } from './network/peerManager'
 import { clearResume, loadResume } from './network/resume'
-import { generateRoomCode, getRoomFromUrl, tryParseRoomCode } from './network/roomCode'
+import { generateRoomCode, getLegacyRoomFromUrl, getRoomFromUrl, tryParseLegacyRoomCode, tryParseRoomCode } from './network/roomCode'
 import type { RoomState } from './network/types'
 import { CatalogModal } from './ui/CatalogModal'
 import { GameTable } from './ui/GameTable'
@@ -39,6 +39,7 @@ import { forfeitGame } from './ui/profile'
 import { delayFor, loadSettings, saveSettings, type Settings } from './ui/settings'
 import { useGamePersistence } from './ui/useGamePersistence'
 import { useTurnOrchestration, type NetworkMode } from './ui/useTurnOrchestration'
+import { discardPresentationKey, drawPresentationKey } from './ui/presentationKeys'
 
 function reduceWithPresentationPause(state: GameState, action: GameAction): GameState {
   const next = reduce(state, action)
@@ -53,7 +54,6 @@ export function App() {
   const [playerName, setPlayerName] = useState('小春')
   const [difficulty, setDifficulty] = useState<AiDifficulty>('normal')
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
-  const [hoverYaku, setHoverYaku] = useState<YakuCandidate | null>(null)
   const [showTutorial, setShowTutorial] = useState(false)
   const [guidedTutorialStep, setGuidedTutorialStep] = useState<number | null>(null)
   const [showSettings, setShowSettings] = useState(false)
@@ -67,20 +67,32 @@ export function App() {
   const [networkMode, setNetworkMode] = useState<NetworkMode>('none')
   const [roomState, setRoomState] = useState<RoomState | null>(null)
   const [mySeat, setMySeat] = useState<number>(0)
-  const [netError, setNetError] = useState<string | null>(null)
+  const [netError, setNetError] = useState<string | null>(() =>
+    getLegacyRoomFromUrl() ? '此邀請連結使用舊版 4 碼房號，已無法加入目前的 6 碼房間。請向房主索取新的邀請連結。' : null,
+  )
   const [spectating, setSpectating] = useState(false)
   const hostManagerRef = useRef<HostManager | null>(null)
   const guestManagerRef = useRef<GuestManager | null>(null)
+  const networkAttemptRef = useRef(0)
+  const discardUnlockTimerRef = useRef<number | null>(null)
 
   const initialUrlRoom = useMemo(() => getRoomFromUrl(), [])
-  const lastHandledEventSeqRef = useRef<number>(-1)
+  const legacyUrlRoom = useMemo(() => getLegacyRoomFromUrl(), [])
+  const lastPlayedDrawKeyRef = useRef<string | null>(null)
+  const lastPlayedDiscardKeyRef = useRef<string | null>(null)
   const gameOverPlayedRef = useRef<boolean>(false)
   const [announcementStage, setAnnouncementStage] = useState<'idle' | 'gun' | 'cutin' | 'settlement'>('idle')
-  const lastAnnouncedScoreKeyRef = useRef<string | null>(null)
+  const lastRecordedScoreKeyRef = useRef<string | null>(null)
+  const sfxEnabledRef = useRef(settings.sfx)
   const scheduleSave = useGamePersistence()
+
+  useEffect(() => {
+    sfxEnabledRef.current = settings.sfx
+  }, [settings.sfx])
 
   // 清理 Peer 連線
   const cleanupNetwork = useCallback(() => {
+    networkAttemptRef.current += 1
     if (hostManagerRef.current) {
       hostManagerRef.current.destroy()
       hostManagerRef.current = null
@@ -100,6 +112,20 @@ export function App() {
   }, [])
 
   // reducer updater 保持純函式；存檔與網路同步只在 React commit 後執行。
+
+  useEffect(() => {
+    return () => {
+      networkAttemptRef.current += 1
+      hostManagerRef.current?.destroy()
+      guestManagerRef.current?.destroy()
+      hostManagerRef.current = null
+      guestManagerRef.current = null
+      if (discardUnlockTimerRef.current !== null) {
+        window.clearTimeout(discardUnlockTimerRef.current)
+        discardUnlockTimerRef.current = null
+      }
+    }
+  }, [])
   const apply = useCallback(
     (updater: (s: GameState) => GameState) => {
       setState((prev) => updater(prev))
@@ -155,12 +181,27 @@ export function App() {
       gameOverPlayedRef.current = false
     }
 
-    if (state.eventSeq !== lastHandledEventSeqRef.current) {
-      lastHandledEventSeqRef.current = state.eventSeq
-
-      if (state.lastFx === 'draw' && state.lastDrawnCardId) {
+    const drawKey = drawPresentationKey({
+      lastFx: state.lastFx,
+      lastDrawnCardId: state.lastDrawnCardId,
+      matchId: state.matchId,
+      seed: state.seed,
+    })
+    if (drawKey) {
+      if (lastPlayedDrawKeyRef.current !== drawKey) {
+        lastPlayedDrawKeyRef.current = drawKey
         playSfx('draw', settings.sfx)
-      } else if (state.lastFx === 'discard') {
+      }
+    } else {
+      const discardKey = discardPresentationKey({
+        lastFx: state.lastFx,
+        lastDiscardPlayerId: state.lastDiscardPlayerId,
+        matchId: state.matchId,
+        seed: state.seed,
+        players: state.players,
+      })
+      if (discardKey && lastPlayedDiscardKeyRef.current !== discardKey) {
+        lastPlayedDiscardKeyRef.current = discardKey
         playSfx('discard', settings.sfx)
       }
     }
@@ -187,6 +228,9 @@ export function App() {
     state.eventSeq,
     state.lastFx,
     state.lastDrawnCardId,
+    state.lastDiscardPlayerId,
+    state.matchId,
+    state.seed,
     state.phase,
     settings.sfx,
     state.pendingScore,
@@ -197,41 +241,36 @@ export function App() {
     spectating,
   ])
 
+  const announcementScoreKey = state.pendingScore && (state.phase === 'review' || state.phase === 'gameOver')
+    ? `${state.matchId ?? state.seed}:${state.turnNumber}:${state.comboCount}:${state.pendingScore.playerId}:${state.pendingScore.yaku.id}:${state.pendingScore.source}`
+    : null
+  const announcementSource = state.pendingScore?.source ?? null
+
   // 和牌宣告時序控制：1秒放槍牌發亮 -> 2秒胡牌玩家一側彈出 KANA JAN! 宣告 -> 金幣讓渡結算
   useEffect(() => {
-    const isWinEvent = (state.phase === 'review' || state.phase === 'gameOver') && !!state.pendingScore
-    if (!isWinEvent || !state.pendingScore) {
-      if (state.phase !== 'review' && state.phase !== 'gameOver') {
-        setAnnouncementStage('idle')
-        lastAnnouncedScoreKeyRef.current = null
-      }
+    if (!announcementScoreKey || !announcementSource) {
+      setAnnouncementStage('idle')
       return
     }
-
-    const scoreKey = `${state.pendingScore.playerId}-${state.pendingScore.yaku.id}-${state.turnNumber}-${state.eventSeq}`
-    if (lastAnnouncedScoreKeyRef.current === scoreKey) {
-      return
-    }
-    lastAnnouncedScoreKeyRef.current = scoreKey
 
     // 和牌宣告具有最高語音優先權：先停止選牌／牌面朗讀，避免兩條人聲同時播放。
     stopSpeech()
 
     // 1. 放槍牌／成牌發亮 1 秒（搭配 ron 放槍震撼音效或自摸提示音）
     setAnnouncementStage('gun')
-    if (state.pendingScore.source === 'ron') {
-      playSfx('ron', settings.sfx)
+    if (announcementSource === 'ron') {
+      playSfx('ron', sfxEnabledRef.current)
     } else {
-      playSfx('ready', settings.sfx)
+      playSfx('ready', sfxEnabledRef.current)
     }
 
     // 2. 1.0 秒後，從胡牌玩家一側跳出 KANA JAN! 宣告 Cut-in（持續 2.0 秒，搭配宣告音效）
     const cutinTimer = window.setTimeout(() => {
       setAnnouncementStage('cutin')
-      if (state.pendingScore?.source === 'tsumo') {
-        playSfx('dekita', settings.sfx)
+      if (announcementSource === 'tsumo') {
+        playSfx('dekita', sfxEnabledRef.current)
       } else {
-        playSfx('moratta', settings.sfx)
+        playSfx('moratta', sfxEnabledRef.current)
       }
     }, 1000)
 
@@ -244,17 +283,21 @@ export function App() {
       window.clearTimeout(cutinTimer)
       window.clearTimeout(settlementTimer)
     }
-  }, [state.phase, state.pendingScore, state.turnNumber, state.eventSeq, settings.sfx])
+  }, [announcementScoreKey, announcementSource])
 
   useEffect(() => {
     if (state.phase === 'review' && state.pendingScore) {
+      const scoreKey = `${state.matchId ?? state.seed}:${state.turnNumber}:${state.comboCount}:${state.pendingScore.playerId}:${state.pendingScore.yaku.id}:${state.pendingScore.source}`
+      if (lastRecordedScoreKeyRef.current === scoreKey) return
+      lastRecordedScoreKeyRef.current = scoreKey
       recordSounds([...new Set(state.pendingScore.yaku.cards.map((c) => c.sound))])
+    } else if (state.phase !== 'review') {
+      lastRecordedScoreKeyRef.current = null
     }
-  }, [state.phase, state.eventSeq, state.pendingScore])
+  }, [state.phase, state.pendingScore, state.matchId, state.seed, state.turnNumber, state.comboCount])
 
   useEffect(() => {
     setSelectedCardId(null)
-    setHoverYaku(null)
   }, [state.phase, state.currentPlayerIndex, state.turnNumber])
 
   useEffect(() => {
@@ -268,19 +311,21 @@ export function App() {
     setLocked(false)
   }, [mySeat, state.phase, state.players])
 
+  const animation = settings.animation
+
   // AI 與自動推進流程（Guest 模式下不執行本地 AI，全由 Host 統御同步）
   useEffect(() => {
     if (networkMode === 'guest') return
     if (state.phase === 'lobby' || state.phase === 'gameOver') return
-    if (networkMode === 'none' && (showTutorial || showSettings)) return
+    if (showTutorial || showSettings || showCatalog || guidedTutorialStep !== null) return
     if (state.phase === 'preview') return
 
     if (state.phase === 'dealing') {
-      const cadence = settings.animation === 'normal' ? 420 : settings.animation === 'fast' ? 200 : 0
+      const cadence = animation === 'normal' ? 420 : animation === 'fast' ? 200 : 0
       const dealSounds = Array.from({ length: cadence > 0 ? 7 : 1 }, (_, index) =>
-        window.setTimeout(() => playSfx('draw', settings.sfx), index * cadence),
+        window.setTimeout(() => playSfx('draw', sfxEnabledRef.current), index * cadence),
       )
-      const t = window.setTimeout(() => dispatch({ type: 'DEAL_DONE' }), delayFor(settings, 'deal'))
+      const t = window.setTimeout(() => dispatch({ type: 'DEAL_DONE' }), delayFor({ animation }, 'deal'))
       return () => {
         dealSounds.forEach((timer) => window.clearTimeout(timer))
         window.clearTimeout(t)
@@ -289,9 +334,9 @@ export function App() {
 
     if (state.phase === 'refill') {
       const refillDelay = state.pendingScore
-        ? settings.animation === 'normal'
+        ? animation === 'normal'
           ? 520
-          : settings.animation === 'fast'
+          : animation === 'fast'
             ? 340
             : 40
         : 40
@@ -302,8 +347,8 @@ export function App() {
     if (state.phase === 'playerDraw') {
       const wait =
         currentPlayer(state).kind === 'ai' && state.lastFx === 'discard'
-          ? delayFor(settings, 'hold')
-          : delayFor(settings, 'draw')
+          ? delayFor({ animation }, 'hold')
+          : delayFor({ animation }, 'draw')
       const t = window.setTimeout(() => dispatch({ type: 'DRAW' }), wait)
       return () => window.clearTimeout(t)
     }
@@ -331,7 +376,7 @@ export function App() {
     if (!action) return
 
     const wait = delayFor(
-      settings,
+      { animation },
       actor?.kind === 'ai'
         ? state.phase === 'discard' || state.phase === 'playerAction' || state.phase === 'reaction'
           ? 'think'
@@ -347,7 +392,7 @@ export function App() {
       })
     }, wait)
     return () => window.clearTimeout(t)
-  }, [state, settings, dispatch, apply, showTutorial, showSettings, networkMode, announcementStage])
+  }, [state, animation, dispatch, apply, showTutorial, showSettings, showCatalog, guidedTutorialStep, networkMode, announcementStage])
 
   // 單人遊戲開始
   const startSingle = (
@@ -381,23 +426,34 @@ export function App() {
   const handleCreateRoom = useCallback(async () => {
     playSfx('click', settings.sfx)
     cleanupNetwork()
+    const attempt = networkAttemptRef.current
     clearGame()
-    const code = generateRoomCode()
+    let code: string
+    try {
+      code = generateRoomCode()
+    } catch {
+      setNetError('此瀏覽器無法取得安全亂數，暫時不能建立連線房間。')
+      return
+    }
     if (typeof window !== 'undefined') {
       window.history.replaceState({}, '', `?room=${code}`)
     }
 
     const { HostManager } = await import('./network/peerManager')
+    if (attempt !== networkAttemptRef.current) return
     const host = new HostManager(code, playerName, DEFAULT_LESSON_ID, {
-      onRoomChange: (r) => setRoomState({ ...r }),
+      onRoomChange: (r) => {
+        setNetError(null)
+        setRoomState({ ...r })
+      },
       onClientAction: (seat, action) => {
         apply((s) => {
-          let updated = s
           const player = s.players.find((p) => p.seat === seat)
+          if (!authorizeClientAction(s, seat, action)) return s
+          let updated = s
           if (player && player.kind === 'ai') {
             updated = pushEvent(restoreDisconnectedPlayer(s, seat), `玩家 ${player.name.replace(/\s*\(AI\)$/, '')} 已重新連線接管操作`)
           }
-          if (!authorizeClientAction(updated, seat, action)) return updated
           return reduceWithPresentationPause(updated, action)
         })
       },
@@ -448,11 +504,16 @@ export function App() {
       playSfx('click', settings.sfx)
       const normalized = tryParseRoomCode(code)
       if (!normalized) {
-        setNetError('房號格式不正確：請輸入 4 碼房號，並避免 0、1、I、O。')
+        setNetError(
+          tryParseLegacyRoomCode(code)
+            ? '這是舊版 4 碼房號，已無法加入目前的 6 碼房間。請向房主索取新的邀請連結。'
+            : '房號格式不正確：請輸入 6 碼房號，並避免 0、1、I、O。',
+        )
         return
       }
       setNetError(null)
       cleanupNetwork()
+      const attempt = networkAttemptRef.current
       clearGame()
       if (typeof window !== 'undefined') {
         window.history.replaceState({}, '', `?room=${normalized}`)
@@ -460,22 +521,26 @@ export function App() {
 
       const resume = loadResume(normalized)
       const { GuestManager } = await import('./network/peerManager')
+      if (attempt !== networkAttemptRef.current) return
       const guest = new GuestManager(
         normalized,
         playerName,
         {
           onRoomUpdate: (room, seat, isSpectating) => {
+            setNetError(null)
             setRoomState({ ...room })
             setSpectating(Boolean(isSpectating) || seat < 0)
             setMySeat(seat)
           },
           onGameStart: (startState, seat, isSpectating) => {
+            setNetError(null)
             setState(startState)
             setSpectating(Boolean(isSpectating) || seat < 0)
             setMySeat(seat)
             setNetworkMode('guest')
           },
           onGameSync: (syncedState, isSpectating) => {
+            setNetError(null)
             setState(syncedState)
             if (isSpectating !== undefined) setSpectating(isSpectating)
           },
@@ -503,23 +568,33 @@ export function App() {
       aiDifficulty: difficulty,
     }))
 
+    let matchId: string
+    try {
+      matchId = generateResumeToken()
+    } catch {
+      setNetError('此瀏覽器無法取得安全亂數，無法安全啟動多人牌局。')
+      return
+    }
+
     const initial = drainAuto(
       startGame({
         playerConfigs,
-        matchId: generateResumeToken(),
+        matchId,
         lessonId: roomState.lessonId,
         aiDifficulty: difficulty,
         initialGold: INITIAL_GOLD,
       }),
     )
 
-    hostManagerRef.current.startGame(initial)
+    if (!hostManagerRef.current.startGame(initial)) return
+    setNetError(null)
     committedSideEffectStateRef.current = initial
     setState(initial)
   }, [roomState, networkMode, difficulty, settings.sfx])
 
   const restartSame = () => {
     playSfx('click', settings.sfx)
+    setGuidedTutorialStep(null)
     if (networkMode === 'host') {
       handleStartMultiplayerGame()
     } else if (networkMode === 'none') {
@@ -545,7 +620,9 @@ export function App() {
     pendingDiscardIdRef.current = cardId
     setLocked(true)
     dispatch({ type: 'DISCARD', cardId })
-    window.setTimeout(() => {
+    if (discardUnlockTimerRef.current !== null) window.clearTimeout(discardUnlockTimerRef.current)
+    discardUnlockTimerRef.current = window.setTimeout(() => {
+      discardUnlockTimerRef.current = null
       if (networkMode === 'guest' && pendingDiscardIdRef.current !== cardId) return
       pendingDiscardIdRef.current = null
       lockRef.current = false
@@ -553,11 +630,17 @@ export function App() {
     }, networkMode === 'guest' ? 2000 : delayFor(settings, 'fx'))
   }
 
-  const hasSave = useMemo(() => !roomState && !!loadGame() && state.phase === 'lobby', [state.phase, roomState])
+  const hasSave = useMemo(() => state.phase === 'lobby' && !roomState && !!loadGame(), [state.phase, roomState])
 
+  const localOverlayOpen = showSettings || showTutorial || showCatalog || guidedTutorialStep !== null
   const { isMyTurn, isTurnActive, turnTimeoutEnabled, clockKey, handleTurnTimeout } = useTurnOrchestration({
-    state, networkMode, mySeat, spectating, dispatch,
+    state, networkMode, mySeat, spectating, dispatch, paused: localOverlayOpen,
   })
+  const finishReview = useCallback(() => {
+    if (state.phase === 'review' && networkMode !== 'guest') {
+      dispatch({ type: 'FINISH_REVIEW' })
+    }
+  }, [state.phase, networkMode, dispatch])
 
   // 1. 若處於房間等待大廳且牌局尚未開始
   if (networkMode !== 'none' && roomState && !roomState.started && state.phase === 'lobby') {
@@ -606,7 +689,7 @@ export function App() {
           playerName={playerName}
           difficulty={difficulty}
           hasSave={hasSave}
-          initialRoomCode={initialUrlRoom}
+          initialRoomCode={initialUrlRoom ?? legacyUrlRoom}
           bgmEnabled={settings.bgm}
           onToggleBgm={() => setSettings((s) => ({ ...s, bgm: !s.bgm }))}
           onName={setPlayerName}
@@ -655,13 +738,12 @@ export function App() {
         mySeat={spectating ? 0 : mySeat}
         isRonHighlight={announcementStage === 'gun' || announcementStage === 'cutin'}
         turnTimer={{
-          active: turnTimeoutEnabled && isTurnActive && isMyTurn,
+          active: turnTimeoutEnabled && isTurnActive && isMyTurn && !localOverlayOpen,
           seconds: state.phase === 'reaction' ? 12 : 18,
           turnKey: clockKey,
           onTimeout: handleTurnTimeout,
         }}
         selectedCardId={selectedCardId}
-        hoverYaku={hoverYaku}
         locked={locked || !isMyTurn || spectating}
         onSelectCard={(id) => {
           if (locked || !isMyTurn) return
@@ -690,7 +772,6 @@ export function App() {
           playSfx('click', settings.sfx)
           dispatch({ type: 'PASS_CLAIM' })
         }}
-        onHoverYaku={setHoverYaku}
         onOpenSettings={() => {
           playSfx('click', settings.sfx)
           setShowSettings(true)
@@ -762,11 +843,7 @@ export function App() {
           canRestart={networkMode !== 'guest'}
           canFinish={networkMode !== 'guest'}
           onLobby={toLobby}
-          onFinish={() => {
-            if (state.phase === 'review' && networkMode !== 'guest') {
-              dispatch({ type: 'FINISH_REVIEW' })
-            }
-          }}
+          onFinish={finishReview}
         />
       )}
 

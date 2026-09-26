@@ -49,15 +49,21 @@ export interface GuestCallbacks {
 }
 
 export const MAX_SPECTATORS = 8
+const INBOUND_WINDOW_MS = 2000
+const MAX_INBOUND_MESSAGES_PER_WINDOW = 40
+const RESUME_TOKEN_TTL_MS = 6 * 60 * 60 * 1000
 
 export class HostManager {
   private peer: Peer | null = null
   private connections: Map<number, DataConnection> = new Map() // seat -> connection
   private spectators: Map<DataConnection, { name: string }> = new Map()
   private resumeTokens = new Map<number, string>()
+  private resumeTokenExpiresAt = new Map<number, number>()
   private roomState: RoomState
   private callbacks: HostCallbacks
   private currentGameState: GameState | null = null
+  private destroyed = false
+  private inboundWindows = new Map<DataConnection, { startedAt: number; count: number }>()
 
   constructor(roomCode: string, hostName: string, lessonId: string, callbacks: HostCallbacks) {
     this.callbacks = callbacks
@@ -126,9 +132,28 @@ export class HostManager {
         }
       })
 
+      this.peer.on('disconnected', () => {
+        if (this.destroyed) return
+        this.callbacks.onError('房間連線服務暫時中斷，正在嘗試重新連線。')
+        try {
+          this.peer?.reconnect()
+        } catch {
+          this.callbacks.onError('房間連線服務無法恢復，請離開房間後重新開房。')
+        }
+      })
+
+      this.peer.on('close', () => {
+        if (!this.destroyed) this.callbacks.onError('房間連線服務已關閉，請離開房間後重新開房。')
+      })
+
       this.peer.on('connection', (conn) => {
         conn.on('open', () => {
           conn.on('data', (data) => {
+            if (!this.allowInboundMessage(conn)) {
+              conn.send({ type: 'ERROR', message: '訊息傳送過於頻繁，連線已關閉。' } satisfies HostMessage)
+              conn.close()
+              return
+            }
             const msg = parseClientMessage(data)
             if (!msg) {
               conn.send({ type: 'ERROR', message: '收到格式不合法的連線資料。' } satisfies HostMessage)
@@ -139,11 +164,18 @@ export class HostManager {
         })
 
         conn.on('close', () => {
+          this.inboundWindows.delete(conn)
           this.handleGuestDisconnect(conn)
         })
 
         conn.on('error', () => {
+          this.inboundWindows.delete(conn)
           this.handleGuestDisconnect(conn)
+          try {
+            conn.close()
+          } catch {
+            // ignore
+          }
         })
       })
     } catch (e: unknown) {
@@ -181,11 +213,20 @@ export class HostManager {
       }
 
       const slot = this.roomState.slots[freeSlotIndex]!
+      let resumeToken: string
+      try {
+        resumeToken = generateResumeToken()
+      } catch {
+        conn.send({ type: 'ERROR', message: '此瀏覽器無法建立安全的重連憑證。' } satisfies HostMessage)
+        conn.close()
+        return
+      }
       slot.connected = true
       slot.peerId = conn.peer
       slot.name = name
       slot.kind = 'remote'
-      this.resumeTokens.set(slot.seat, generateResumeToken())
+      this.resumeTokens.set(slot.seat, resumeToken)
+      this.resumeTokenExpiresAt.set(slot.seat, Date.now() + RESUME_TOKEN_TTL_MS)
 
       this.connections.set(slot.seat, conn)
       this.broadcastRoomUpdate()
@@ -209,21 +250,30 @@ export class HostManager {
     if (msg.type === 'CHAT') {
       const text = sanitizeChatText(msg.text)
       if (!text) return
-      let senderName = '玩家'
+      const senderSeat = this.findSeatForConnection(conn)
       const spectator = this.spectators.get(conn)
-      if (spectator) {
-        senderName = `${spectator.name}（觀戰）`
-      } else {
-        for (const s of this.roomState.slots) {
-          if (s.peerId === conn.peer) {
-            senderName = s.name
-            break
-          }
-        }
+      if (senderSeat === -1 && !spectator) {
+        conn.send({ type: 'ERROR', message: '尚未加入房間，不能傳送聊天訊息。' } satisfies HostMessage)
+        conn.close()
+        return
       }
+      const senderName = spectator
+        ? `${spectator.name}（觀戰）`
+        : (this.roomState.slots[senderSeat]?.name ?? '玩家')
       this.broadcastMessage({ type: 'CHAT', senderName, text })
       this.callbacks.onChat?.(senderName, text)
     }
+  }
+
+  private allowInboundMessage(conn: DataConnection): boolean {
+    const now = Date.now()
+    const current = this.inboundWindows.get(conn)
+    if (!current || now - current.startedAt >= INBOUND_WINDOW_MS) {
+      this.inboundWindows.set(conn, { startedAt: now, count: 1 })
+      return true
+    }
+    current.count += 1
+    return current.count <= MAX_INBOUND_MESSAGES_PER_WINDOW
   }
 
   private findSeatForConnection(conn: DataConnection): number {
@@ -270,7 +320,17 @@ export class HostManager {
     )
     if (!slot) return false
     if (this.resumeTokens.get(slot.seat) !== resumeToken) return false
-    this.resumeTokens.set(slot.seat, generateResumeToken())
+    if ((this.resumeTokenExpiresAt.get(slot.seat) ?? 0) < Date.now()) return false
+    let nextResumeToken: string
+    try {
+      nextResumeToken = generateResumeToken()
+    } catch {
+      conn.send({ type: 'ERROR', message: '無法安全更新重連憑證，請稍後重新加入。' } satisfies HostMessage)
+      conn.close()
+      return true
+    }
+    this.resumeTokens.set(slot.seat, nextResumeToken)
+    this.resumeTokenExpiresAt.set(slot.seat, Date.now() + RESUME_TOKEN_TTL_MS)
 
     const old = this.connections.get(slot.seat)
     if (old && old !== conn) {
@@ -414,7 +474,22 @@ export class HostManager {
     }
   }
 
-  public startGame(initialState: GameState) {
+  public startGame(initialState: GameState): boolean {
+    // Build the complete next credential set first. If secure randomness fails,
+    // preserve the current room/tokens instead of leaving a half-started match.
+    const nextTokens = new Map<number, string>()
+    const nextExpiries = new Map<number, number>()
+    try {
+      for (const seat of this.connections.keys()) {
+        nextTokens.set(seat, generateResumeToken())
+        nextExpiries.set(seat, Date.now() + RESUME_TOKEN_TTL_MS)
+      }
+    } catch {
+      this.callbacks.onError('無法安全產生本局重連憑證，牌局尚未開始。')
+      return false
+    }
+    this.resumeTokens = nextTokens
+    this.resumeTokenExpiresAt = nextExpiries
     this.roomState.started = true
     this.currentGameState = initialState
     for (const [seat, conn] of this.connections.entries()) {
@@ -438,6 +513,7 @@ export class HostManager {
         } satisfies HostMessage)
       }
     }
+    return true
   }
 
   public syncGameState(state: GameState) {
@@ -480,6 +556,8 @@ export class HostManager {
   }
 
   public destroy() {
+    if (this.destroyed) return
+    this.destroyed = true
     for (const conn of this.connections.values()) {
       try {
         conn.close()
@@ -496,6 +574,9 @@ export class HostManager {
       }
     }
     this.spectators.clear()
+    this.inboundWindows.clear()
+    this.resumeTokens.clear()
+    this.resumeTokenExpiresAt.clear()
     if (this.peer) {
       try {
         this.peer.destroy()
@@ -517,6 +598,8 @@ export class GuestManager {
   private resumeToken?: string
   private spectating = false
   private yourSeat: number = -1
+  private destroyed = false
+  private hostInboundWindow = { startedAt: 0, count: 0 }
 
   constructor(
     roomCode: string,
@@ -545,9 +628,33 @@ export class GuestManager {
       this.peer.on('error', (err) => {
         this.callbacks.onError(`連線中斷或錯誤：${err.message || err.type}`)
       })
+
+      this.peer.on('disconnected', () => {
+        if (this.destroyed) return
+        this.callbacks.onError('連線服務暫時中斷，正在嘗試重新連線。')
+        try {
+          this.peer?.reconnect()
+        } catch {
+          this.callbacks.onError('連線服務無法恢復，請重新加入房間。')
+        }
+      })
+
+      this.peer.on('close', () => {
+        if (!this.destroyed) this.callbacks.onError('連線服務已關閉，請重新加入房間。')
+      })
     } catch (e: unknown) {
       this.callbacks.onError(`無法建立連線：${e instanceof Error ? e.message : String(e)}`)
     }
+  }
+
+  private allowHostInboundMessage(): boolean {
+    const now = Date.now()
+    if (now - this.hostInboundWindow.startedAt >= INBOUND_WINDOW_MS) {
+      this.hostInboundWindow = { startedAt: now, count: 1 }
+      return true
+    }
+    this.hostInboundWindow.count += 1
+    return this.hostInboundWindow.count <= MAX_INBOUND_MESSAGES_PER_WINDOW
   }
 
   private connectToHost(hostPeerId: string) {
@@ -567,6 +674,11 @@ export class GuestManager {
     })
 
     conn.on('data', (data) => {
+      if (!this.allowHostInboundMessage()) {
+        this.callbacks.onError('房主傳送資料過於頻繁，已中止連線以保護裝置。')
+        conn.close()
+        return
+      }
       const msg = parseHostMessage(data)
       if (!msg) {
         this.callbacks.onError('房主傳來格式不合法的同步資料。')
@@ -651,6 +763,8 @@ export class GuestManager {
   }
 
   public destroy() {
+    if (this.destroyed) return
+    this.destroyed = true
     if (this.hostConn) {
       try {
         this.hostConn.close()

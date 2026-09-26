@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   buildWordReviewEntries,
   filterFlaggedEntries,
@@ -8,11 +8,17 @@ import {
 } from '../audio/wordReview'
 import './AudioReview.css'
 
+function loadFlaggedSounds(): Set<string> {
+  try {
+    return parseFlaggedSoundIds(window.localStorage.getItem(WORD_REVIEW_STORAGE_KEY))
+  } catch {
+    return new Set()
+  }
+}
+
 export function AudioReview() {
   const entries = useMemo(() => buildWordReviewEntries(), [])
-  const [flagged, setFlagged] = useState<Set<string>>(() =>
-    parseFlaggedSoundIds(window.localStorage.getItem(WORD_REVIEW_STORAGE_KEY)),
-  )
+  const [flagged, setFlagged] = useState<Set<string>>(loadFlaggedSounds)
   const [flaggedOnly, setFlaggedOnly] = useState(false)
   const [playing, setPlaying] = useState<string | null>(null)
   const [failed, setFailed] = useState<Set<string>>(new Set())
@@ -24,7 +30,11 @@ export function AudioReview() {
 
   function persist(next: Set<string>) {
     setFlagged(next)
-    window.localStorage.setItem(WORD_REVIEW_STORAGE_KEY, JSON.stringify([...next]))
+    try {
+      window.localStorage.setItem(WORD_REVIEW_STORAGE_KEY, JSON.stringify([...next]))
+    } catch {
+      setMessage('瀏覽器無法儲存標記，但本次頁面仍會保留。')
+    }
   }
 
   function toggleFlag(sound: string) {
@@ -39,6 +49,13 @@ export function AudioReview() {
     audioRef.current = null
     setPlaying(null)
   }
+
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause()
+      audioRef.current = null
+    }
+  }, [])
 
   function toggleAudio(sound: string, url: string) {
     if (playing === sound) {

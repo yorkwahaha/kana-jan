@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { pickSafeTimeoutDiscard } from '../engine/ai'
-import { currentPlayer, reactionActor, type GameAction } from '../engine/game'
+import { reactionActor, type GameAction } from '../engine/game'
 import type { GameState, PlayerState } from '../engine/types'
 import { followUpDiscardAfterExpiredClock, turnClockKey } from './TurnTimer'
 
@@ -12,6 +12,7 @@ interface Options {
   mySeat: number
   spectating: boolean
   dispatch: (action: GameAction) => void
+  paused?: boolean
 }
 
 export interface TurnOrchestration {
@@ -27,7 +28,17 @@ export function shouldUseTurnTimeout(actor: PlayerState | null): boolean {
   return actor !== null && actor.aiDifficulty !== 'easy'
 }
 
-export function useTurnOrchestration({ state, networkMode, mySeat, spectating, dispatch }: Options): TurnOrchestration {
+export function shouldScheduleHostTimeout(
+  turnTimeoutEnabled: boolean,
+  networkMode: NetworkMode,
+  isTurnActive: boolean,
+  actorKind: PlayerState['kind'] | undefined,
+  paused: boolean,
+): boolean {
+  return !paused && turnTimeoutEnabled && networkMode === 'host' && isTurnActive && actorKind === 'remote'
+}
+
+export function useTurnOrchestration({ state, networkMode, mySeat, spectating, dispatch, paused = false }: Options): TurnOrchestration {
   const handleTurnTimeoutRef = useRef<() => void>(() => undefined)
   const turnClockExpiredRef = useRef(false)
   const currentActor =
@@ -43,7 +54,7 @@ export function useTurnOrchestration({ state, networkMode, mySeat, spectating, d
   const turnTimeoutEnabled = shouldUseTurnTimeout(currentActor)
 
   const handleTurnTimeout = useCallback(() => {
-    if (!turnTimeoutEnabled || !isTurnActive || !currentActor) return
+    if (paused || !turnTimeoutEnabled || !isTurnActive || !currentActor) return
     if (isMyTurn || (networkMode === 'host' && currentActor.kind === 'remote')) {
       if (state.phase === 'playerAction') {
         dispatch({ type: 'SKIP_YAKU' })
@@ -56,7 +67,7 @@ export function useTurnOrchestration({ state, networkMode, mySeat, spectating, d
         dispatch({ type: 'PASS_CLAIM' })
       }
     }
-  }, [turnTimeoutEnabled, isTurnActive, isMyTurn, networkMode, currentActor, state, dispatch])
+  }, [paused, turnTimeoutEnabled, isTurnActive, isMyTurn, networkMode, currentActor, state, dispatch])
   handleTurnTimeoutRef.current = handleTurnTimeout
 
   const clockKey = turnClockKey({
@@ -67,11 +78,13 @@ export function useTurnOrchestration({ state, networkMode, mySeat, spectating, d
     reactionIndex: state.reactionIndex,
   })
   const hostTimeoutMs = state.phase === 'reaction' ? 14_000 : 20_000
-  const hostShouldTimeout =
-    turnTimeoutEnabled &&
-    networkMode === 'host' &&
-    isTurnActive &&
-    (state.phase === 'reaction' ? reactionActor(state) : currentPlayer(state))?.kind === 'remote'
+  const hostShouldTimeout = shouldScheduleHostTimeout(
+    turnTimeoutEnabled,
+    networkMode,
+    isTurnActive,
+    currentActor?.kind,
+    paused,
+  )
 
   useEffect(() => {
     turnClockExpiredRef.current = false

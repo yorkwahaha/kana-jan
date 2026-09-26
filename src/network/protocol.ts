@@ -1,5 +1,7 @@
 import { isClientAction } from '../engine/game'
 import { isNetworkGameState, isRecord } from '../engine/stateValidation'
+import { MAX_CHAT_LENGTH, MAX_PLAYER_NAME } from './authorize'
+import { makeHiddenCard } from './mask'
 import type { ClientMessage, HostMessage } from './types'
 
 function isRoomState(value: unknown): boolean {
@@ -31,8 +33,8 @@ export function parseClientMessage(value: unknown): ClientMessage | null {
   switch (value.type) {
     case 'JOIN':
       if (
-        typeof value.name !== 'string' ||
-        typeof value.peerId !== 'string' ||
+        typeof value.name !== 'string' || value.name.length > MAX_PLAYER_NAME * 4 ||
+        typeof value.peerId !== 'string' || value.peerId.length > 128 ||
         (value.resumePlayerId !== undefined && typeof value.resumePlayerId !== 'string') ||
         (value.resumeToken !== undefined && typeof value.resumeToken !== 'string')
       ) {
@@ -50,9 +52,22 @@ export function parseClientMessage(value: unknown): ClientMessage | null {
     case 'ACTION':
       return isClientAction(value.action) ? { type: 'ACTION', action: value.action } : null
     case 'CHAT':
-      return typeof value.text === 'string' ? { type: 'CHAT', text: value.text } : null
+      return typeof value.text === 'string' && value.text.length <= MAX_CHAT_LENGTH
+        ? { type: 'CHAT', text: value.text }
+        : null
     default:
       return null
+  }
+}
+
+function expandNetworkState(value: unknown): unknown {
+  if (!isRecord(value) || !Array.isArray(value.deck)) return value
+  if (value.deck.length !== 0 || value.deckCount === undefined) return value
+  if (!Number.isInteger(value.deckCount) || Number(value.deckCount) < 0 || Number(value.deckCount) > 1000) return null
+  const { deckCount, ...rest } = value
+  return {
+    ...rest,
+    deck: Array.from({ length: Number(deckCount) }, (_, index) => makeHiddenCard(`deck-hidden-${index}`)),
   }
 }
 
@@ -61,9 +76,10 @@ export function parseHostMessage(value: unknown): HostMessage | null {
 
   switch (value.type) {
     case 'ERROR':
-      return typeof value.message === 'string' ? { type: 'ERROR', message: value.message } : null
+      return typeof value.message === 'string' && value.message.length <= 500 ? { type: 'ERROR', message: value.message } : null
     case 'CHAT':
-      return typeof value.senderName === 'string' && typeof value.text === 'string'
+      return typeof value.senderName === 'string' && value.senderName.length <= MAX_PLAYER_NAME * 4 &&
+        typeof value.text === 'string' && value.text.length <= MAX_CHAT_LENGTH
         ? { type: 'CHAT', senderName: value.senderName, text: value.text }
         : null
     case 'ROOM_UPDATE':
@@ -75,22 +91,27 @@ export function parseHostMessage(value: unknown): HostMessage | null {
       )
         ? (value as unknown as HostMessage)
         : null
-    case 'GAME_START':
-      return (
-        isNetworkGameState(value.state) &&
-        isSeat(value.yourSeat, value.spectating) &&
-        (value.spectating === undefined || typeof value.spectating === 'boolean') &&
-        (value.resumeToken === undefined || (typeof value.resumeToken === 'string' && /^[a-f0-9]{32}$/.test(value.resumeToken)))
-      )
-        ? (value as unknown as HostMessage)
-        : null
-    case 'GAME_SYNC':
-      return (
-        isNetworkGameState(value.state) &&
-        (value.spectating === undefined || typeof value.spectating === 'boolean')
-      )
-        ? (value as unknown as HostMessage)
-        : null
+    case 'GAME_START': {
+      const state = expandNetworkState(value.state)
+      if (
+        !isNetworkGameState(state) ||
+        !isSeat(value.yourSeat, value.spectating) ||
+        (value.spectating !== undefined && typeof value.spectating !== 'boolean') ||
+        (value.resumeToken !== undefined && (typeof value.resumeToken !== 'string' || !/^[a-f0-9]{32}$/.test(value.resumeToken)))
+      ) return null
+      return {
+        type: 'GAME_START',
+        state,
+        yourSeat: value.yourSeat,
+        spectating: value.spectating,
+        resumeToken: value.resumeToken,
+      }
+    }
+    case 'GAME_SYNC': {
+      const state = expandNetworkState(value.state)
+      if (!isNetworkGameState(state) || (value.spectating !== undefined && typeof value.spectating !== 'boolean')) return null
+      return { type: 'GAME_SYNC', state, spectating: value.spectating }
+    }
     default:
       return null
   }

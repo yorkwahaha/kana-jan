@@ -4,6 +4,7 @@ import type { GameState } from '../engine/types'
 import { CardView } from './CardView'
 import { tablePosition, type TablePosition } from './seats'
 import type { Settings } from './settings'
+import { drawPresentationKey } from './presentationKeys'
 
 interface Props {
   state: GameState
@@ -28,20 +29,16 @@ export function CardDrawFlight({ state, settings, mySeat = 0 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const flightRef = useRef<HTMLDivElement>(null)
   const [activeFlight, setActiveFlight] = useState<ActiveFlight | null>(null)
-  const lastHandledSeqRef = useRef<number>(-1)
+  const lastHandledDrawKeyRef = useRef<string | null>(null)
 
   // 監聽抽牌事件（依據 state.eventSeq 與 state.lastFx === 'draw'）
   useIsomorphicLayoutEffect(() => {
     if (typeof window === 'undefined') return
-    if (state.eventSeq === lastHandledSeqRef.current) return
-    lastHandledSeqRef.current = state.eventSeq
-
-    // A real draw presentation must have an actual drawn-card id. Turn-boundary
-    // events may advance eventSeq but must never replay a stale draw animation.
-    if (state.lastFx !== 'draw' || !state.lastDrawnCardId) {
-      setActiveFlight(null)
-      return
-    }
+    // A real draw presentation must have a new physical card id. Unrelated events
+    // may advance eventSeq while lastFx is still 'draw', but must not replay it.
+    const drawKey = drawPresentationKey(state)
+    if (!drawKey || drawKey === lastHandledDrawKeyRef.current) return
+    lastHandledDrawKeyRef.current = drawKey
 
     if (settings.animation === 'off') return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
@@ -192,7 +189,7 @@ export function CardDrawFlight({ state, settings, mySeat = 0 }: Props) {
       },
     )
 
-    const clear = () => setActiveFlight(null)
+    const clear = () => setActiveFlight((current) => current?.id === activeFlight.id ? null : current)
     void anim.finished.then(clear).catch(clear)
     return () => {
       anim.cancel()

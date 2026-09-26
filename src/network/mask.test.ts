@@ -18,9 +18,9 @@ describe('maskStateForPlayer 防窺牌遮罩', () => {
     const originalDeckLen = state.deck.length
     const maskedForSeat1 = maskStateForPlayer(state, 1)
 
-    // 牌庫保留張數，但內容全被遮蔽
-    expect(maskedForSeat1.deck).toHaveLength(originalDeckLen)
-    expect(maskedForSeat1.deck.every((c) => c.hiragana === '？')).toBe(true)
+    // wire payload 只傳牌庫張數，guest parse 後才重建隱藏牌。
+    expect(maskedForSeat1.deck).toHaveLength(0)
+    expect(maskedForSeat1.deckCount).toBe(originalDeckLen)
 
     // 玩家 1 自己的手牌保持真實
     expect(maskedForSeat1.players[1]!.hand[0]!.hiragana).not.toBe('？')

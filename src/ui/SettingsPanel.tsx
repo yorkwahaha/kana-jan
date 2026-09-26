@@ -1,4 +1,5 @@
 import type { Settings } from './settings'
+import { useDialogA11y } from './useDialogA11y'
 
 interface Props {
   settings: Settings
@@ -10,13 +11,14 @@ interface Props {
 }
 
 export function SettingsPanel({ settings, onChange, onClose, onRestart, canRestart = true, onToLobby }: Props) {
+  const dialogRef = useDialogA11y(true, onClose)
   const toggle = (key: keyof Settings) => {
     const value = settings[key]
     if (typeof value === 'boolean') onChange({ ...settings, [key]: !value })
   }
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-labelledby="settings-title">
+    <div ref={dialogRef} tabIndex={-1} className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <div className="modal settings-modal">
         <header className="modal-head">
           <h2 id="settings-title">設定</h2>

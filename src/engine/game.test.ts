@@ -54,6 +54,14 @@ describe('客端動作白名單', () => {
 })
 
 describe('防禦性狀態清理', () => {
+  it('拒絕會造成金幣通膨/NaN 的開局設定', () => {
+    expect(() => startGame({ seed: 1, initialGold: 0 })).toThrow()
+    expect(() => startGame({ seed: 1, initialGold: 5 })).toThrow()
+    expect(() => startGame({ seed: 1, initialGold: 1e308 })).toThrow()
+    expect(() => startGame({ seed: 1, bonus: { ...bonus, points: Number.NaN } })).toThrow()
+    expect(() => startGame({ seed: 1, bonus: { ...bonus, cardId: 'missing-card' } })).toThrow()
+  })
+
   it('8 張手牌略過成役進入棄牌時會清除舊 comboCount', () => {
     const state = startGame({
       seed: 2,

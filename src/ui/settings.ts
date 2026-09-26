@@ -72,7 +72,7 @@ export function saveSettings(settings: Settings) {
 }
 
 export function delayFor(
-  settings: Settings,
+  settings: Pick<Settings, 'animation'>,
   kind: 'draw' | 'think' | 'deal' | 'fx' | 'hold' | 'discardFlight',
 ): number {
   if (settings.animation === 'off') return 40

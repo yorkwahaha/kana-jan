@@ -1,13 +1,15 @@
 import { getCardById } from '../data/cards'
 import { CardView } from './CardView'
+import { useDialogA11y } from './useDialogA11y'
 
 interface Props {
   onClose: () => void
 }
 
 export function Tutorial({ onClose }: Props) {
+  const dialogRef = useDialogA11y(true, onClose)
   return (
-    <div className="modal-backdrop" role="dialog" aria-labelledby="tutorial-title">
+    <div ref={dialogRef} tabIndex={-1} className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
       <div className="modal tutorial-modal">
         <header className="modal-head">
           <h2 id="tutorial-title">玩法說明</h2>

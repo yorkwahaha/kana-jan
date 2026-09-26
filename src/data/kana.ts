@@ -749,8 +749,8 @@ export const KANA_SOUNDS: KanaSound[] = [
   sound({ sound: 'zo', romaji: 'zo', hiragana: 'ぞ', katakana: 'ゾ', row: 'za', column: 'o', vocabulary: 'ぞう', meaning: '大象', icon: '🐘', spelling: ['zo', 'u'] }),
 
   sound({ sound: 'da', romaji: 'da', hiragana: 'だ', katakana: 'ダ', row: 'da', column: 'a', vocabulary: 'だんご', meaning: '糰子', icon: '🍡', spelling: ['da', 'n', 'go'] }),
-  sound({ sound: 'di', romaji: 'di', hiragana: 'ぢ', katakana: 'ヂ', row: 'da', column: 'i', vocabulary: 'はなぢ', meaning: '鼻血', icon: '🩸', spelling: ['ha', 'na', 'di'] }),
-  sound({ sound: 'du', romaji: 'du', hiragana: 'づ', katakana: 'ヅ', row: 'da', column: 'u', vocabulary: 'つづく', meaning: '持續', icon: '⏩', spelling: ['tsu', 'du', 'ku'] }),
+  sound({ sound: 'di', romaji: 'ji', hiragana: 'ぢ', katakana: 'ヂ', row: 'da', column: 'i', vocabulary: 'はなぢ', meaning: '鼻血', icon: '🩸', spelling: ['ha', 'na', 'di'] }),
+  sound({ sound: 'du', romaji: 'zu', hiragana: 'づ', katakana: 'ヅ', row: 'da', column: 'u', vocabulary: 'つづく', meaning: '持續', icon: '⏩', spelling: ['tsu', 'du', 'ku'] }),
   sound({ sound: 'de', romaji: 'de', hiragana: 'で', katakana: 'デ', row: 'da', column: 'e', vocabulary: 'でんしゃ', meaning: '電車', icon: '🚃', spelling: ['de', 'n', 'sha'] }),
   sound({ sound: 'do', romaji: 'do', hiragana: 'ど', katakana: 'ド', row: 'da', column: 'o', vocabulary: 'どあ', meaning: '門', icon: '🚪', spelling: ['do', 'a'] }),
 

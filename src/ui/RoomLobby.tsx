@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { copyToClipboard, makeRoomUrl } from '../network/roomCode'
 import type { RoomState } from '../network/types'
 import { LESSONS, getLesson } from '../data/lessons'
@@ -23,13 +23,22 @@ export function RoomLobby({
   onSelectLesson,
 }: Props) {
   const [copied, setCopied] = useState(false)
+  const copiedTimerRef = useRef<number | null>(null)
+
+  useEffect(() => () => {
+    if (copiedTimerRef.current !== null) window.clearTimeout(copiedTimerRef.current)
+  }, [])
 
   const handleCopy = async () => {
     const shareUrl = makeRoomUrl(window.location.href, roomState.roomId)
     const ok = await copyToClipboard(shareUrl)
     if (ok) {
       setCopied(true)
-      setTimeout(() => setCopied(false), 2500)
+      if (copiedTimerRef.current !== null) window.clearTimeout(copiedTimerRef.current)
+      copiedTimerRef.current = window.setTimeout(() => {
+        copiedTimerRef.current = null
+        setCopied(false)
+      }, 2500)
     }
   }
 

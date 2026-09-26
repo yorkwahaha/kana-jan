@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { ROW_COLOR, ROW_LABEL, soundsForRows, getSound } from '../data/kana'
+import { ROW_COLOR, ROW_LABEL, soundsForRows } from '../data/kana'
 import type { GameState } from '../engine/types'
 import { CardView } from './CardView'
-import { getCardById, buildCard } from '../data/cards'
+import { getCardById } from '../data/cards'
 import { playSfx } from '../audio/sfx'
 import type { Settings } from './settings'
+import { useDialogA11y } from './useDialogA11y'
 
 interface Props {
   state: GameState
@@ -17,9 +18,12 @@ export function RowPreview({ state, settings, onContinue, canSkip = true }: Prop
   const [elapsed, setElapsed] = useState(() => (settings?.animation === 'off' ? 6000 : 0))
   const onContinueRef = useRef(onContinue)
   onContinueRef.current = onContinue
+  const dialogRef = useDialogA11y(true, canSkip ? () => onContinueRef.current() : undefined)
 
   useEffect(() => {
-    if (settings?.animation === 'off') {
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (settings?.animation === 'off' || reducedMotion) {
+      setElapsed(6000)
       if (!canSkip) return
       const t = setTimeout(() => onContinueRef.current(), 2000)
       return () => clearTimeout(t)
@@ -55,15 +59,13 @@ export function RowPreview({ state, settings, onContinue, canSkip = true }: Prop
     }
   }, [canSkip, settings?.animation, settings?.sfx])
 
-  const bonusCard =
-    getCardById(state.bonus.cardId) ??
-    buildCard(getSound(state.bonus.sound), 'hiragana')
+  const bonusCard = getCardById(state.bonus.cardId)
 
   const isBonusFlipped = elapsed >= 4000
   const isBonusRevealed = elapsed >= 5000
 
   return (
-    <div className="preview-overlay" role="dialog" aria-labelledby="preview-title">
+    <div ref={dialogRef} tabIndex={-1} className="preview-overlay" role="dialog" aria-modal="true" aria-labelledby="preview-title">
       <div className="preview-felt-stage">
         {/* 頂部橫條：標題與略過按鈕 */}
         <header className="preview-header">
@@ -108,8 +110,7 @@ export function RowPreview({ state, settings, onContinue, canSkip = true }: Prop
                       const isFlipped = elapsed >= flipTime
                       const isJustFlipped = elapsed >= flipTime && elapsed < flipTime + 380
                       const isCardVisible = cardIndex === 0 || elapsed >= flipTime - 80
-                      const card =
-                        getCardById(`${sound.sound}-hiragana`) ?? buildCard(sound, 'hiragana')
+                      const card = getCardById(`${sound.sound}-hiragana`)
 
                       return (
                         <div

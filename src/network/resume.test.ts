@@ -16,11 +16,11 @@ describe('resume storage guard', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('只接受合法 seat 與 128-bit hex token', () => {
-    saveResume('7X89', { playerId: 'p1', name: 'A', seat: 1, token: 'a'.repeat(32) })
-    expect(loadResume('7X89')?.seat).toBe(1)
+    saveResume('7X89AB', { playerId: 'p1', name: 'A', seat: 1, token: 'a'.repeat(32) })
+    expect(loadResume('7X89AB')?.seat).toBe(1)
 
     const key = sessionStorage.key(0)!
     sessionStorage.setItem(key, JSON.stringify({ playerId: 'p1', name: 'A', seat: 9, token: 'x' }))
-    expect(loadResume('7X89')).toBeNull()
+    expect(loadResume('7X89AB')).toBeNull()
   })
 })

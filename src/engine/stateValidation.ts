@@ -1,6 +1,6 @@
 import { getCardById, type KanaCard } from '../data/cards'
 import { ROW_ORDER, getSound } from '../data/kana'
-import type { GameState, PlayerState, YakuCandidate } from './types'
+import { HAND_SIZE, type GameState, type PlayerState, type YakuCandidate } from './types'
 
 const PHASES = new Set<GameState['phase']>([
   'lobby', 'preview', 'dealing', 'playerDraw', 'playerAction', 'discard', 'reaction',
@@ -87,7 +87,8 @@ function isBonus(value: unknown): boolean {
   if (!isNonNegativeFinite(value.points)) return false
   try {
     getSound(value.sound)
-    return true
+    const card = getCardById(value.cardId)
+    return card.sound === value.sound && card.cardType === 'hiragana' && value.cardId === `${value.sound}-hiragana`
   } catch {
     return false
   }
@@ -163,12 +164,38 @@ function basicStateRelations(state: GameState): boolean {
   if (state.rankings && state.rankings.some((r) => !idSet.has(r.playerId))) return false
   if (state.lastTransfers.some((t) => !idSet.has(t.fromId) || !idSet.has(t.toId) || (t.paid ?? t.amount) + (t.systemTopUp ?? 0) !== t.amount)) return false
   if (state.phase === 'gameOver' && (!state.rankings || !state.gameOverReason)) return false
+  if ((state.phase === 'scoring' || state.phase === 'review') && !state.pendingScore) return false
+  return true
+}
+
+function networkStateRelations(state: GameState): boolean {
+  const ownedCards = [
+    ...state.deck,
+    ...state.players.flatMap((p) => p.hand),
+    ...state.players.flatMap((p) => p.discards),
+    ...state.players.flatMap((p) => p.completed.flatMap((completed) => completed.yaku.cards)),
+  ]
+  const ownedIds = ownedCards.map((card) => card.id)
+  if (new Set(ownedIds).size !== ownedIds.length) return false
+  if (state.players.some((player) => player.hand.length > HAND_SIZE + 1)) return false
+  if (ownedCards.some((card) => !/^(?:deck-hidden-\d+|hidden-\d+-\d+)$/.test(card.id) && !state.activeRows.includes(card.row))) return false
+
+  const discardIds = state.players.flatMap((p) => p.discards.map((card) => card.id))
+  if (
+    discardIds.length !== state.discardPile.length ||
+    discardIds.some((id, index) => state.discardPile[index]?.id !== id)
+  ) return false
+  if (state.currentDiscard) {
+    if (!state.lastDiscardPlayerId) return false
+    const discarder = state.players.find((p) => p.id === state.lastDiscardPlayerId)
+    if (!discarder?.discards.some((card) => card.id === state.currentDiscard?.id)) return false
+  }
   return true
 }
 
 export function isNetworkGameState(value: unknown): value is GameState {
   const cardValidator: CardValidator = (card): card is KanaCard => isCanonicalCard(card) || isHiddenCard(card)
-  return isGameStateShape(value, cardValidator) && basicStateRelations(value)
+  return isGameStateShape(value, cardValidator) && basicStateRelations(value) && networkStateRelations(value)
 }
 
 export function isPersistentGameState(value: unknown): value is GameState {

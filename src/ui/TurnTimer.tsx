@@ -36,14 +36,12 @@ export function useTurnCountdown(
 ) {
   const [remaining, setRemaining] = useState(seconds)
   const onTimeoutRef = useRef(onTimeout)
-  onTimeoutRef.current = onTimeout
   const deadlineRef = useRef(0)
   const keyRef = useRef<string | number | null>(null)
 
-  if (keyRef.current !== turnKey) {
-    keyRef.current = turnKey
-    deadlineRef.current = Date.now() + seconds * 1000
-  }
+  useEffect(() => {
+    onTimeoutRef.current = onTimeout
+  }, [onTimeout])
 
   useEffect(() => {
     if (keyRef.current !== turnKey) {

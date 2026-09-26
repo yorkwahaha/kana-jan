@@ -23,13 +23,15 @@ export function makeHiddenCard(id: string): KanaCard {
   }
 }
 
+export type MaskedNetworkState = GameState & { deckCount: number }
+
 /**
  * 針對特定座位的玩家進行防窺遮罩：
  * 1. 遮蔽牌庫內容，但保留剩餘張數（維持桌中央「あと XX」牌山數量顯示）。
  * 2. 遮蔽其他對手的手牌內容，但保留手牌數量（維持扇形牌背顯示）。
  * 3. 自己的手牌、所有人的棄牌河與已露出的和牌（副露）完全保留。
  */
-export function maskStateForPlayer(state: GameState, seat: number): GameState {
+export function maskStateForPlayer(state: GameState, seat: number): MaskedNetworkState {
   const currentPlayer = state.players[state.currentPlayerIndex]
   const canSeeDrawnCard = seat >= 0 && currentPlayer?.seat === seat
   const currentReaction = state.reactionOptions[state.reactionIndex]
@@ -37,7 +39,8 @@ export function maskStateForPlayer(state: GameState, seat: number): GameState {
     ...state,
     seed: 0,
     rngState: 0,
-    deck: state.deck.map((_, idx) => makeHiddenCard(`deck-hidden-${idx}`)),
+    deck: [],
+    deckCount: state.deck.length,
     lastDrawnCardId: canSeeDrawnCard ? state.lastDrawnCardId : null,
     reactionOptions: currentReaction ? [{ playerId: currentReaction.playerId }] : [],
     reactionIndex: 0,

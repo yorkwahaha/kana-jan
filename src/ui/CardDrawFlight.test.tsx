@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { renderToString } from 'react-dom/server'
 import { CardDrawFlight } from './CardDrawFlight'
-import { startGame } from '../engine/game'
+import { drawPresentationKey } from './presentationKeys'
+import { pushEvent, reduce, startGame } from '../engine/game'
 import { DEFAULT_SETTINGS } from './settings'
 
 describe('CardDrawFlight', () => {
@@ -19,5 +20,15 @@ describe('CardDrawFlight', () => {
       <CardDrawFlight state={state} settings={DEFAULT_SETTINGS} mySeat={0} />,
     )
     expect(html).not.toContain('flying-draw-card')
+  })
+
+  it('unrelated events do not create a new draw presentation identity', () => {
+    let state = startGame({ seed: 42, skipPreview: true })
+    state = reduce(state, { type: 'DEAL_DONE' })
+    state = reduce(state, { type: 'DRAW' })
+    const key = drawPresentationKey(state)
+    const unrelated = pushEvent(state, '玩家重新連線')
+    expect(unrelated.eventSeq).toBeGreaterThan(state.eventSeq)
+    expect(drawPresentationKey(unrelated)).toBe(key)
   })
 })

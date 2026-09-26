@@ -6,10 +6,9 @@ import {
   reactionActor,
 } from '../engine/game'
 import { computeRankings } from '../engine/scoring'
-import { findNearYaku, findYaku, type NearYakuHint } from '../engine/yaku'
+import { buildTenpaiWaits, tenpaiVisibilityKey } from '../engine/tenpai'
+import { findNearYaku } from '../engine/yaku'
 import type { GameState, YakuCandidate } from '../engine/types'
-import { getCardById, type CardType, type KanaCard } from '../data/cards'
-import { getSound } from '../data/kana'
 import type { Settings } from './settings'
 import { playersByPerspective, tablePosition } from './seats'
 import { CardDrawFlight } from './CardDrawFlight'
@@ -27,7 +26,6 @@ interface Props {
   settings: Settings
   mySeat?: number
   selectedCardId: string | null
-  hoverYaku: YakuCandidate | null
   locked: boolean
   isRonHighlight?: boolean
   turnTimer?: {
@@ -41,7 +39,6 @@ interface Props {
   onSkipYaku: () => void
   onClaim: (yakuId: string) => void
   onPassClaim: () => void
-  onHoverYaku: (yaku: YakuCandidate | null) => void
   onOpenSettings: () => void
   onOpenHelp: () => void
   onOpenCatalog: () => void
@@ -51,61 +48,11 @@ function fanCount(n: number) {
   return Math.min(n, 8)
 }
 
-const WAIT_CARD_TYPES: CardType[] = ['hiragana', 'katakana', 'vocabulary']
-
-interface TenpaiWait {
-  sound: string
-  card: KanaCard
-  minScore: number
-  maxScore: number
-}
-
-function buildTenpaiWaits(
-  hand: KanaCard[],
-  hints: NearYakuHint[],
-  state: Pick<GameState, 'activeRows' | 'bonus'>,
-): TenpaiWait[] {
-  const waits = new Map<string, TenpaiWait>()
-
-  for (const hint of hints) {
-    for (const sound of hint.missingSounds) {
-      const waitSound = getSound(sound)
-      const scores = WAIT_CARD_TYPES.flatMap((cardType, typeIndex) => {
-        const card = getCardById(`${sound}-${cardType}-$${900 + typeIndex}`)
-        return findYaku([...hand, card], state.bonus, {
-          activeRows: state.activeRows,
-          mustIncludeCardId: card.id,
-        })
-          .filter((yaku) => {
-            if (yaku.kind !== hint.kind) return false
-            if (hint.kind === 'sameSound') return yaku.sound === sound
-            return yaku.row === waitSound.row
-          })
-          .map((yaku) => yaku.totalScore)
-      })
-      if (scores.length === 0) continue
-
-      const minScore = Math.min(...scores)
-      const maxScore = Math.max(...scores)
-      const current = waits.get(sound)
-      waits.set(sound, {
-        sound,
-        card: getCardById(`${sound}-hiragana`),
-        minScore: current ? Math.min(current.minScore, minScore) : minScore,
-        maxScore: current ? Math.max(current.maxScore, maxScore) : maxScore,
-      })
-    }
-  }
-
-  return [...waits.values()]
-}
-
 export function GameTable({
   state,
   settings,
   mySeat = 0,
   selectedCardId,
-  hoverYaku,
   locked,
   isRonHighlight = false,
   turnTimer,
@@ -114,7 +61,6 @@ export function GameTable({
   onSkipYaku,
   onClaim,
   onPassClaim,
-  onHoverYaku,
   onOpenSettings,
   onOpenHelp,
   onOpenCatalog,
@@ -136,6 +82,7 @@ export function GameTable({
     settings.highlightNear && settings.learningHints
       ? findNearYaku(human.hand, state.activeRows)
       : []
+  const [hoverYaku, setHoverYaku] = useState<YakuCandidate | null>(null)
   const availableClaimYakus = yakus.length > 0 ? yakus : reactionYakus
   const hasClaimDecision = availableClaimYakus.length > 0
   const targetClaimYaku = hoverYaku ?? availableClaimYakus[0] ?? null
@@ -143,7 +90,7 @@ export function GameTable({
   const canDiscard = state.phase === 'discard' && humanTurn && !locked
   const thinking =
     actor.kind === 'ai' && ['playerAction', 'discard', 'playerDraw', 'reaction'].includes(state.phase)
-  const rankings = computeRankings(state.players)
+  const rankings = useMemo(() => computeRankings(state.players), [state.players])
   const placeOf = (id: string) => rankings.find((r) => r.playerId === id)?.place ?? 4
   const [showLog, setShowLog] = useState(false)
   const [showReference, setShowReference] = useState(false)
@@ -155,6 +102,7 @@ export function GameTable({
 
   useEffect(() => {
     if (nearHints.length <= 1 || settings.animation === 'off') return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const interval = window.setInterval(() => {
       setNearCycleIndex((index) => (index + 1) % nearHints.length)
     }, settings.animation === 'fast' ? 1200 : 1800)
@@ -165,16 +113,18 @@ export function GameTable({
   const activeNearHint = nearHints[activeNearIndex]
   const nearIds = new Set(activeNearHint?.cardIds ?? [])
   const handKey = human.hand.map((card) => card.id).join(',')
+  const tenpaiPublicKey = tenpaiVisibilityKey(state)
   const tenpaiWaits = useMemo(
     () => buildTenpaiWaits(human.hand, nearHints, state),
     // 用 fingerprint 當相依項，避免 lastFx／倒數造成的無關重算。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [handKey, nearCycleKey, state.activeRows, state.bonus.sound, state.bonus.points],
+    [handKey, nearCycleKey, tenpaiPublicKey, state.activeRows, state.bonus.sound, state.bonus.points],
   )
+  const turnTimerActive = !!turnTimer?.active && !showLog && !showReference
   const turnRemaining = useTurnCountdown(
     turnTimer?.seconds ?? 18,
     turnTimer?.turnKey ?? '',
-    !!turnTimer?.active,
+    turnTimerActive,
     turnTimer?.onTimeout ?? (() => undefined),
     state.phase,
   )
@@ -215,7 +165,7 @@ export function GameTable({
           <span className="fab-text">牌況</span>
         </button>
       </div>
-      <p className="table-prompt">
+      <p className="table-prompt" role="status" aria-live="polite" aria-atomic="true">
         {state.phase === 'reaction'
           ? reactionActor(state)?.id === human.id
             ? '有玩家棄牌，你要抄牌（もらった）嗎？'
@@ -385,10 +335,10 @@ export function GameTable({
                   type="button"
                   className="btn-compact-claim"
                   disabled={locked}
-                  onMouseEnter={() => onHoverYaku(y)}
-                  onMouseLeave={() => onHoverYaku(null)}
-                  onFocus={() => onHoverYaku(y)}
-                  onBlur={() => onHoverYaku(null)}
+                  onMouseEnter={() => setHoverYaku(y)}
+                  onMouseLeave={() => setHoverYaku(null)}
+                  onFocus={() => setHoverYaku(y)}
+                  onBlur={() => setHoverYaku(null)}
                   onClick={() => (yakus.length > 0 ? onChooseYaku(y.id) : onClaim(y.id))}
                   aria-label={`和牌 ${y.label} ${y.totalScore} 點`}
                 >
@@ -409,14 +359,14 @@ export function GameTable({
                 (state.lastDrawnCardId === card.id || idx === human.hand.length - 1)
               // 和牌決策列已有同一回合的倒數；避免自摸時同時渲染兩個計時器，
               // 也避免兩份 countdown 各自觸發一次 onTimeout。
-              const showTimer = isDrawn && !!turnTimer?.active && !hasClaimDecision
+              const showTimer = isDrawn && turnTimerActive && !hasClaimDecision
 
               return (
                 <div key={card.id} className={`hand-card-slot ${isDrawn ? 'is-drawn-slot' : ''}`}>
                   {showTimer && turnTimer && (
                     <TurnTimer
                       remaining={turnRemaining}
-                      active={turnTimer.active}
+                      active={turnTimerActive}
                       label="摸牌"
                       className="timer-above-drawn"
                     />
@@ -431,9 +381,7 @@ export function GameTable({
                     disabled={locked}
                     drawn={isDrawn}
                     hasTimer={showTimer}
-                    onClick={() => {
-                      if (canDiscard) onSelectCard(card.id)
-                    }}
+                    onClick={canDiscard ? () => onSelectCard(card.id) : undefined}
                   />
                 </div>
               )

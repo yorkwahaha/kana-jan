@@ -1,5 +1,5 @@
 import { DEFAULT_BONUS, DEFAULT_MISSION_POINTS, makeTargetBonus } from '../data/bonuses'
-import { displayGlyph, type KanaCard } from '../data/cards'
+import { displayGlyph, getCardById, type KanaCard } from '../data/cards'
 import { soundsForRows } from '../data/kana'
 import { DEFAULT_LESSON_ID, getLesson, pickLessonRows } from '../data/lessons'
 import { buildLessonDeck, dealHands, drawOne, sortHandByGojuon } from './deck'
@@ -42,8 +42,24 @@ function validateStartConfig(config: StartConfig): void {
   if (config.startPlayerIndex !== undefined && (!Number.isInteger(config.startPlayerIndex) || config.startPlayerIndex < 0 || config.startPlayerIndex >= PLAYER_COUNT)) {
     throw new Error('startPlayerIndex must be a valid seat index')
   }
-  if (config.initialGold !== undefined && (!Number.isFinite(config.initialGold) || config.initialGold < 0)) {
-    throw new Error('initialGold must be a non-negative finite number')
+  if (
+    config.initialGold !== undefined &&
+    (!Number.isSafeInteger(config.initialGold) || config.initialGold <= 0 || config.initialGold % 10 !== 0)
+  ) {
+    throw new Error('initialGold must be a positive safe integer in 10-point units')
+  }
+  if (config.bonus) {
+    if (!Number.isFinite(config.bonus.points) || config.bonus.points < 0) {
+      throw new Error('bonus points must be a non-negative finite number')
+    }
+    try {
+      const card = getCardById(config.bonus.cardId)
+      if (card.sound !== config.bonus.sound || card.cardType !== 'hiragana' || config.bonus.cardId !== `${config.bonus.sound}-hiragana`) {
+        throw new Error('bonus target mismatch')
+      }
+    } catch {
+      throw new Error('bonus must reference a canonical hiragana target card')
+    }
   }
   if (config.hands && config.hands.length !== PLAYER_COUNT) {
     throw new Error(`hands must contain exactly ${PLAYER_COUNT} seats`)
@@ -713,11 +729,13 @@ export function autoStep(state: GameState): GameState {
 
 export function drainAuto(state: GameState): GameState {
   let current = state
-  const maxSteps = HAND_SIZE + state.players.length + 6
+  // Safety breaker, not a gameplay limit: valid chains are far shorter, so keep
+  // generous headroom to avoid coupling correctness to an incidental step count.
+  const maxSteps = Math.max(64, HAND_SIZE + state.players.length + 6)
   for (let i = 0; i < maxSteps; i++) {
     const next = autoStep(current)
     if (next === current) return next
     current = next
   }
-  return current
+  throw new Error(`drainAuto exceeded ${maxSteps} automatic steps without reaching a stable phase`)
 }

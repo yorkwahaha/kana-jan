@@ -4,6 +4,7 @@ import { copiesPerCardTypeForRows } from '../engine/deck'
 import { fiveSoundRowCount, sameRowScoreTable } from '../engine/yaku'
 import type { GameState } from '../engine/types'
 import { computeRowCardStats, getVisibleCards, visibleCardsFingerprint } from './referenceHelper'
+import { useDialogA11y } from './useDialogA11y'
 
 interface Props {
   state: GameState
@@ -17,6 +18,7 @@ type TabKey = 'remaining' | 'yaku' | 'bonus'
 
 export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose, initialTab = 'remaining' }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab)
+  const dialogRef = useDialogA11y(isOpen, onClose)
 
   const cardsKey = visibleCardsFingerprint(state, myPlayerId)
   const visibleCards = useMemo(
@@ -54,7 +56,7 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose, initialTab
     <aside className="reference-drawer" aria-label="牌況與役種參考">
       <div className="drawer-overlay" onClick={onClose} aria-hidden="true" />
 
-      <div className="drawer-panel" role="dialog" aria-labelledby="drawer-title">
+      <div ref={dialogRef} tabIndex={-1} className="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
         <header className="drawer-header">
           <div className="drawer-tabs">
             <button

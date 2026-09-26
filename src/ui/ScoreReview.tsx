@@ -10,6 +10,7 @@ import { tablePosition } from './seats'
 import { SettlementArrows } from './SettlementArrows'
 import type { Settings } from './settings'
 import { settleMatch } from './profile'
+import { useDialogA11y } from './useDialogA11y'
 
 interface Props {
   state: GameState
@@ -151,6 +152,10 @@ function RollingGoldAmount({ target, delta }: { target: number; delta: number })
 
   useEffect(() => {
     if (!hasTransfer) return
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setElapsed(2200)
+      return
+    }
     let animId = 0
     const startTime = performance.now()
     const maxDuration = 2200
@@ -210,6 +215,14 @@ function RollingGoldAmount({ target, delta }: { target: number; delta: number })
   )
 }
 
+export function canPassivelyFinishReview(
+  isGameOver: boolean,
+  canFinish: boolean,
+  winScreenHold: Settings['winScreenHold'],
+): boolean {
+  return !isGameOver && canFinish && winScreenHold !== 'manual'
+}
+
 export function ScoreReview({
   state,
   settings,
@@ -227,6 +240,9 @@ export function ScoreReview({
   const [showVocabModal, setShowVocabModal] = useState(false)
   const transferCount = state.lastTransfers.length
   const [gameOverElapsedMs, setGameOverElapsedMs] = useState(0)
+  const canPassiveFinish = canPassivelyFinishReview(isGameOver, canFinish, settings.winScreenHold)
+  const settlementDialogRef = useDialogA11y(true, canPassiveFinish ? onFinish : undefined)
+  const vocabDialogRef = useDialogA11y(showVocabModal, () => setShowVocabModal(false))
 
   const deltas = useMemo(() => {
     const map: Record<string, number> = {}
@@ -323,8 +339,12 @@ export function ScoreReview({
   return (
     <div
       className={`settlement-overlay ${isGameOver ? 'is-game-over' : ''} ${stage === 'summary' ? 'is-summary-stage' : 'is-transfer-stage'} ${!canFinish && !isGameOver ? 'is-waiting-host' : ''}`}
+      ref={settlementDialogRef}
+      tabIndex={-1}
       data-settlement-stage={stage}
-      onClick={isGameOver || !canFinish ? undefined : onFinish}
+      onClick={canPassiveFinish ? onFinish : undefined}
+      role="dialog"
+      aria-modal="true"
       aria-live="polite"
     >
       {/* 1. 桌面 4 方結算銘牌 (參照截圖：第一名右邊放煙火、失分方旁附帶短箭頭) */}
@@ -478,9 +498,12 @@ export function ScoreReview({
       {/* 學習單字檢視彈窗 (可選) */}
       {showVocabModal && vocabCards.length > 0 && (
         <div
+          ref={vocabDialogRef}
+          tabIndex={-1}
           className="vocab-review-modal"
           onClick={(e) => e.stopPropagation()}
           role="dialog"
+          aria-modal="true"
           aria-label="本局學會單字"
         >
           <div className="vocab-review-header">
@@ -495,7 +518,8 @@ export function ScoreReview({
           </div>
           <div className="vocab-review-grid">
             {vocabCards.map((card) => (
-              <div
+              <button
+                type="button"
                 key={card.id}
                 className="vocab-card-item"
                 onClick={() => void speakJapanese(speechText(card), true)}
@@ -507,7 +531,7 @@ export function ScoreReview({
                   revealMeaning
                   showWrittenForm
                 />
-              </div>
+              </button>
             ))}
           </div>
         </div>

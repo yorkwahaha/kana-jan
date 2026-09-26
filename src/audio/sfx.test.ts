@@ -114,8 +114,10 @@ describe('audio/sfx', () => {
     }
 
     try {
-      playSfx('draw', true)
-      playSfx('draw', true)
+      // Use a path not populated by earlier jsdom tests, so the pool must create
+      // fresh instances from this mock Audio constructor.
+      playSfx('ready', true)
+      playSfx('ready', true)
       expect(playCount).toBe(2)
     } finally {
       globalThis.Audio = originalAudio
