@@ -44,7 +44,7 @@ describe('GameTable 聽牌提示', () => {
     expect(html).not.toContain('還聽哪些牌')
     expect(html).not.toContain('か行揃い')
     expect(html).toContain('aria-label="こ 等待牌')
-    expect(html).toContain('tenpai-score')
+    expect(html).not.toContain('tenpai-score')
     expect(html).toContain('aria-label="收合聽牌提示"')
   })
 
@@ -84,7 +84,9 @@ describe('GameTable 聽牌提示', () => {
     expect(html).not.toContain('か行揃い')
     expect(html.match(/card-near-sheen/g)).toHaveLength(2)
     expect(html.match(/tenpai-wait-item/g)).toHaveLength(2)
-    expect(html).toContain('aria-label="か 等待牌，和牌 120–480 點"')
+    expect(html).toContain('aria-label="か 等待牌"')
+    expect(html).not.toContain('tenpai-score')
+    expect(html).not.toContain('120–480')
   })
 
   it('自摸可和牌時只顯示決策列倒數，且和牌按鈕不顯示牌型名稱', () => {

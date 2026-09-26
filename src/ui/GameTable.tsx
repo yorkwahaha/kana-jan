@@ -100,12 +100,6 @@ function buildTenpaiWaits(
   return [...waits.values()]
 }
 
-function waitScoreLabel(wait: TenpaiWait): string {
-  return wait.minScore === wait.maxScore
-    ? `${wait.maxScore}`
-    : `${wait.minScore}–${wait.maxScore}`
-}
-
 export function GameTable({
   state,
   settings,
@@ -342,19 +336,15 @@ export function GameTable({
                     </button>
                   </header>
                   <div className="tenpai-waits">
-                    {tenpaiWaits.map((wait) => {
-                      const score = waitScoreLabel(wait)
-                      return (
-                        <div
-                          key={wait.sound}
-                          className="tenpai-wait-item"
-                          aria-label={`${wait.card.hiragana} 等待牌，和牌 ${score} 點`}
-                        >
-                          <CardView card={wait.card} size="sm" />
-                          <span className="tenpai-score">🪙{score}</span>
-                        </div>
-                      )
-                    })}
+                    {tenpaiWaits.map((wait) => (
+                      <div
+                        key={wait.sound}
+                        className="tenpai-wait-item"
+                        aria-label={`${wait.card.hiragana} 等待牌`}
+                      >
+                        <CardView card={wait.card} size="sm" />
+                      </div>
+                    ))}
                   </div>
                 </section>
               ) : (

@@ -4420,18 +4420,42 @@ button.kana-card { appearance: none; }
   .tenpai-assist-panel {
     min-width: 0;
     max-width: min(360px, 62vw);
-    padding: 6px 7px 7px;
+    padding: 5px 6px 6px;
   }
-  .tenpai-assist-head { margin-bottom: 4px; }
-  .tenpai-assist-title { font-size: 0.7rem; }
-  .tenpai-waits { max-width: min(340px, 59vw); gap: 6px; }
+  .tenpai-assist-head {
+    margin-bottom: 3px;
+    gap: 8px;
+  }
+  .tenpai-assist-title { font-size: 0.66rem; }
+  .tenpai-assist-title b {
+    width: 21px;
+    height: 21px;
+    border-radius: 5px;
+    font-size: 0.72rem;
+  }
+  .tenpai-toggle {
+    min-width: 22px;
+    height: 22px;
+    font-size: 0.82rem;
+  }
+  .tenpai-reopen {
+    height: 28px;
+    gap: 4px;
+    padding: 2px 7px 2px 3px;
+    font-size: 0.64rem;
+  }
+  .tenpai-reopen b {
+    width: 20px;
+    height: 20px;
+    font-size: 0.68rem;
+  }
+  .tenpai-waits { max-width: min(340px, 59vw); gap: 5px; }
   .tenpai-wait-item .kana-card.size-sm {
     width: 52px;
     min-width: 52px;
     height: 72px;
     font-size: 9px;
   }
-  .tenpai-score { min-width: 48px; min-height: 19px; font-size: 0.58rem; }
   .compact-timer-display {
     font-size: clamp(1.8rem, 5vw, 2.6rem);
   }
@@ -4469,16 +4493,20 @@ button.kana-card { appearance: none; }
 
   /* 本局學會單字：手機橫向保留 ruby 與主字的呼吸空間，中文翻譯再放大一級。 */
   .vocab-review-modal .card-written-form {
-    line-height: 1.42;
-    padding-top: 0.28em;
+    line-height: 1.55;
+    padding-top: 0.34em;
+  }
+  .vocab-review-modal .card-written-form .card-word {
+    position: relative;
+    top: 3px;
   }
   .vocab-review-modal .card-written-form rt {
     font-size: 0.72em;
     line-height: 1.08;
-    transform: translateY(-2px);
+    transform: translateY(-4px);
   }
   .vocab-review-modal .kana-card .card-meaning {
-    margin-top: 12px !important;
+    margin-top: 14px !important;
     font-size: 1.08em !important;
     line-height: 1.28;
   }
