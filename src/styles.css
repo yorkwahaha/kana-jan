@@ -4512,6 +4512,91 @@ button.kana-card { appearance: none; }
   }
 }
 
+/* 手機橫向實機微調：把側家資訊與手牌分層，壓低自家手牌高度，並縮小聽牌提示。
+   僅限典型手機橫向寬度，避免改動桌面短視窗與大尺寸 iPad。 */
+@media (orientation: landscape) and (max-height: 560px) and (max-width: 1000px) {
+  /* 左右玩家資訊固定在側家手牌上方，並貼近安全區邊緣。 */
+  .seat-hud.pos-left {
+    left: max(4px, env(safe-area-inset-left));
+    top: 4%;
+  }
+
+  .seat-hud.pos-right {
+    right: max(4px, env(safe-area-inset-right));
+    top: 4%;
+  }
+
+  /* 側家手牌略往下，與上方玩家資訊留出明確空隙。 */
+  .hand-fan.pos-left,
+  .hand-fan.pos-right {
+    top: calc(44% + 8px);
+  }
+
+  /* 自家手牌再貼近底部，並刪掉卡片下方多餘高度。
+     字級保持原設定，只壓縮垂直留白與卡片外框高度。 */
+  .human-hand-area {
+    bottom: 0;
+  }
+
+  .human-hand-area .hand-row {
+    padding: 2px 4px 0;
+  }
+
+  .human-hand-area .kana-card,
+  .human-hand-area .kana-card.size-lg {
+    height: clamp(82px, 20.5vh, 100px);
+    padding: 0.26em 0.22em 0.14em;
+    row-gap: 1px;
+  }
+
+  .human-hand-area .kana-card .card-vocab {
+    gap: 1px;
+  }
+
+  /* 聽牌提示只保留辨識等待牌所需資訊，降低占用面積。 */
+  .tenpai-assist {
+    bottom: calc(100% + 4px);
+  }
+
+  .tenpai-assist-panel {
+    max-width: min(300px, 54vw);
+    padding: 4px 5px 5px;
+    border-width: 1.5px;
+    border-radius: 8px;
+  }
+
+  .tenpai-assist-head {
+    margin-bottom: 2px;
+    gap: 6px;
+  }
+
+  .tenpai-assist-title b {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    font-size: 0.66rem;
+  }
+
+  .tenpai-toggle {
+    min-width: 20px;
+    height: 20px;
+    font-size: 0.74rem;
+  }
+
+  .tenpai-waits {
+    max-width: min(285px, 52vw);
+    gap: 3px;
+  }
+
+  .tenpai-wait-item .kana-card.size-sm {
+    width: 44px;
+    min-width: 44px;
+    height: 60px;
+    font-size: 8.5px;
+    padding: 0.24em 0.16em 0.18em;
+  }
+}
+
 /* 平板橫向：以參考桌面為座標基準，四家手牌與牌河各自保留獨立軌道。
    上家手牌／牌河不交疊，左右手牌共用同一水平基準，自家手牌避開左下 HUD。 */
 @media (orientation: landscape) and (min-height: 561px) and (max-width: 1280px) {
