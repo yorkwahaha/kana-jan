@@ -149,7 +149,7 @@ export function GameTable({
     active: actor.id === player.id && state.phase !== 'reaction',
     thinking: thinking && actor.id === player.id,
     discarder: state.phase === 'reaction' && discarder?.id === player.id,
-    claiming: state.phase === 'reaction' && actor.id === player.id,
+    claiming: state.phase === 'reaction' && reactionActor(state)?.id === player.id,
   })
 
   return (
@@ -178,12 +178,19 @@ export function GameTable({
           <span className="fab-icon">🎴</span>
           <span className="fab-text">牌況</span>
         </button>
+        {state.phase === 'reaction' && turnTimerActive && !hasClaimDecision && (
+          <div className="reaction-countdown-toolbar" aria-label="抄牌確認倒數">
+            {turnRemaining > 0
+              ? <TurnTimer remaining={turnRemaining} active label="抄牌（約）" />
+              : <span role="status" className="timer-waiting">等待中</span>}
+          </div>
+        )}
       </div>
       <p className="table-prompt" role="status" aria-live="polite" aria-atomic="true">
         {state.phase === 'reaction'
           ? reactionActor(state)?.id === human.id
             ? '有玩家棄牌，你要抄牌（もらった）嗎？'
-            : `等待 ${reactionActor(state)?.name ?? '對手'} 決定是否抄牌...`
+            : '正在確認其他玩家是否抄牌...'
           : state.phase === 'playerAction' && humanTurn
             ? '有可完成的牌型，請選擇結算或略過'
             : state.phase === 'discard' && humanTurn
@@ -192,6 +199,13 @@ export function GameTable({
                 ? `等待 ${current.name} 行動中...`
                 : '高點を取れ · かなジャン'}
       </p>
+      {state.phase === 'reaction' && turnTimerActive && !hasClaimDecision && (
+        <div className="reaction-wait-countdown" aria-label="抄牌確認窗口倒數（各裝置估計）">
+          {turnRemaining > 0
+            ? <TurnTimer remaining={turnRemaining} active label="抄牌確認（約）" />
+            : <span role="status" className="timer-waiting">等待中</span>}
+        </div>
+      )}
       <button className="chrome-fab top-right" onClick={onOpenSettings} aria-label="遊戲設定" title="遊戲設定">
         <span className="fab-icon">⚙️</span>
         <span className="fab-text">設定</span>

@@ -3,12 +3,56 @@ import { describe, expect, it } from 'vitest'
 import { getCardById } from '../data/cards'
 import { drainAuto, reduce, startGame } from '../engine/game'
 import { GameTable } from './GameTable'
+import { maskStateForPlayer } from '../network/mask'
 import { DEFAULT_SETTINGS } from './settings'
 
 const cards = (...ids: string[]) => ids.map(getCardById)
 const noop = () => undefined
 
 describe('GameTable 聽牌提示', () => {
+  it('非抄牌者也能看匿名窗口的近似倒數，但不會知道抄牌者身分', () => {
+    const state = startGame({ seed: 63, skipPreview: true })
+    state.phase = 'reaction'
+    state.reactionOptions = [{ playerId: state.players[1]!.id }]
+    const masked = maskStateForPlayer(state, 0)
+    const html = renderToString(<GameTable
+      state={masked}
+      settings={DEFAULT_SETTINGS}
+      selectedCardId={null}
+      locked={true}
+      turnTimer={{ active: true, seconds: 12, turnKey: 'rx:1', onTimeout: noop }}
+      onSelectCard={noop}
+      onChooseYaku={noop}
+      onSkipYaku={noop}
+      onClaim={noop}
+      onPassClaim={noop}
+      onOpenSettings={noop}
+      onOpenHelp={noop}
+      onOpenCatalog={noop}
+    />)
+    expect(html).toContain('抄牌確認（約）')
+    // React SSR may insert a hydration text separator between number and suffix.
+    expect(html).toMatch(/12(?:<!-- -->)?s/)
+    expect(html).not.toContain('等待 ' + state.players[1]!.name + ' 決定')
+    const expired = renderToString(<GameTable
+      state={masked}
+      settings={DEFAULT_SETTINGS}
+      selectedCardId={null}
+      locked={true}
+      turnTimer={{ active: true, seconds: 0, turnKey: 'rx:1-expired', onTimeout: noop }}
+      onSelectCard={noop}
+      onChooseYaku={noop}
+      onSkipYaku={noop}
+      onClaim={noop}
+      onPassClaim={noop}
+      onOpenSettings={noop}
+      onOpenHelp={noop}
+      onOpenCatalog={noop}
+    />)
+    expect(expired).toContain('等待中')
+    expect(expired).not.toMatch(/timer-num[^>]*>0s/)
+  })
+
   it('顯示目標牌型與真正缺少的假名', () => {
     const state = startGame({
       seed: 7,

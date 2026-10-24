@@ -276,6 +276,20 @@ describe('完成牌型流程', () => {
 })
 
 describe('棄牌優先順序', () => {
+  it('多人先後放棄抄牌不公開資格者姓名，最終只記匿名無人宣告', () => {
+    let state = startGame({ seed: 118, skipPreview: true })
+    state = { ...state, phase: 'reaction', reactionOptions: [{ playerId: state.players[1]!.id }, { playerId: state.players[2]!.id }], reactionIndex: 0 }
+    const oldEvents = state.events.length
+    state = reduce(state, { type: 'PASS_CLAIM' })
+    expect(state.phase).toBe('reaction')
+    expect(state.reactionIndex).toBe(1)
+    expect(state.events).toHaveLength(oldEvents)
+    state = reduce(state, { type: 'PASS_CLAIM' })
+    expect(state.phase).toBe('refill')
+    expect(state.events.at(-1)?.text).toBe('無人宣告')
+    expect(state.events.every((event) => !event.text.includes('放棄宣告'))).toBe(true)
+  })
+
   it('多名玩家都能使用同一張棄牌時，回合順序最近者優先', () => {
     // 棄牌：か hiragana
     // p1（下一家）可用來完成同音

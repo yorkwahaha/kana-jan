@@ -29,7 +29,7 @@ describe('假名資料完整性', () => {
     expect(vocabularyCards).toHaveLength(KANA_SOUNDS.length)
     expect(vocabularyCards.every((card) => card.writtenForm.length > 0)).toBe(true)
     expect(getCardById('a-vocabulary').writtenForm).toBe('雨')
-    expect(getCardById('ja-vocabulary').writtenForm).toBe('馬鈴薯')
+    expect(getCardById('ja-vocabulary').writtenForm).toBe('ジャガイモ')
   })
 
   it('所有單字拼字中的一般讀音均存在於 KANA_SOUNDS，特殊單位只允許促音或長音', () => {

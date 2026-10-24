@@ -39,6 +39,7 @@ import { forfeitGame } from './ui/profile'
 import { delayFor, loadSettings, saveSettings, type Settings } from './ui/settings'
 import { useGamePersistence } from './ui/useGamePersistence'
 import { useTurnOrchestration, type NetworkMode } from './ui/useTurnOrchestration'
+import { visibleTurnClockKey } from './ui/TurnTimer'
 import { discardPresentationKey, drawPresentationKey } from './ui/presentationKeys'
 
 function reduceWithPresentationPause(state: GameState, action: GameAction): GameState {
@@ -588,6 +589,15 @@ export function App() {
   }, [roomState, networkMode, difficulty, settings.sfx])
 
   const restartSame = () => {
+    const inProgress = state.phase !== 'lobby' && state.phase !== 'gameOver' && !spectating
+    if (inProgress) {
+      const message = networkMode === 'none'
+        ? '中途重新開始視同棄局，將扣除 20 金並中斷連勝。確定重新開始？'
+        : '重新開始會中斷目前多人對局，確定嗎？'
+      if (!window.confirm(message)) return
+      if (networkMode === 'none') forfeitGame()
+    }
+    setShowSettings(false)
     playSfx('click', settings.sfx)
     setGuidedTutorialStep(null)
     if (networkMode === 'host') {
@@ -733,10 +743,20 @@ export function App() {
         mySeat={spectating ? 0 : mySeat}
         isRonHighlight={announcementStage === 'gun' || announcementStage === 'cutin'}
         turnTimer={{
-          active: turnTimeoutEnabled && isTurnActive && isMyTurn && !localOverlayOpen,
+          // 其他座位／觀戰者也需看得到抄牌窗口倒數，但不能替抄牌者觸發超時動作。
+          active: !localOverlayOpen && ((turnTimeoutEnabled && isTurnActive && isMyTurn)
+            || state.phase === 'reaction'),
           seconds: state.phase === 'reaction' ? 12 : 18,
-          turnKey: clockKey,
-          onTimeout: handleTurnTimeout,
+          // 抄牌本人：依反應者索引重設 12 秒；其他人：匿名參考倒數。
+          turnKey: visibleTurnClockKey({
+            phase: state.phase, isMyTurn, clockKey,
+            turnNumber: state.turnNumber, lastDiscardPlayerId: state.lastDiscardPlayerId,
+          }),
+          // 其他座位只顯示「估計時間」；超時宣告只由本人或 Host 原有託管計時器發出。
+          // 特別避免 Host 在遠端玩家思考時因旁觀用 12 秒鐘提前代按放棄。
+          onTimeout: state.phase === 'reaction' && !isMyTurn
+            ? () => undefined
+            : handleTurnTimeout,
         }}
         selectedCardId={selectedCardId}
         locked={locked || !isMyTurn || spectating}
@@ -848,10 +868,7 @@ export function App() {
           settings={settings}
           onChange={setSettings}
           onClose={() => setShowSettings(false)}
-          onRestart={() => {
-            setShowSettings(false)
-            restartSame()
-          }}
+          onRestart={restartSame}
           canRestart={networkMode !== 'guest'}
           onToLobby={() => {
             setShowSettings(false)

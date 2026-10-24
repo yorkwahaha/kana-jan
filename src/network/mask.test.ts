@@ -55,7 +55,7 @@ describe('maskStateForPlayer 防窺牌遮罩', () => {
     expect(state.reactionOptions.every((option) => !('yaku' in option))).toBe(true)
   })
 
-  it('不傳送可重建牌山的亂數狀態，且只公開目前反應者', () => {
+  it('不傳送可重建牌山的亂數狀態；只讓本人知道自己的抄牌資格', () => {
     const state = startGame({ seed: 123, activeRows: ['a', 'ka', 'sa', 'ta'], skipPreview: true })
     state.reactionOptions = [{ playerId: 'p1' }, { playerId: 'p2' }]
     state.reactionIndex = 0
@@ -64,5 +64,7 @@ describe('maskStateForPlayer 防窺牌遮罩', () => {
     expect(masked.rngState).toBe(0)
     expect(masked.reactionOptions).toEqual([{ playerId: 'p1' }])
     expect(masked.reactionIndex).toBe(0)
+    expect(maskStateForPlayer(state, 0).reactionOptions).toEqual([{ playerId: '__private_reaction__' }])
+    expect(maskStateForPlayer(state, -1).reactionOptions).toEqual([{ playerId: '__private_reaction__' }])
   })
 })

@@ -65,13 +65,13 @@ export function getSettlementArrowGeom(from: TablePosition, to: TablePosition): 
     case 'left->human':
       return {
         arrowAsset: '/assets/ui/settlement-arrow-straight.svg',
-        arrowBox: { x: 306, y: 450, width: 48, height: 80, transform: 'rotate(-45 330 490)' },
+        arrowBox: { x: 270, y: 450, width: 48, height: 80, transform: 'rotate(-45 294 490)' },
         coinPath: 'M 286,350 C 296,468 365,526 456,548',
       }
     case 'right->human':
       return {
         arrowAsset: '/assets/ui/settlement-arrow-straight.svg',
-        arrowBox: { x: 646, y: 450, width: 48, height: 80, transform: 'rotate(45 670 490)' },
+        arrowBox: { x: 682, y: 450, width: 48, height: 80, transform: 'rotate(45 706 490)' },
         coinPath: 'M 714,350 C 704,468 635,526 544,548',
       }
 
@@ -84,26 +84,26 @@ export function getSettlementArrowGeom(from: TablePosition, to: TablePosition): 
     case 'left->top':
       return {
         arrowAsset: '/assets/ui/settlement-arrow-straight.svg',
-        arrowBox: { x: 306, y: 170, width: 48, height: 80, transform: 'rotate(-135 330 210)' },
+        arrowBox: { x: 270, y: 170, width: 48, height: 80, transform: 'rotate(-135 294 210)' },
         coinPath: 'M 286,350 C 296,232 365,174 456,152',
       }
     case 'right->top':
       return {
         arrowAsset: '/assets/ui/settlement-arrow-straight.svg',
-        arrowBox: { x: 646, y: 170, width: 48, height: 80, transform: 'rotate(135 670 210)' },
+        arrowBox: { x: 682, y: 170, width: 48, height: 80, transform: 'rotate(135 706 210)' },
         coinPath: 'M 714,350 C 704,232 635,174 544,152',
       }
 
     case 'top->left':
       return {
         arrowAsset: '/assets/ui/settlement-arrow-straight.svg',
-        arrowBox: { x: 306, y: 170, width: 48, height: 80, transform: 'rotate(45 330 210)' },
+        arrowBox: { x: 270, y: 170, width: 48, height: 80, transform: 'rotate(45 294 210)' },
         coinPath: 'M 430,154 C 310,154 225,205 225,315',
       }
     case 'human->left':
       return {
         arrowAsset: '/assets/ui/settlement-arrow-straight.svg',
-        arrowBox: { x: 306, y: 450, width: 48, height: 80, transform: 'rotate(135 330 490)' },
+        arrowBox: { x: 270, y: 450, width: 48, height: 80, transform: 'rotate(135 294 490)' },
         coinPath: 'M 430,546 C 310,546 225,495 225,385',
       }
     case 'right->left':
@@ -116,13 +116,13 @@ export function getSettlementArrowGeom(from: TablePosition, to: TablePosition): 
     case 'top->right':
       return {
         arrowAsset: '/assets/ui/settlement-arrow-straight.svg',
-        arrowBox: { x: 646, y: 170, width: 48, height: 80, transform: 'rotate(-45 670 210)' },
+        arrowBox: { x: 682, y: 170, width: 48, height: 80, transform: 'rotate(-45 706 210)' },
         coinPath: 'M 570,154 C 690,154 775,205 775,315',
       }
     case 'human->right':
       return {
         arrowAsset: '/assets/ui/settlement-arrow-straight.svg',
-        arrowBox: { x: 646, y: 450, width: 48, height: 80, transform: 'rotate(-135 670 490)' },
+        arrowBox: { x: 682, y: 450, width: 48, height: 80, transform: 'rotate(-135 706 490)' },
         coinPath: 'M 570,546 C 690,546 775,495 775,385',
       }
     case 'left->right':

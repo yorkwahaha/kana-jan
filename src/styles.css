@@ -543,6 +543,54 @@ body[data-anim='off'] .sakura-container {
   text-overflow: ellipsis;
 }
 
+/* 抄牌確認窗口只顯示匿名參考時間，不指向任何座位或玩家。
+   與右上角提示同一條對齊軸，避免未設定定位時插入牌桌布局。 */
+.reaction-wait-countdown {
+  position: absolute;
+  top: clamp(42px, 7dvh, 68px);
+  right: clamp(52px, 6.8vw, 100px);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: none;
+  min-height: 26px;
+}
+.reaction-wait-countdown .turn-timer-widget {
+  position: relative;
+  white-space: nowrap;
+}
+.reaction-countdown-toolbar { display: none; pointer-events: none; }
+.timer-waiting {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 3px 11px;
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  background: rgba(22, 17, 14, 0.92);
+  color: var(--gold-leaf);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  box-shadow: var(--shadow-sm);
+}
+
+/* 矮螢幕橫向：倒數只佔最上方中線，避開對家捨牌河與設定鈕。 */
+@media (orientation: landscape) and (max-height: 390px) {
+  .reaction-wait-countdown { display: none; }
+  .reaction-countdown-toolbar {
+    display: inline-flex;
+    align-items: center;
+    transform: scale(.72);
+    transform-origin: left center;
+    margin-right: -24px;
+    max-width: 150px;
+  }
+}
+
 /* 橫向競技場橢圓桌：對齊參考圖二的桌面比例 */
 .felt-oval {
   position: relative;
@@ -4518,18 +4566,90 @@ button.kana-card { appearance: none; }
   /* 左右玩家資訊固定在側家手牌上方，並貼近安全區邊緣。 */
   .seat-hud.pos-left {
     left: max(4px, env(safe-area-inset-left));
-    top: 4%;
+    top: max(40px, 9%);
   }
 
   .seat-hud.pos-right {
     right: max(4px, env(safe-area-inset-right));
-    top: 4%;
+    top: max(40px, 9%);
   }
 
   /* 側家手牌略往下，與上方玩家資訊留出明確空隙。 */
   .hand-fan.pos-left,
   .hand-fan.pos-right {
     top: calc(44% + 8px);
+  }
+
+  /* 再收斂桌中央與牌河，讓四家的棄牌軌道和中央島明確分離。 */
+  .center-board {
+    max-width: min(330px, 35vw);
+    gap: 6px;
+    padding: 5px 9px 6px;
+  }
+
+  .gojuon-mark,
+  .gojuon-dot {
+    width: 14px;
+    height: 14px;
+    font-size: 0.56rem;
+  }
+
+  .gojuon-mark.is-yoon,
+  .gojuon-dot.is-yoon {
+    min-width: 20px;
+    font-size: 0.5rem;
+  }
+
+  .deck-pile .kana-card.size-sm,
+  .bonus-slot .kana-card.size-sm {
+    width: 44px;
+    min-width: 44px;
+    height: 60px;
+  }
+
+  .deck-badge,
+  .bonus-badge {
+    font-size: 0.68rem;
+    padding: 0 7px;
+  }
+
+  .discard-river.pos-left {
+    left: 27%;
+    transform: rotate(95deg) scale(0.82);
+  }
+
+  .discard-river.pos-right {
+    right: 27%;
+    transform: rotate(-95deg) scale(0.82);
+  }
+
+  .discard-river.pos-left .river-column,
+  .discard-river.pos-right .river-column,
+  .discard-river.pos-left .kana-card.size-river,
+  .discard-river.pos-right .kana-card.size-river {
+    width: 38px;
+    min-width: 38px;
+    height: 52px;
+  }
+
+  .discard-river.pos-top .river-column,
+  .discard-river.pos-top .kana-card.size-river {
+    width: 28px;
+    min-width: 28px;
+    height: 39px;
+  }
+
+  .discard-river.pos-human {
+    bottom: 24%;
+    transform: translateX(-50%) scale(0.92);
+    transform-origin: bottom center;
+  }
+
+  .discard-river.pos-human .river-column,
+  .discard-river.pos-human .kana-card.size-river {
+    width: 44px;
+    min-width: 44px;
+    height: 60px;
   }
 
   /* 自家手牌再貼近底部，並刪掉卡片下方多餘高度。
@@ -4551,6 +4671,33 @@ button.kana-card { appearance: none; }
 
   .human-hand-area .kana-card .card-vocab {
     gap: 1px;
+  }
+
+  /* 和牌展示沿用自家手牌的比例與內部排版，只保留約 1.05 倍的展示強調。 */
+  .settlement-cards-row {
+    gap: 5px;
+  }
+
+  .settlement-cards-row .kana-card,
+  .settlement-cards-row .kana-card.size-md {
+    width: clamp(65px, 7.8vw, 86px);
+    min-width: clamp(65px, 7.8vw, 86px);
+    height: clamp(86px, 21.5vh, 105px);
+    aspect-ratio: auto;
+    font-size: clamp(11.5px, 2.3vh, 14.5px);
+    padding: 0.26em 0.22em 0.14em;
+    row-gap: 1px;
+    border-radius: 7px;
+  }
+
+  .settlement-cards-row .kana-card .card-vocab {
+    gap: 1px;
+    margin-top: 0;
+  }
+
+  .settlement-cards-row .kana-card .card-word,
+  .settlement-cards-row .kana-card .card-written-form {
+    line-height: 1.12;
   }
 
   /* 聽牌提示只保留辨識等待牌所需資訊，降低占用面積。 */

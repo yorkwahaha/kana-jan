@@ -614,12 +614,12 @@ export function reduce(state: GameState, action: GameAction): GameState {
 
     case 'PASS_CLAIM': {
       if (state.phase !== 'reaction') return state
-      const actor = reactionActor(state)
-      const next = actor ? pushEvent(state, `${actor.name} 放棄宣告`) : state
       const nextIndex = state.reactionIndex + 1
       if (nextIndex < state.reactionOptions.length) {
-        return { ...next, reactionIndex: nextIndex }
+        // 不能在公開事件留下哪個玩家持有可抄牌型的證據。
+        return { ...state, reactionIndex: nextIndex }
       }
+      const next = pushEvent(state, '無人宣告')
       return { ...next, phase: 'refill', reactionIndex: nextIndex, currentDiscard: null, lastFx: null }
     }
 

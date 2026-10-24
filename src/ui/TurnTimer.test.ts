@@ -1,7 +1,21 @@
 import { describe, expect, it } from 'vitest'
-import { followUpDiscardAfterExpiredClock, turnClockKey } from './TurnTimer'
+import { followUpDiscardAfterExpiredClock, turnClockKey, visibleTurnClockKey } from './TurnTimer'
 
 describe('turnClockKey', () => {
+  it('抄牌第 2 位真人輪到自己時使用全新的 12 秒計時鍵，旁觀者仍沿用匿名鍵', () => {
+    const common = { phase: 'reaction', turnNumber: 12, lastDiscardPlayerId: 'discarder' }
+    const first = turnClockKey({ turnNumber: 12, phase: 'reaction', actorId: 'playerA', comboCount: 0, reactionIndex: 0 })
+    const second = turnClockKey({ turnNumber: 12, phase: 'reaction', actorId: 'playerB', comboCount: 0, reactionIndex: 1 })
+    const ownFirst = visibleTurnClockKey({ ...common, isMyTurn: true, clockKey: first })
+    const ownSecond = visibleTurnClockKey({ ...common, isMyTurn: true, clockKey: second })
+    expect(ownFirst).not.toBe(ownSecond)
+    expect(ownSecond).toBe(second)
+    const observerFirst = visibleTurnClockKey({ ...common, isMyTurn: false, clockKey: first })
+    const observerSecond = visibleTurnClockKey({ ...common, isMyTurn: false, clockKey: second })
+    expect(observerFirst).toBe(observerSecond)
+    expect(observerFirst).not.toContain('playerA')
+    expect(observerFirst).not.toContain('playerB')
+  })
   it('自摸略過進入棄牌時沿用同一把回合鐘', () => {
     const action = turnClockKey({
       turnNumber: 4,

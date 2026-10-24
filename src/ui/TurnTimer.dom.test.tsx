@@ -2,14 +2,47 @@
 import { act, cleanup, render } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { useTurnCountdown } from './TurnTimer'
+import { turnClockKey, useTurnCountdown, visibleTurnClockKey } from './TurnTimer'
 
 function Harness({ onTimeout, active = true, phase = 'discard' }: { onTimeout: () => void; active?: boolean; phase?: string }) {
   const remaining = useTurnCountdown(2, 'turn-1', active, onTimeout, phase)
   return <output data-testid="remaining">{remaining}</output>
 }
 
+function ReactionHarness({ onTimeout, isMyTurn, actorId, reactionIndex }: {
+  onTimeout: () => void
+  isMyTurn: boolean
+  actorId: string
+  reactionIndex: number
+}) {
+  const clockKey = turnClockKey({
+    turnNumber: 5, phase: 'reaction', actorId, comboCount: 0, reactionIndex,
+  })
+  const visible = visibleTurnClockKey({
+    phase: 'reaction', isMyTurn, clockKey, turnNumber: 5, lastDiscardPlayerId: 'discarder',
+  })
+  const remaining = useTurnCountdown(12, visible, true, onTimeout, 'reaction')
+  return <output data-testid="reaction-remaining">{remaining}</output>
+}
+
 describe('useTurnCountdown DOM lifecycle', () => {
+  it('第二位抄牌者即使公開參考鐘已歸零，也獲得完整新的 12 秒', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+    const observedTimeout = vi.fn()
+    const ownTimeout = vi.fn()
+    const view = render(<ReactionHarness onTimeout={observedTimeout} isMyTurn={false}
+      actorId="first" reactionIndex={0} />)
+    act(() => vi.advanceTimersByTime(12_100))
+    expect(view.getByTestId('reaction-remaining').textContent).toBe('0')
+    view.rerender(<ReactionHarness onTimeout={ownTimeout} isMyTurn
+      actorId="second" reactionIndex={1} />)
+    expect(view.getByTestId('reaction-remaining').textContent).toBe('12')
+    act(() => vi.advanceTimersByTime(11_000))
+    expect(ownTimeout).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersByTime(1_100))
+    expect(ownTimeout).toHaveBeenCalledTimes(1)
+  })
   afterEach(() => {
     cleanup()
     vi.useRealTimers()

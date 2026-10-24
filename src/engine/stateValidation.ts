@@ -144,7 +144,7 @@ function isGameStateShape(value: unknown, cardValidator: CardValidator): value i
   return true
 }
 
-function basicStateRelations(state: GameState): boolean {
+function basicStateRelations(state: GameState, allowMaskedReaction = false): boolean {
   const seats = state.players.map((p) => p.seat).sort((a, b) => a - b)
   const playerIds = state.players.map((p) => p.id)
   const idSet = new Set(playerIds)
@@ -154,7 +154,13 @@ function basicStateRelations(state: GameState): boolean {
   if (state.reactionIndex > state.reactionOptions.length) return false
   if (state.phase === 'reaction' && state.reactionIndex >= state.reactionOptions.length) return false
   const reactionIds = state.reactionOptions.map((o) => o.playerId)
-  if (new Set(reactionIds).size !== reactionIds.length || reactionIds.some((id) => !idSet.has(id))) return false
+  if (new Set(reactionIds).size !== reactionIds.length) return false
+  // 非抄牌者收到的 GAME_SYNC 只能知道「有人正在判斷」，不應知道是誰。
+  // 僅網路遮罩且僅 reaction 階段可接受單一佔位 ID，存檔和遊戲權威狀態仍必須是真玩家。
+  const isMaskedReaction = allowMaskedReaction && state.phase === 'reaction' &&
+    state.reactionIndex === 0 && reactionIds.length === 1 &&
+    reactionIds[0] === '__private_reaction__'
+  if (!isMaskedReaction && reactionIds.some((id) => !idSet.has(id))) return false
   if (state.lastDiscardPlayerId !== null && !idSet.has(state.lastDiscardPlayerId)) return false
   if (state.pendingScore) {
     if (!idSet.has(state.pendingScore.playerId)) return false
@@ -195,7 +201,7 @@ function networkStateRelations(state: GameState): boolean {
 
 export function isNetworkGameState(value: unknown): value is GameState {
   const cardValidator: CardValidator = (card): card is KanaCard => isCanonicalCard(card) || isHiddenCard(card)
-  return isGameStateShape(value, cardValidator) && basicStateRelations(value) && networkStateRelations(value)
+  return isGameStateShape(value, cardValidator) && basicStateRelations(value, true) && networkStateRelations(value)
 }
 
 export function isPersistentGameState(value: unknown): value is GameState {

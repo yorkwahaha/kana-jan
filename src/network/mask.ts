@@ -35,6 +35,8 @@ export function maskStateForPlayer(state: GameState, seat: number): MaskedNetwor
   const currentPlayer = state.players[state.currentPlayerIndex]
   const canSeeDrawnCard = seat >= 0 && currentPlayer?.seat === seat
   const currentReaction = state.reactionOptions[state.reactionIndex]
+  const ownsReaction = seat >= 0 &&
+    state.players.some((player) => player.seat === seat && player.id === currentReaction?.playerId)
   return {
     ...state,
     seed: 0,
@@ -42,7 +44,9 @@ export function maskStateForPlayer(state: GameState, seat: number): MaskedNetwor
     deck: [],
     deckCount: state.deck.length,
     lastDrawnCardId: canSeeDrawnCard ? state.lastDrawnCardId : null,
-    reactionOptions: currentReaction ? [{ playerId: currentReaction.playerId }] : [],
+    // 只有實際有權抄牌的座位能知道自己的反應資格；
+    // 對手及觀戰者只知道正在進入反應階段，不能推測誰手上有合法牌型。
+    reactionOptions: currentReaction ? [{ playerId: ownsReaction ? currentReaction.playerId : '__private_reaction__' }] : [],
     reactionIndex: 0,
     players: state.players.map((p) => {
       // seat < 0：觀戰，所有手牌都遮罩

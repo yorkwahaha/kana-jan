@@ -22,6 +22,19 @@ export function turnClockKey(input: {
   return `turn:${input.turnNumber}:${input.actorId ?? ''}:${input.comboCount}`
 }
 
+/** 抄牌本人使用每位反應者獨立回合鐘；非反應者只顯示匿名參考倒數。 */
+export function visibleTurnClockKey(input: {
+  phase: string
+  isMyTurn: boolean
+  clockKey: string
+  turnNumber: number
+  lastDiscardPlayerId: string | null
+}): string {
+  return input.phase === 'reaction' && !input.isMyTurn
+    ? `public-rx:${input.turnNumber}:${input.lastDiscardPlayerId ?? ''}`
+    : input.clockKey
+}
+
 /** 共用回合鐘在自摸階段耗盡後，棄牌階段必須再觸發一次託管。 */
 export function followUpDiscardAfterExpiredClock(phase: string, clockExpired: boolean): boolean {
   return clockExpired && phase === 'discard'
