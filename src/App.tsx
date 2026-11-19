@@ -38,7 +38,7 @@ import { clearGame, initialState, loadGame } from './ui/persist'
 import { forfeitGame } from './ui/profile'
 import { delayFor, loadSettings, saveSettings, type Settings } from './ui/settings'
 import { useGamePersistence } from './ui/useGamePersistence'
-import { useTurnOrchestration, type NetworkMode } from './ui/useTurnOrchestration'
+import { useTurnOrchestration, withRoomTurnDeadline, type NetworkMode } from './ui/useTurnOrchestration'
 import { visibleTurnClockKey } from './ui/TurnTimer'
 import { discardPresentationKey, drawPresentationKey } from './ui/presentationKeys'
 
@@ -130,7 +130,11 @@ export function App() {
   }, [])
   const apply = useCallback(
     (updater: (s: GameState) => GameState) => {
-      setState((prev) => updater(prev))
+      const now = hostManagerRef.current ? Date.now() : null
+      setState((prev) => {
+        const next = updater(prev)
+        return now === null || prev === next ? next : withRoomTurnDeadline(prev, next, now)
+      })
     },
     [],
   )
@@ -319,7 +323,8 @@ export function App() {
   useEffect(() => {
     if (networkMode === 'guest') return
     if (state.phase === 'lobby' || state.phase === 'gameOver') return
-    if (showTutorial || showSettings || showCatalog || tableOverlayOpen || guidedTutorialStep !== null) return
+    if (networkMode === 'none' && (showTutorial || showSettings || showCatalog || tableOverlayOpen ||
+      (guidedTutorialStep !== null && state.phase !== 'dealing'))) return
     if (state.phase === 'preview') return
 
     if (state.phase === 'dealing') {
@@ -455,10 +460,11 @@ export function App() {
       },
       onGuestReconnect: (seat, authoritativeState) => {
         const player = authoritativeState.players.find((p) => p.seat === seat)
-        const restored = pushEvent(
+        const next = pushEvent(
           restoreDisconnectedPlayer(authoritativeState, seat),
           `玩家 ${(player?.name ?? '').replace(/\s*\(AI\)$/, '')} 已重新連線接管操作`,
         )
+        const restored = withRoomTurnDeadline(authoritativeState, next, Date.now())
         committedSideEffectStateRef.current = restored
         setState(restored)
         return restored
@@ -565,8 +571,10 @@ export function App() {
     }))
 
     let matchId: string
+    let seed: number
     try {
       matchId = generateResumeToken()
+      seed = crypto.getRandomValues(new Uint32Array(1))[0]!
     } catch {
       setNetError('此瀏覽器無法取得安全亂數，無法安全啟動多人牌局。')
       return
@@ -576,6 +584,7 @@ export function App() {
       startGame({
         playerConfigs,
         matchId,
+        seed,
         lessonId: roomState.lessonId,
         aiDifficulty: difficulty,
         initialGold: INITIAL_GOLD,
@@ -743,20 +752,16 @@ export function App() {
         mySeat={spectating ? 0 : mySeat}
         isRonHighlight={announcementStage === 'gun' || announcementStage === 'cutin'}
         turnTimer={{
-          // 其他座位／觀戰者也需看得到抄牌窗口倒數，但不能替抄牌者觸發超時動作。
-          active: !localOverlayOpen && ((turnTimeoutEnabled && isTurnActive && isMyTurn)
-            || state.phase === 'reaction'),
+          active: networkMode === 'none'
+            ? !localOverlayOpen && ((turnTimeoutEnabled && isTurnActive && isMyTurn) || state.phase === 'reaction')
+            : state.turnDeadlineAt !== undefined && (isMyTurn || state.phase === 'reaction'),
           seconds: state.phase === 'reaction' ? 12 : 18,
-          // 抄牌本人：依反應者索引重設 12 秒；其他人：匿名參考倒數。
+          deadlineAt: state.turnDeadlineAt,
           turnKey: visibleTurnClockKey({
             phase: state.phase, isMyTurn, clockKey,
             turnNumber: state.turnNumber, lastDiscardPlayerId: state.lastDiscardPlayerId,
           }),
-          // 其他座位只顯示「估計時間」；超時宣告只由本人或 Host 原有託管計時器發出。
-          // 特別避免 Host 在遠端玩家思考時因旁觀用 12 秒鐘提前代按放棄。
-          onTimeout: state.phase === 'reaction' && !isMyTurn
-            ? () => undefined
-            : handleTurnTimeout,
+          onTimeout: networkMode === 'none' && isMyTurn ? handleTurnTimeout : undefined,
         }}
         selectedCardId={selectedCardId}
         locked={locked || !isMyTurn || spectating}

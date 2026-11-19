@@ -28,7 +28,7 @@ export function CatalogModal({ onClose }: Props) {
               {soundsForRows([row]).map((kana) => {
                 const lit = isMastered(kana.sound, mastery)
                 return (
-                  <span key={kana.sound} className={`catalog-cell ${lit ? 'is-lit' : ''}`} title={kana.romaji}>
+                  <span key={kana.sound} className={`catalog-cell ${lit ? 'is-lit' : ''}`} title={kana.sound === 'wo' ? '讀音 o，輸入 wo' : kana.romaji}>
                     <strong>{kana.hiragana}</strong>
                     <em>{kana.katakana}</em>
                     {lit ? <small>{kana.vocabulary}</small> : <small>？</small>}

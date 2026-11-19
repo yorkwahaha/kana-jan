@@ -57,6 +57,7 @@ describe('maskStateForPlayer 防窺牌遮罩', () => {
 
   it('不傳送可重建牌山的亂數狀態；只讓本人知道自己的抄牌資格', () => {
     const state = startGame({ seed: 123, activeRows: ['a', 'ka', 'sa', 'ta'], skipPreview: true })
+    state.phase = 'reaction'
     state.reactionOptions = [{ playerId: 'p1' }, { playerId: 'p2' }]
     state.reactionIndex = 0
     const masked = maskStateForPlayer(state, 1)

@@ -111,7 +111,7 @@ export function computeRowCardStats(
     const sounds: SoundCardStat[] = soundsInRow.map((kana) => {
       const buildTypeStat = (type: CardType): TypeStat => {
         const seen = seenMap.get(`${kana.sound}_${type}`) ?? 0
-        const max = deckManifest?.[`${kana.sound}:${type}`] ?? copiesPerType
+        const max = deckManifest ? (deckManifest[`${kana.sound}:${type}`] ?? 0) : copiesPerType
         const remaining = Math.max(0, max - seen)
         return {
           cardType: type,

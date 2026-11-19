@@ -54,8 +54,7 @@ export function buildTenpaiWaits(
       const waitSound = getSound(sound)
       const scores = WAIT_CARD_TYPES.flatMap((cardType, typeIndex) => {
         const key = `${sound}:${cardType}`
-        const totalCopies = state.deckManifest?.[key]
-        if (totalCopies !== undefined && (visibleCounts.get(key) ?? 0) >= totalCopies) return []
+        if (state.deckManifest && (visibleCounts.get(key) ?? 0) >= (state.deckManifest[key] ?? 0)) return []
 
         const card = getCardById(`${sound}-${cardType}-$${900 + typeIndex}`)
         return findYaku([...hand, card], state.bonus, {

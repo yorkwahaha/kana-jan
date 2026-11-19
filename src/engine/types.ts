@@ -103,6 +103,8 @@ export interface GameState {
   turnOwnerIndex: number
   /** 開局牌組中各讀音／型態的實際張數，不含牌序。 */
   deckManifest?: Record<string, number>
+  /** 多人回合在本機時鐘上的截止時間。由房主決定。 */
+  turnDeadlineAt?: number
 }
 
 export interface Ranking {

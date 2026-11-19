@@ -1,5 +1,5 @@
 import { displayGlyph, type KanaCard } from '../data/cards'
-import { ROW_MARK } from '../data/kana'
+import { pronunciationRomaji, ROW_MARK } from '../data/kana'
 import type { Settings } from './settings'
 
 interface Props {
@@ -34,6 +34,8 @@ export function CardView({
   showWrittenForm,
 }: Props) {
   const glyph = displayGlyph(card)
+  const reading = pronunciationRomaji(card)
+  const readingHint = card.sound === 'wo' ? '讀音 o，輸入 wo' : reading
   const isVocab = card.cardType === 'vocabulary'
   const charLength = isVocab
     ? (showWrittenForm ? card.writtenForm.length : card.vocabulary.length)
@@ -89,7 +91,7 @@ export function CardView({
       ) : (
         <span className="card-glyph">{glyph}</span>
       )}
-      {showRomaji ? <span className="card-romaji">{card.romaji}</span> : null}
+      {showRomaji ? <span className="card-romaji" title={readingHint}>{reading}</span> : null}
       {showHints?.showPosition && (
         <span className="card-meta">
           {card.rowLabel} · {card.columnLabel}
@@ -113,7 +115,7 @@ export function CardView({
         onClick={onClick}
         disabled={disabled}
         aria-pressed={selected}
-        aria-label={`${glyph} ${card.romaji} ${card.rowLabel} ${card.columnLabel}`}
+        aria-label={`${glyph} ${readingHint} ${card.rowLabel} ${card.columnLabel}`}
       >
         {inner}
       </button>
@@ -121,7 +123,7 @@ export function CardView({
   }
 
   return (
-    <div className={className} style={style} aria-label={`${glyph} ${card.romaji}`}>
+    <div className={className} style={style} aria-label={`${glyph} ${readingHint}`}>
       {inner}
     </div>
   )

@@ -23,7 +23,7 @@ export function makeHiddenCard(id: string): KanaCard {
   }
 }
 
-export type MaskedNetworkState = GameState & { deckCount: number }
+export type MaskedNetworkState = Omit<GameState, 'turnDeadlineAt'> & { deckCount: number; turnRemainingMs?: number }
 
 /**
  * 針對特定座位的玩家進行防窺遮罩：
@@ -34,15 +34,17 @@ export type MaskedNetworkState = GameState & { deckCount: number }
 export function maskStateForPlayer(state: GameState, seat: number): MaskedNetworkState {
   const currentPlayer = state.players[state.currentPlayerIndex]
   const canSeeDrawnCard = seat >= 0 && currentPlayer?.seat === seat
-  const currentReaction = state.reactionOptions[state.reactionIndex]
+  const currentReaction = state.phase === 'reaction' ? state.reactionOptions[state.reactionIndex] : undefined
   const ownsReaction = seat >= 0 &&
     state.players.some((player) => player.seat === seat && player.id === currentReaction?.playerId)
+  const { turnDeadlineAt, ...game } = state
   return {
-    ...state,
+    ...game,
     seed: 0,
     rngState: 0,
     deck: [],
     deckCount: state.deck.length,
+    ...(turnDeadlineAt === undefined ? {} : { turnRemainingMs: Math.max(0, turnDeadlineAt - Date.now()) }),
     lastDrawnCardId: canSeeDrawnCard ? state.lastDrawnCardId : null,
     // 只有實際有權抄牌的座位能知道自己的反應資格；
     // 對手及觀戰者只知道正在進入反應階段，不能推測誰手上有合法牌型。

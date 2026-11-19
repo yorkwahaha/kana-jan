@@ -1,4 +1,4 @@
-import { KANA_SOUNDS, type KanaSound } from '../data/kana'
+import { KANA_SOUNDS, pronunciationRomaji, type KanaSound } from '../data/kana'
 
 export const WORD_REVIEW_STORAGE_KEY = 'kana-jan:word-audio-review:v1'
 
@@ -22,7 +22,7 @@ export function wordAudioUrl(sound: string, base = import.meta.env.BASE_URL || '
 export function buildWordReviewEntries(sounds: readonly KanaSound[] = KANA_SOUNDS): WordReviewEntry[] {
   return sounds.map((item) => ({
     sound: item.sound,
-    romaji: item.romaji,
+    romaji: pronunciationRomaji(item),
     kana: `${item.hiragana} / ${item.katakana}`,
     vocabulary: item.vocabulary,
     meaning: item.meaning,

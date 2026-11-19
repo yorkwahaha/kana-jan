@@ -20,7 +20,8 @@ export function Tutorial({ onClose }: Props) {
         <div className="tutorial-body">
           <section>
             <h3>1. 同音三張 · 120 / 840 點</h3>
-            <p>收集同一讀音的任意三張卡即可成牌（120 點）。若湊齊平假名＋片假名＋單字圖像（三位相和），總計 <strong>480 點（+360）</strong>！三張全同類型則總計 <strong>840 點（+720）</strong>。</p>
+            <p>收集同一假名項目的任意三張卡即可成牌（120 點）。若湊齊平假名＋片假名＋單字圖像（三位相和），總計 <strong>480 點（+360）</strong>！三張全同類型則總計 <strong>840 點（+720）</strong>。</p>
+            <p>助詞「を」讀作 o，羅馬字輸入用 wo。「お」與「を」各自成組。</p>
             <div className="tutorial-cards">
               <CardView card={getCardById('ka-hiragana')} size="sm" />
               <CardView card={getCardById('ka-katakana')} size="sm" />

@@ -4,8 +4,8 @@ import { renderToString } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { turnClockKey, useTurnCountdown, visibleTurnClockKey } from './TurnTimer'
 
-function Harness({ onTimeout, active = true, phase = 'discard' }: { onTimeout: () => void; active?: boolean; phase?: string }) {
-  const remaining = useTurnCountdown(2, 'turn-1', active, onTimeout, phase)
+function Harness({ onTimeout, active = true, phase = 'discard', deadlineAt }: { onTimeout: () => void; active?: boolean; phase?: string; deadlineAt?: number }) {
+  const remaining = useTurnCountdown(2, 'turn-1', active, onTimeout, phase, deadlineAt)
   return <output data-testid="remaining">{remaining}</output>
 }
 
@@ -72,6 +72,18 @@ describe('useTurnCountdown DOM lifecycle', () => {
     expect(onTimeout).not.toHaveBeenCalled()
     act(() => vi.advanceTimersByTime(500))
     expect(onTimeout).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the room deadline after reopening a local panel', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(1000)
+    const onTimeout = vi.fn()
+    const view = render(<Harness onTimeout={onTimeout} deadlineAt={7000} />)
+    expect(view.getByTestId('remaining').textContent).toBe('6')
+    view.rerender(<Harness onTimeout={onTimeout} deadlineAt={7000} active={false} />)
+    act(() => vi.advanceTimersByTime(4000))
+    view.rerender(<Harness onTimeout={onTimeout} deadlineAt={7000} />)
+    expect(view.getByTestId('remaining').textContent).toBe('2')
   })
 
   it('fires at most once for the same turn key even when phase changes after expiry', () => {

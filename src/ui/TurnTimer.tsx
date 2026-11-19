@@ -46,6 +46,7 @@ export function useTurnCountdown(
   active: boolean,
   onTimeout: () => void,
   phase?: string,
+  deadlineAt?: number,
 ) {
   const [remaining, setRemaining] = useState(seconds)
   const onTimeoutRef = useRef(onTimeout)
@@ -66,10 +67,14 @@ export function useTurnCountdown(
       firedKeyRef.current = null
       pausedRemainingMsRef.current = seconds * 1000
       deadlineRef.current = now + pausedRemainingMsRef.current
-    } else if (!active && activeRef.current) {
+    } else if (deadlineAt === undefined && !active && activeRef.current) {
       pausedRemainingMsRef.current = Math.max(0, deadlineRef.current - now)
-    } else if (active && !activeRef.current) {
+    } else if (deadlineAt === undefined && active && !activeRef.current) {
       deadlineRef.current = now + pausedRemainingMsRef.current
+    }
+    if (deadlineAt !== undefined) {
+      deadlineRef.current = deadlineAt
+      pausedRemainingMsRef.current = Math.max(0, deadlineAt - now)
     }
     activeRef.current = active
 
@@ -102,7 +107,7 @@ export function useTurnCountdown(
       window.clearInterval(interval)
       window.clearTimeout(timeout)
     }
-  }, [active, seconds, turnKey, phase])
+  }, [active, seconds, turnKey, phase, deadlineAt])
 
   return remaining
 }

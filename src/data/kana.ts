@@ -159,6 +159,11 @@ export const ROW_ORDER: RowId[] = [
 ]
 export const COLUMN_ORDER: ColumnId[] = ['a', 'i', 'u', 'e', 'o', 'n']
 
+export function pronunciationRomaji(kana: Pick<KanaSound, 'sound' | 'romaji'>): string {
+  // 保留を的資料識別及輸入鍵 wo。現代日語的讀音用 o 顯示。
+  return kana.sound === 'wo' ? 'o' : kana.romaji
+}
+
 export function isYoonRow(row: RowId): boolean {
   return YOON_ROWS.includes(row)
 }

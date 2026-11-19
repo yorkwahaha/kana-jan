@@ -62,12 +62,17 @@ export function parseClientMessage(value: unknown): ClientMessage | null {
 
 function expandNetworkState(value: unknown): unknown {
   if (!isRecord(value) || !Array.isArray(value.deck)) return value
-  if (value.deck.length !== 0 || value.deckCount === undefined) return value
-  if (!Number.isInteger(value.deckCount) || Number(value.deckCount) < 0 || Number(value.deckCount) > 1000) return null
-  const { deckCount, ...rest } = value
+  const { deckCount, turnRemainingMs, ...rest } = value
+  if (rest.turnDeadlineAt !== undefined) return null
+  if (turnRemainingMs !== undefined && (typeof turnRemainingMs !== 'number' ||
+    !Number.isInteger(turnRemainingMs) || turnRemainingMs < 0 || turnRemainingMs > 18_000 ||
+    (rest.phase !== 'playerAction' && rest.phase !== 'discard' && rest.phase !== 'reaction'))) return null
+  const expandDeck = value.deck.length === 0 && deckCount !== undefined
+  if (expandDeck && (!Number.isInteger(deckCount) || Number(deckCount) < 0 || Number(deckCount) > 1000)) return null
   return {
     ...rest,
-    deck: Array.from({ length: Number(deckCount) }, (_, index) => makeHiddenCard(`deck-hidden-${index}`)),
+    deck: expandDeck ? Array.from({ length: Number(deckCount) }, (_, index) => makeHiddenCard(`deck-hidden-${index}`)) : value.deck,
+    ...(turnRemainingMs === undefined ? {} : { turnDeadlineAt: Date.now() + turnRemainingMs }),
   }
 }
 

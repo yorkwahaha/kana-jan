@@ -181,7 +181,7 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose, initialTab
                 <div className="yaku-item-card highlight">
                   <div className="yaku-info">
                     <strong>三位相和（全彩加成）</strong>
-                    <p>同音之「平假名 1 ＋ 片假名 1 ＋ 單字卡 1」各一張</p>
+                    <p>同一假名項目的平假名、片假名、單字卡各一張</p>
                   </div>
                   <div className="yaku-score">480 點</div>
                 </div>
@@ -257,7 +257,7 @@ export function ReferenceDrawer({ state, myPlayerId, isOpen, onClose, initialTab
                   </li>
                   <li>
                     <span className="dot dot-vocab" />
-                    <strong>同音純色（3張）</strong>：同讀音 3 張皆為同一字形，得分提升至 <strong>840 點</strong>
+                    <strong>同音純色（3張）</strong>：同一假名項目的 3 張牌皆為同一類型，得分提升至 <strong>840 點</strong>
                   </li>
                   <li>
                     <strong>三音組純色（3張）</strong>：拗音、や行或わ・を・ん組 3 音同字形，得分提升至 <strong>480 點</strong>

@@ -32,7 +32,8 @@ interface Props {
     active: boolean
     seconds: number
     turnKey: string | number
-    onTimeout: () => void
+    deadlineAt?: number
+    onTimeout?: () => void
   }
   onSelectCard: (id: string) => void
   onChooseYaku: (id: string) => void
@@ -141,6 +142,7 @@ export function GameTable({
     turnTimerActive,
     turnTimer?.onTimeout ?? (() => undefined),
     state.phase,
+    turnTimer?.deadlineAt,
   )
   const hudFor = (player: typeof human) => ({
     player,

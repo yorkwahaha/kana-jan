@@ -4,6 +4,11 @@ import { getCardById } from '../data/cards'
 import { CardView } from './CardView'
 
 describe('CardView vocabulary review', () => {
+  it('labels the pronunciation and typing of を separately', () => {
+    const html = renderToString(<CardView card={getCardById('wo-hiragana')} showHints={{ showRomaji: true }} />)
+    expect(html).toContain('class="card-romaji" title="讀音 o，輸入 wo">o</span>')
+  })
+
   it('renders standard writing, furigana, and a visible Chinese meaning', () => {
     const html = renderToString(
       <CardView

@@ -28,82 +28,77 @@ export function shouldUseTurnTimeout(actor: PlayerState | null): boolean {
   return actor !== null && actor.aiDifficulty !== 'easy'
 }
 
-export function shouldScheduleHostTimeout(
-  turnTimeoutEnabled: boolean,
-  networkMode: NetworkMode,
-  isTurnActive: boolean,
-  actorKind: PlayerState['kind'] | undefined,
-  paused: boolean,
-): boolean {
-  return !paused && turnTimeoutEnabled && networkMode === 'host' && isTurnActive && actorKind === 'remote'
+function turnActor(state: GameState): PlayerState | null {
+  if (state.phase === 'reaction') return reactionActor(state)
+  return state.players[state.currentPlayerIndex] ?? null
+}
+
+function isDecisionPhase(phase: GameState['phase']): boolean {
+  return phase === 'playerAction' || phase === 'discard' || phase === 'reaction'
+}
+
+function clockKeyFor(state: GameState, actor: PlayerState | null): string {
+  return turnClockKey({
+    turnNumber: state.turnNumber,
+    phase: state.phase,
+    actorId: actor?.id,
+    comboCount: state.comboCount,
+    reactionIndex: state.reactionIndex,
+  })
+}
+
+export function withRoomTurnDeadline(previous: GameState, next: GameState, now: number): GameState {
+  const actor = turnActor(next)
+  let deadline: number | undefined
+  if (actor && actor.kind !== 'ai' && shouldUseTurnTimeout(actor) && isDecisionPhase(next.phase)) {
+    deadline = clockKeyFor(previous, turnActor(previous)) === clockKeyFor(next, actor)
+      ? previous.turnDeadlineAt
+      : undefined
+    deadline ??= now + (next.phase === 'reaction' ? 12_000 : 18_000)
+  }
+  return deadline === next.turnDeadlineAt ? next : { ...next, turnDeadlineAt: deadline }
 }
 
 export function useTurnOrchestration({ state, networkMode, mySeat, spectating, dispatch, paused = false }: Options): TurnOrchestration {
   const handleTurnTimeoutRef = useRef<() => void>(() => undefined)
   const turnClockExpiredRef = useRef(false)
-  const currentActor =
-    state.phase === 'lobby' || state.players.length === 0
-      ? null
-      : state.phase === 'reaction'
-        ? (reactionActor(state) ?? null)
-        : (state.players[state.currentPlayerIndex] ?? null)
+  const currentActor = turnActor(state)
   const isMyTurn = !spectating && currentActor ? currentActor.seat === mySeat : false
-  const isTurnActive =
-    !spectating &&
-    (state.phase === 'playerAction' || state.phase === 'discard' || state.phase === 'reaction')
+  const isTurnActive = !spectating && isDecisionPhase(state.phase)
   const turnTimeoutEnabled = shouldUseTurnTimeout(currentActor)
 
   const handleTurnTimeout = useCallback(() => {
-    if (paused || !turnTimeoutEnabled || !isTurnActive || !currentActor) return
-    if (isMyTurn || (networkMode === 'host' && currentActor.kind === 'remote')) {
-      if (state.phase === 'playerAction') {
-        dispatch({ type: 'SKIP_YAKU' })
-      } else if (state.phase === 'discard') {
-        const actorPlayer = state.players.find((p) => p.seat === currentActor.seat)
-        if (actorPlayer?.hand.length) {
-          dispatch({ type: 'DISCARD', cardId: pickSafeTimeoutDiscard(actorPlayer, state) })
-        }
-      } else if (state.phase === 'reaction') {
-        dispatch({ type: 'PASS_CLAIM' })
-      }
+    if (!turnTimeoutEnabled || !isTurnActive || !currentActor || currentActor.kind === 'ai') return
+    if (networkMode === 'guest' || (networkMode === 'none' && (paused || !isMyTurn))) return
+    if (state.phase === 'playerAction') {
+      turnClockExpiredRef.current = true
+      dispatch({ type: 'SKIP_YAKU' })
+    } else if (state.phase === 'discard' && currentActor.hand.length) {
+      dispatch({ type: 'DISCARD', cardId: pickSafeTimeoutDiscard(currentActor, state) })
+    } else if (state.phase === 'reaction') {
+      dispatch({ type: 'PASS_CLAIM' })
     }
   }, [paused, turnTimeoutEnabled, isTurnActive, isMyTurn, networkMode, currentActor, state, dispatch])
   handleTurnTimeoutRef.current = handleTurnTimeout
 
-  const clockKey = turnClockKey({
-    turnNumber: state.turnNumber,
-    phase: state.phase,
-    actorId: currentActor?.id,
-    comboCount: state.comboCount,
-    reactionIndex: state.reactionIndex,
-  })
-  const hostTimeoutMs = state.phase === 'reaction' ? 14_000 : 20_000
-  const hostShouldTimeout = shouldScheduleHostTimeout(
-    turnTimeoutEnabled,
-    networkMode,
-    isTurnActive,
-    currentActor?.kind,
-    paused,
-  )
+  const clockKey = clockKeyFor(state, currentActor)
+  const deadline = networkMode === 'host' ? state.turnDeadlineAt : undefined
 
   useEffect(() => {
     turnClockExpiredRef.current = false
   }, [clockKey])
 
   useEffect(() => {
-    if (!hostShouldTimeout) return
-    const timer = window.setTimeout(() => {
-      turnClockExpiredRef.current = true
-      handleTurnTimeoutRef.current()
-    }, hostTimeoutMs)
+    if (deadline === undefined) return
+    const timer = window.setTimeout(() => handleTurnTimeoutRef.current(), Math.max(0, deadline - Date.now()))
     return () => window.clearTimeout(timer)
-  }, [hostShouldTimeout, clockKey, hostTimeoutMs])
+  }, [deadline, clockKey, state.phase])
 
   useEffect(() => {
-    if (!hostShouldTimeout || !followUpDiscardAfterExpiredClock(state.phase, turnClockExpiredRef.current)) return
+    if (networkMode !== 'none' || paused || !isMyTurn || !followUpDiscardAfterExpiredClock(state.phase, turnClockExpiredRef.current)) return
     const timer = window.setTimeout(() => handleTurnTimeoutRef.current(), 280)
     return () => window.clearTimeout(timer)
-  }, [hostShouldTimeout, state.phase, clockKey])
+  }, [networkMode, paused, isMyTurn, state.phase, clockKey])
 
   return { currentActor, isMyTurn, isTurnActive, turnTimeoutEnabled, clockKey, handleTurnTimeout }
 }

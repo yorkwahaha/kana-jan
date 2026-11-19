@@ -21,7 +21,8 @@ for (const k of KANA_SOUNDS) {
   KANA_MAP.set(k.katakana, k.sound)
 }
 
-let currentAudio: HTMLAudioElement | null = null
+let cancelAudio: (() => void) | null = null
+let speechRequest = 0
 const FAILED_URL_TTL_MS = 60_000
 const failedUrls = new Map<string, number>()
 
@@ -40,6 +41,8 @@ function isFailedUrl(url: string): boolean {
 }
 
 export function stopSpeech(): void {
+  speechRequest += 1
+  cancelAudio?.()
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     try {
       window.speechSynthesis.cancel()
@@ -47,32 +50,39 @@ export function stopSpeech(): void {
       // ignore
     }
   }
-  if (currentAudio) {
-    try {
-      currentAudio.pause()
-      currentAudio.onended = null
-      currentAudio.onerror = null
-      currentAudio.removeAttribute('src')
-    } catch {
-      // ignore
-    }
-    currentAudio = null
-  }
 }
 
 async function playAudioUrl(url: string): Promise<boolean> {
   if (isFailedUrl(url)) return false
   return new Promise<boolean>((resolve) => {
+    let audio: HTMLAudioElement
     try {
-      const audio = new Audio(url)
-      currentAudio = audio
-      let settled = false
-      const done = (success: boolean) => {
-        if (settled) return
-        settled = true
-        if (currentAudio === audio) currentAudio = null
-        resolve(success)
+      audio = new Audio(url)
+    } catch {
+      rememberFailedUrl(url)
+      resolve(false)
+      return
+    }
+    let settled = false
+    const cancel = () => {
+      done(false)
+      try {
+        audio.pause()
+        audio.removeAttribute('src')
+      } catch {
+        // 瀏覽器無法釋放來源時，前一個播放仍已標記為結束。
       }
+    }
+    const done = (success: boolean) => {
+      if (settled) return
+      settled = true
+      audio.onended = null
+      audio.onerror = null
+      if (cancelAudio === cancel) cancelAudio = null
+      resolve(success)
+    }
+    cancelAudio = cancel
+    try {
       audio.onended = () => done(true)
       audio.onerror = () => {
         rememberFailedUrl(url)
@@ -81,6 +91,7 @@ async function playAudioUrl(url: string): Promise<boolean> {
       const p = audio.play()
       if (p !== undefined) {
         p.catch((err) => {
+          if (settled) return
           if (err && err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
             rememberFailedUrl(url)
           }
@@ -89,7 +100,7 @@ async function playAudioUrl(url: string): Promise<boolean> {
       }
     } catch {
       rememberFailedUrl(url)
-      resolve(false)
+      done(false)
     }
   })
 }
@@ -126,6 +137,7 @@ function speakWebSpeech(text: string): Promise<void> {
 export async function speakJapanese(text: string, enabled: boolean): Promise<void> {
   if (!enabled || !text) return
   stopSpeech()
+  const request = speechRequest
 
   const clean = text.trim()
   let localSound = VOCAB_MAP.get(clean)
@@ -139,7 +151,7 @@ export async function speakJapanese(text: string, enabled: boolean): Promise<voi
     const dir = isVocab ? WORDS_BASE : KANA_BASE
     const localUrl = `${dir}${localSound}.mp3`
     const played = await playAudioUrl(localUrl)
-    if (played) return
+    if (played || request !== speechRequest) return
   }
 
   await speakWebSpeech(clean)
