@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { DataConnection } from 'peerjs'
-import { startGame } from '../engine/game'
+import { availableYakuFor, currentPlayer, drainAuto, reduce, startGame } from '../engine/game'
 
 vi.mock('peerjs', () => ({
   Peer: class {
@@ -10,6 +10,7 @@ vi.mock('peerjs', () => ({
 }))
 
 import { GuestManager, HostManager, MAX_SPECTATORS } from './peerManager'
+import { parseClientMessage, parseHostMessage } from './protocol'
 import type { ClientMessage } from './types'
 
 function connection(peer: string) {
@@ -45,6 +46,42 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.useRealTimers()
   vi.unstubAllGlobals()
+})
+
+// PeerJS BinaryPack converts explicit undefined properties to null in transit.
+function binaryPackRoundTrip(message: unknown): unknown {
+  return JSON.parse(JSON.stringify(message, (_, value: unknown) => value === undefined ? null : value))
+}
+
+describe('PeerJS wire serialization', () => {
+  it('sends a valid first JOIN without resume credentials', () => {
+    const send = vi.fn()
+    const guest = new GuestManager('KANA-7X89AB', '玩家', {
+      onRoomUpdate: vi.fn(), onGameStart: vi.fn(), onGameSync: vi.fn(), onError: vi.fn(),
+    })
+    const testGuest = guest as unknown as { peer: object; connectToHost: (host: string) => void }
+    testGuest.peer = {
+      id: 'peer-first-join',
+      connect: () => ({ send, on: (event: string, callback: () => void) => { if (event === 'open') callback() } }),
+    }
+    testGuest.connectToHost('host')
+    expect(parseClientMessage(binaryPackRoundTrip(send.mock.calls[0]?.[0]))).toMatchObject({ type: 'JOIN', name: '玩家' })
+  })
+
+  it('sends a valid tsumo snapshot after optional meld fields cross the wire', () => {
+    const host = createHost()
+    const conn = connection('peer-a')
+    host.handleGuestMessage(conn, { type: 'JOIN', name: 'A', peerId: conn.peer })
+    const game = Array.from({ length: 20 }, (_, seed) => {
+      const start = startGame({ seed, skipPreview: true })
+      return reduce(reduce(start, { type: 'DEAL_DONE' }), { type: 'DRAW' })
+    }).find((state) => availableYakuFor(state, currentPlayer(state).id).length > 0)!
+    const [yaku] = availableYakuFor(game, currentPlayer(game).id)
+    const settled = drainAuto(reduce(game, { type: 'CHOOSE_YAKU', yakuId: yaku!.id }))
+    host.startGame(settled)
+    const received = parseHostMessage(binaryPackRoundTrip(vi.mocked(conn.send).mock.lastCall?.[0]))
+    expect(received?.type).toBe('GAME_START')
+  })
 })
 
 describe('HostManager connection identity', () => {
