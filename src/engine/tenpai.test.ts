@@ -5,6 +5,14 @@ import { buildTenpaiWaits, tenpaiVisibilityKey } from './tenpai'
 import { findNearYaku } from './yaku'
 
 describe('tenpai waits', () => {
+  it('does not count a card type omitted from the shuffled deck manifest', () => {
+    const state = startGame({ seed: 1 })
+    const hand = state.players[0]!.hand
+    const hints = findNearYaku(hand, state.activeRows)
+    expect(state.deckManifest?.['nyo:katakana']).toBeUndefined()
+    expect(buildTenpaiWaits(hand, hints, state).find((wait) => wait.sound === 'nyo')?.maxScore).toBe(120)
+  })
+
   it('does not recommend a sound when every publicly known copy is exhausted', () => {
     const state = startGame({ seed: 9, activeRows: ['ka'], skipPreview: true })
     const hand = [getCardById('ka-hiragana'), getCardById('ka-katakana')]

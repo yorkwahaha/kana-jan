@@ -174,3 +174,9 @@ describe('referenceHelper', () => {
     expect(visibleCardsFingerprint(state, 'p0')).toBe(before)
   })
 })
+it('counts omitted card types in a known manifest as zero', () => {
+  const [a] = computeRowCardStats(['a'], [], 3, { 'a:hiragana': 1 })[0]!.sounds
+  expect(a?.totalMax).toBe(1)
+  expect(a?.totalRemaining).toBe(1)
+})
+

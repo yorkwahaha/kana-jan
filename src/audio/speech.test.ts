@@ -27,6 +27,33 @@ afterEach(() => {
 })
 
 describe('speech local audio routing', () => {
+  it('settles a cancelled pronunciation and suppresses stale fallback', async () => {
+    const audios: PendingAudio[] = []
+    class PendingAudio extends SuccessfulAudio {
+      rejectPlay!: (error: Error) => void
+      constructor(url: string) {
+        super(url)
+        audios.push(this)
+      }
+      play() {
+        return new Promise<void>((_, reject) => { this.rejectPlay = reject })
+      }
+    }
+    const speak = vi.fn()
+    vi.stubGlobal('speechSynthesis', { cancel: vi.fn(), getVoices: () => [], speak })
+    vi.stubGlobal('SpeechSynthesisUtterance', class {})
+    vi.stubGlobal('Audio', PendingAudio)
+
+    const old = speakJapanese('い', true)
+    const latest = speakJapanese('う', true)
+    audios[1]!.onended?.()
+    await latest
+    await expect(Promise.race([old.then(() => 'settled'), Promise.resolve().then(() => 'pending')])).resolves.toBe('settled')
+    audios[0]!.rejectPlay(new DOMException('Cancelled', 'AbortError'))
+    await old
+    expect(speak).not.toHaveBeenCalled()
+  })
+
   it('じ/ず/ぢ/づ 的實際假名播放會各自路由到正確本地音檔', async () => {
     vi.stubGlobal('Audio', SuccessfulAudio)
     await speakJapanese('じ', true)

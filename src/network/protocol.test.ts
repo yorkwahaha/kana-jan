@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { startGame } from '../engine/game'
+import { describe, expect, it, vi } from 'vitest'
+import { currentReactionYakus, drainAuto, reduce, startGame } from '../engine/game'
 import { isPersistentGameState } from '../engine/stateValidation'
 import { makeHiddenCard, maskStateForPlayer } from './mask'
 import { parseClientMessage, parseHostMessage } from './protocol'
@@ -98,5 +98,39 @@ describe('PeerJS protocol runtime validation', () => {
     expect(parseHostMessage({ type: 'GAME_SYNC', state: mixed, spectating: false })).toBeNull()
     const invalidSave = { ...game, reactionOptions: [{ playerId: '__private_reaction__' }] }
     expect(isPersistentGameState(invalidSave)).toBe(false)
+  })
+
+  it.each([1000, 10])('抄牌後的結算及終局可以傳給所有視角（開局 %i 金）', (initialGold) => {
+    let game = startGame({ seed: 0, skipPreview: true, initialGold })
+    game = reduce(reduce(game, { type: 'DEAL_DONE' }), { type: 'DRAW' })
+    game = reduce(game, { type: 'SKIP_YAKU' })
+    const table = game
+    const discarder = table.players[table.currentPlayerIndex]!
+    const reaction = discarder.hand
+      .map((card) => reduce(table, { type: 'DISCARD', cardId: card.id }))
+      .find((state) => state.phase === 'reaction')!
+    const [yaku] = currentReactionYakus(reaction)
+    const settled = drainAuto(reduce(reaction, { type: 'CLAIM_YAKU', yakuId: yaku!.id }))
+    expect(settled.phase).toBe(initialGold === 10 ? 'gameOver' : 'review')
+    for (const seat of [-1, 0, 1, 2, 3]) {
+      const state = maskStateForPlayer(settled, seat)
+      expect(parseHostMessage({ type: 'GAME_SYNC', state, spectating: seat < 0 })).not.toBeNull()
+      expect(state.reactionOptions).toEqual([])
+    }
+  })
+
+  it('同步剩餘時間，客端以自己的時鐘顯示同一期限', () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1000)
+    try {
+      const game = { ...startGame({ seed: 7 }), phase: 'discard' as const, turnDeadlineAt: 19000 }
+      const state = maskStateForPlayer(game, 0)
+      expect(state).not.toHaveProperty('turnDeadlineAt')
+      now.mockReturnValue(60000)
+      const parsed = parseHostMessage({ type: 'GAME_SYNC', state })
+      expect(parsed?.type === 'GAME_SYNC' && parsed.state.turnDeadlineAt).toBe(78000)
+      expect(parseHostMessage({ type: 'GAME_SYNC', state: { ...state, turnRemainingMs: -1 } })).toBeNull()
+    } finally {
+      now.mockRestore()
+    }
   })
 })
