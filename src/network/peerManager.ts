@@ -57,6 +57,11 @@ const MAX_INBOUND_MESSAGES_PER_WINDOW = 80
 const GAME_SYNC_MIN_INTERVAL_MS = 40
 const RESUME_TOKEN_TTL_MS = 6 * 60 * 60 * 1000
 
+function sendProtocolMessage(connection: DataConnection, message: ClientMessage | HostMessage) {
+  // BinaryPack sends explicit undefined as null. Omit optional fields before it packs the message.
+  connection.send(JSON.parse(JSON.stringify(message)))
+}
+
 export class HostManager {
   private peer: Peer | null = null
   private connections: Map<number, DataConnection> = new Map() // seat -> connection
@@ -309,21 +314,21 @@ export class HostManager {
   private sendPlayerSnapshot(conn: DataConnection, seat: number) {
     const game = this.currentGameState
     if (game) {
-      conn.send({
+      sendProtocolMessage(conn, {
         type: 'GAME_START',
         state: maskStateForPlayer(game, seat),
         yourSeat: seat,
         spectating: false,
         resumeToken: this.resumeTokens.get(seat),
-      } satisfies HostMessage)
+      })
       return
     }
-    conn.send({
+    sendProtocolMessage(conn, {
       type: 'ROOM_UPDATE',
       roomState: this.roomState,
       yourSeat: seat,
       resumeToken: this.resumeTokens.get(seat),
-    } satisfies HostMessage)
+    })
   }
 
   private hasExpiredResumeCredential(resumePlayerId?: string, resumeToken?: string): boolean {
@@ -382,13 +387,13 @@ export class HostManager {
     this.broadcastRoomUpdate()
     const game = this.currentGameState
     if (game) {
-      conn.send({
+      sendProtocolMessage(conn, {
         type: 'GAME_START',
         state: maskStateForPlayer(game, slot.seat),
         yourSeat: slot.seat,
         spectating: false,
         resumeToken: this.resumeTokens.get(slot.seat),
-      } satisfies HostMessage)
+      })
     }
     return true
   }
@@ -402,19 +407,19 @@ export class HostManager {
     this.spectators.set(conn, { name })
     const game = this.currentGameState
     if (game) {
-      conn.send({
+      sendProtocolMessage(conn, {
         type: 'GAME_START',
         state: maskStateForPlayer(game, -1),
         yourSeat: -1,
         spectating: true,
-      } satisfies HostMessage)
+      })
     } else {
-      conn.send({
+      sendProtocolMessage(conn, {
         type: 'ROOM_UPDATE',
         roomState: this.roomState,
         yourSeat: -1,
         spectating: true,
-      } satisfies HostMessage)
+      })
     }
   }
 
@@ -476,22 +481,22 @@ export class HostManager {
     this.callbacks.onRoomChange({ ...this.roomState, slots: [...this.roomState.slots] })
     for (const [seat, conn] of this.connections.entries()) {
       if (conn.open) {
-        conn.send({
+        sendProtocolMessage(conn, {
           type: 'ROOM_UPDATE',
           roomState: this.roomState,
           yourSeat: seat,
           resumeToken: this.resumeTokens.get(seat),
-        } satisfies HostMessage)
+        })
       }
     }
     for (const conn of this.spectators.keys()) {
       if (conn.open) {
-        conn.send({
+        sendProtocolMessage(conn, {
           type: 'ROOM_UPDATE',
           roomState: this.roomState,
           yourSeat: -1,
           spectating: true,
-        } satisfies HostMessage)
+        })
       }
     }
   }
@@ -516,23 +521,23 @@ export class HostManager {
     this.currentGameState = initialState
     for (const [seat, conn] of this.connections.entries()) {
       if (conn.open) {
-        conn.send({
+        sendProtocolMessage(conn, {
           type: 'GAME_START',
           state: maskStateForPlayer(initialState, seat),
           yourSeat: seat,
           spectating: false,
           resumeToken: this.resumeTokens.get(seat),
-        } satisfies HostMessage)
+        })
       }
     }
     for (const conn of this.spectators.keys()) {
       if (conn.open) {
-        conn.send({
+        sendProtocolMessage(conn, {
           type: 'GAME_START',
           state: maskStateForPlayer(initialState, -1),
           yourSeat: -1,
           spectating: true,
-        } satisfies HostMessage)
+        })
       }
     }
     return true
@@ -541,20 +546,20 @@ export class HostManager {
   private broadcastGameSync(state: GameState) {
     for (const [seat, conn] of this.connections.entries()) {
       if (conn.open) {
-        conn.send({
+        sendProtocolMessage(conn, {
           type: 'GAME_SYNC',
           state: maskStateForPlayer(state, seat),
           spectating: false,
-        } satisfies HostMessage)
+        })
       }
     }
     for (const conn of this.spectators.keys()) {
       if (conn.open) {
-        conn.send({
+        sendProtocolMessage(conn, {
           type: 'GAME_SYNC',
           state: maskStateForPlayer(state, -1),
           spectating: true,
-        } satisfies HostMessage)
+        })
       }
     }
   }
@@ -707,13 +712,13 @@ export class GuestManager {
     this.hostConn = conn
 
     conn.on('open', () => {
-      conn.send({
+      sendProtocolMessage(conn, {
         type: 'JOIN',
         name: this.guestName,
         peerId: this.peer?.id ?? '',
         resumePlayerId: this.resumePlayerId,
         resumeToken: this.resumeToken,
-      } satisfies ClientMessage)
+      })
     })
 
     conn.on('data', (data) => {
